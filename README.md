@@ -27,14 +27,19 @@ saviaup.backend.Infrastructure  adapters de PostgreSQL, JWT, hashing, email y ti
 
 ## Configuración local
 
-Nunca guardes una clave JWT, contraseña SMTP o contraseña de producción en Git. Define al menos:
+Nunca guardes una cadena PostgreSQL, clave JWT o credencial SMTP en Git. Para desarrollo local usa .NET User Secrets:
 
 ```powershell
-$env:Jwt__SigningKey = "una-clave-local-aleatoria-de-al-menos-32-bytes"
-$env:ConnectionStrings__SaviaUp = "Host=localhost;Port=5432;Database=saviaup;Username=postgres;Password=postgres"
+dotnet user-secrets set "ConnectionStrings:SaviaUp" "Host=localhost;Port=5432;Database=saviaup;Username=usuario;Password=clave" --project saviaup.backend.Api
+dotnet user-secrets set "Jwt:SigningKey" "una-clave-local-aleatoria-de-al-menos-32-bytes" --project saviaup.backend.Api
+dotnet user-secrets list --project saviaup.backend.Api
 ```
 
-Variables admitidas:
+API e Infrastructure comparten el mismo `UserSecretsId`. El host usa ese almacén al ejecutar en Development y `SaviaUpDbContextFactory` lo usa directamente durante `dotnet ef`, de modo que las migraciones no dependen de una cadena escrita en `appsettings`. El factory prioriza `ConnectionStrings__SaviaUp` sobre User Secrets y falla de forma explícita si ninguna fuente está configurada.
+
+`appsettings.json` y `appsettings.Development.json` mantienen vacíos los campos sensibles. El `secrets.json` real reside fuera del repositorio bajo el almacén del perfil de usuario; no debe copiarse a esta solución.
+
+Como alternativa para CI, producción o una sesión temporal, se admiten variables de entorno:
 
 ```text
 ConnectionStrings__SaviaUp

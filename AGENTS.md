@@ -383,13 +383,19 @@ Frontend:BaseUrl
 Cors:AllowedOrigins
 ```
 
-La firma JWT real debe provenir de variable de entorno, User Secrets o secret manager:
+Para desarrollo local, API e Infrastructure comparten el mismo `UserSecretsId`. Esto permite que el host cargue los secretos al ejecutar la API y que `SaviaUpDbContextFactory` lea la misma cadena al crear o aplicar migraciones:
 
 ```powershell
-$env:Jwt__SigningKey = "una-clave-aleatoria-de-al-menos-32-bytes"
+dotnet user-secrets set "ConnectionStrings:SaviaUp" "Host=localhost;Port=5432;Database=saviaup;Username=usuario;Password=clave" --project saviaup.backend.Api
+dotnet user-secrets set "Jwt:SigningKey" "una-clave-aleatoria-de-al-menos-32-bytes" --project saviaup.backend.Api
+dotnet user-secrets list --project saviaup.backend.Api
 ```
 
-No agregar secretos reales a `appsettings*.json`, `.env.example`, Dockerfile, Compose, pruebas o logs. `.env` está ignorado por Git.
+El archivo físico de User Secrets vive fuera del repositorio. No crear ni versionar un `secrets.json` dentro de la solución. `SaviaUpDbContextFactory` usa primero `ConnectionStrings__SaviaUp` si existe y, en caso contrario, `ConnectionStrings:SaviaUp` desde User Secrets; no posee cadena PostgreSQL de fallback.
+
+`appsettings*.json` debe conservar vacíos `ConnectionStrings:SaviaUp`, `Jwt:SigningKey` y cualquier credencial. En producción usar variables de entorno o un secret manager. No agregar secretos reales a `appsettings*.json`, `.env.example`, Dockerfile, Compose, pruebas o logs. `.env` está ignorado por Git.
+
+Los proyectos `saviaup.backend.Api` y `saviaup.backend.Infrastructure` deben conservar el mismo `UserSecretsId`; si cambia, actualizar ambos dentro del mismo commit.
 
 CORS de producción debe enumerar orígenes explícitos; no usar `AllowAnyOrigin()`.
 
@@ -423,7 +429,8 @@ Antes de crear una migración:
 ## Ejecución local
 
 ```powershell
-$env:Jwt__SigningKey = "una-clave-local-aleatoria-de-al-menos-32-bytes"
+dotnet user-secrets set "ConnectionStrings:SaviaUp" "Host=localhost;Port=5432;Database=saviaup;Username=usuario;Password=clave" --project saviaup.backend.Api
+dotnet user-secrets set "Jwt:SigningKey" "una-clave-local-aleatoria-de-al-menos-32-bytes" --project saviaup.backend.Api
 dotnet restore
 dotnet tool restore
 dotnet tool run dotnet-ef database update --project saviaup.backend.Infrastructure --startup-project saviaup.backend.Api
@@ -502,4 +509,3 @@ Antes de entregar:
 ## Documentación adicional
 
 `README.md` contiene la guía de uso para desarrolladores y operadores. Este `AGENTS.md` contiene las reglas de implementación para agentes y colaboradores. Si ambos divergen, corregirlos dentro del mismo cambio.
-`FRONTEND_NAVIGATION_ADAPTATION_PROMPT.md` contiene el prompt vigente para adaptar el frontend al contrato de navegación.
