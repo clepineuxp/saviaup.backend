@@ -15,6 +15,8 @@ public sealed class DeleteCategoryUseCase(
     {
         var category = await categoryRepository.GetByIdAsync(tenantId, categoryId, cancellationToken);
         if (category is null) return Result.Failure(Errors.CategoryNotFound);
+        if (await categoryRepository.IsInUseAsync(tenantId, categoryId, cancellationToken))
+            return Result.Failure(Errors.CategoryInUse);
 
         categoryRepository.Remove(category);
         await unitOfWork.SaveChangesAsync(cancellationToken);

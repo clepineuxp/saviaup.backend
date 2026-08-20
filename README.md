@@ -71,10 +71,11 @@ La migración `InitialIdentityAndTenancy` crea:
 
 ```text
 users, tenants, tenant_memberships, roles, modules, permissions,
-role_permissions, refresh_tokens, password_reset_tokens, categories
+role_permissions, refresh_tokens, password_reset_tokens, categories,
+measurement_units, ingredients, inventory_movements
 ```
 
-Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`, nombres normalizados de categoría por tenant, códigos de permisos, relación role/permission y hashes de tokens. Las relaciones sensibles usan eliminación `Restrict`. El seed contiene únicamente módulos y permisos globales. `AddCategoriesModule` agrega los permisos del módulo y `AddTenantCategories` crea el agregado funcional.
+Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`, nombres normalizados de categoría/unidad por tenant, códigos de permisos, relación role/permission y hashes de tokens. Las relaciones sensibles usan eliminación `Restrict`. El seed contiene únicamente módulos y permisos globales. `AddCategoriesModule` agrega los permisos del módulo, `AddTenantCategories` crea categorías y `AddInventoryManagement` crea unidades, ingredientes, movimientos, permisos granulares y el backfill `gr`/`kg`/`und`.
 
 ## Docker
 
@@ -111,6 +112,22 @@ POST   /api/categories
 PUT    /api/categories/{categoryId}
 PATCH  /api/categories/{categoryId}/status
 DELETE /api/categories/{categoryId}
+
+GET    /api/inventory?page=1&pageSize=20&search=&belowMinimum=
+GET    /api/inventory/ingredients?page=1&pageSize=20&search=&categoryId=&includeInactive=false
+POST   /api/inventory/ingredients
+PUT    /api/inventory/ingredients/{ingredientId}
+PATCH  /api/inventory/ingredients/{ingredientId}/status
+DELETE /api/inventory/ingredients/{ingredientId}
+
+GET  /api/inventory/movements?page=1&pageSize=20&ingredientId=&direction=
+POST /api/inventory/movements
+
+GET    /api/inventory/complements/units?page=1&pageSize=20&search=&includeInactive=false
+POST   /api/inventory/complements/units
+PUT    /api/inventory/complements/units/{unitId}
+PATCH  /api/inventory/complements/units/{unitId}/status
+DELETE /api/inventory/complements/units/{unitId}
 
 GET  /api/i18n/{language}
 GET  /health
@@ -183,7 +200,27 @@ Creación y actualización usan:
 
 La respuesta agrega `id`, `isActive`, `createdAt` y `updatedAt`. `description` e `imageUrl` son opcionales; la imagen se representa como URL HTTP/HTTPS, no como archivo binario. Los nombres se comparan sin distinguir mayúsculas ni espacios sobrantes y no se repiten dentro de un tenant.
 
-`GET /api/categories` devuelve solo activas para consumo de productos, inventarios y menús. La pantalla administrativa puede solicitar `includeInactive=true`. `PATCH /api/categories/{id}/status` recibe `{ "isActive": false }` y permite deshabilitar o reactivar. `DELETE` elimina físicamente la categoría mientras no existan relaciones restrictivas futuras.
+`GET /api/categories` devuelve solo activas para consumo de productos, inventarios y menús. La pantalla administrativa puede solicitar `includeInactive=true`. `PATCH /api/categories/{id}/status` recibe `{ "isActive": false }` y permite deshabilitar o reactivar. `DELETE` elimina físicamente la categoría solo si no tiene ingredientes; si está en uso devuelve `CATEGORY_IN_USE`.
+
+## Inventario, ingredientes, movimientos y complementos
+
+Las cuatro áreas viven bajo el módulo de Inventario y son completamente tenant-aware. Cada listado es paginado con `page` (desde 1), `pageSize` (1–100), `items`, `totalCount` y `totalPages`.
+
+Un ingrediente requiere `categoryId`, `measurementUnitId` y `name`. `description` es opcional, `minimumStock` inicia en `0` y `initialStock` es opcional. Un stock inicial positivo genera un movimiento auditado `increase/initial`; después de crear, el stock solo cambia mediante movimientos.
+
+Entradas válidas: `purchase`, `production`, `acquisition`. Salidas válidas: `expiration`, `loss`, `waste`. La API registra cantidad, stock anterior/posterior, nota opcional, usuario y fecha. Las salidas no pueden dejar stock negativo y responden `422 INVENTORY_INSUFFICIENT_STOCK` si exceden la existencia.
+
+`GET /api/inventory` solo incluye ingredientes activos de categorías activas marcadas como inventariables. Informa `currentStock`, `minimumStock` e `isBelowMinimum`; admite `belowMinimum=true|false`.
+
+Complementos está preparado para crecer por tipo. Actualmente expone unidades y cada tenant recibe de forma automática:
+
+```text
+gr  gramos
+kg  kilogramos
+und unidades
+```
+
+Los permisos son `inventory.stock.read`, `inventory.ingredients.read/manage`, `inventory.movements.read/manage` e `inventory.complements.read/manage`. No se pueden eliminar ingredientes con movimientos, unidades usadas ni categorías usadas; se pueden desactivar ingredientes/unidades con `PATCH /status`.
 
 ## JWT, sesiones y multi-tenancy
 
@@ -239,6 +276,6 @@ dotnet build
 dotnet test
 ```
 
-`Core.Tests` cubre autenticación, tenants, permisos, navegación, información contextual y reglas CRUD de categorías. `IntegrationTests` arranca la API con EF InMemory y verifica el flujo completo, incluidos duplicados, edición, deshabilitación, filtros y eliminación de categorías, además del middleware 401/403 y membership activa.
+`Core.Tests` cubre autenticación, tenants, permisos, navegación, información contextual, categorías, ingredientes, movimientos, stock y unidades. `IntegrationTests` arranca la API con EF InMemory y verifica el flujo completo, incluidos paginado, defaults por tenant, stock inicial, entradas/salidas, stock insuficiente y restricciones de eliminación, además del middleware 401/403 y membership activa.
 
 El frontend conectado está en `../saviaup.frontend`: desarrollo usa `useMockApi: false` y `apiUrl: http://localhost:5000`.

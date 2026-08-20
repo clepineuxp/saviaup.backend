@@ -18,6 +18,14 @@ public static class LocalizationKeys
     public const string NavigationNoModules = "navigation.noModules";
     public const string CategoryNotFound = "categories.notFound";
     public const string CategoryNameAlreadyExists = "categories.nameAlreadyExists";
+    public const string CategoryInUse = "categories.inUse";
+    public const string IngredientNotFound = "inventory.ingredients.notFound";
+    public const string IngredientInUse = "inventory.ingredients.inUse";
+    public const string MeasurementUnitNotFound = "inventory.units.notFound";
+    public const string MeasurementUnitAlreadyExists = "inventory.units.alreadyExists";
+    public const string MeasurementUnitInUse = "inventory.units.inUse";
+    public const string InventoryMovementInvalid = "inventory.movements.invalid";
+    public const string InventoryInsufficientStock = "inventory.movements.insufficientStock";
     public const string Validation = "common.validation";
     public const string InternalError = "common.internalError";
 

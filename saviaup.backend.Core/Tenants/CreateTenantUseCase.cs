@@ -11,6 +11,7 @@ public sealed class CreateTenantUseCase(
     IUserRepository userRepository,
     ITenantRepository tenantRepository,
     IRoleRepository roleRepository,
+    IMeasurementUnitRepository measurementUnitRepository,
     IRefreshTokenRepository refreshTokenRepository,
     SessionIssuer sessionIssuer,
     IDateTimeProvider dateTimeProvider,
@@ -65,6 +66,7 @@ public sealed class CreateTenantUseCase(
             await roleRepository.AddAsync(role, transactionToken);
             await tenantRepository.AddMembershipAsync(membership, transactionToken);
             await roleRepository.AssignAllPermissionsAsync(role.Id, transactionToken);
+            await measurementUnitRepository.AddDefaultsAsync(tenant.Id, now, transactionToken);
             user.LastTenantId = tenant.Id;
             user.UpdatedAt = now;
             await refreshTokenRepository.RevokeSessionAsync(user.Id, currentSessionId, now, transactionToken);

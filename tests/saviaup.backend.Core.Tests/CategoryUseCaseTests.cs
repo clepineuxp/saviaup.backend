@@ -224,6 +224,23 @@ public sealed class CategoryUseCaseTests
     }
 
     [Fact]
+    public async Task DeleteCategory_WhenUsedByIngredient_ReturnsConflict()
+    {
+        var tenantId = Guid.NewGuid();
+        var category = Category(tenantId);
+        var repository = new Mock<ICategoryRepository>();
+        repository.Setup(value => value.GetByIdAsync(tenantId, category.Id, It.IsAny<CancellationToken>())).ReturnsAsync(category);
+        repository.Setup(value => value.IsInUseAsync(tenantId, category.Id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var useCase = new DeleteCategoryUseCase(repository.Object, UnitOfWork().Object);
+
+        var result = await useCase.ExecuteAsync(tenantId, category.Id, default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorCodes.CategoryInUse, result.Error!.Code);
+        repository.Verify(value => value.Remove(It.IsAny<Category>()), Times.Never);
+    }
+
+    [Fact]
     public async Task ListCategories_UsesTenantAndInactiveFilter()
     {
         var tenantId = Guid.NewGuid();

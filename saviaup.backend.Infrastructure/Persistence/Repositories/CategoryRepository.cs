@@ -35,5 +35,10 @@ public sealed class CategoryRepository(SaviaUpDbContext context) : ICategoryRepo
     public async Task AddAsync(Category category, CancellationToken cancellationToken)
         => await context.Categories.AddAsync(category, cancellationToken);
 
+    public Task<bool> IsInUseAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken)
+        => context.Ingredients.AsNoTracking().AnyAsync(
+            ingredient => ingredient.TenantId == tenantId && ingredient.CategoryId == categoryId,
+            cancellationToken);
+
     public void Remove(Category category) => context.Categories.Remove(category);
 }

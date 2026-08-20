@@ -76,6 +76,15 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         Assert.Equal("Secret Garden", userInfoJson.GetProperty("organization").GetProperty("name").GetString());
         Assert.Equal("TENANT_OWNER", userInfoJson.GetProperty("role").GetProperty("code").GetString());
 
+        var currentUser = await client.GetAsync("/api/users/me");
+        Assert.Equal(HttpStatusCode.OK, currentUser.StatusCode);
+        var currentPermissions = (await currentUser.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("permissions").EnumerateArray().Select(permission => permission.GetString()).ToArray();
+        Assert.Contains("inventory.stock.read", currentPermissions);
+        Assert.Contains("inventory.ingredients.manage", currentPermissions);
+        Assert.Contains("inventory.movements.manage", currentPermissions);
+        Assert.Contains("inventory.complements.manage", currentPermissions);
+
         var createCategory = await client.PostAsJsonAsync("/api/categories", new
         {
             name = "  Bebidas   frías ",
@@ -137,6 +146,109 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         Assert.Equal(HttpStatusCode.NoContent, deleteCategory.StatusCode);
         var categoriesAfterDelete = await client.GetAsync("/api/categories?includeInactive=true");
         Assert.Empty((await categoriesAfterDelete.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray());
+
+        var unitsResponse = await client.GetAsync("/api/inventory/complements/units?page=1&pageSize=10");
+        Assert.Equal(HttpStatusCode.OK, unitsResponse.StatusCode);
+        var unitsJson = await unitsResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(3, unitsJson.GetProperty("totalCount").GetInt32());
+        var units = unitsJson.GetProperty("items").EnumerateArray().ToArray();
+        Assert.Equal(["gr", "kg", "und"], units.Select(unit => unit.GetProperty("code").GetString()).Order());
+        var gramUnitId = units.Single(unit => unit.GetProperty("code").GetString() == "gr").GetProperty("id").GetGuid();
+
+        var createInventoryCategory = await client.PostAsJsonAsync("/api/categories", new
+        {
+            name = "Materia prima",
+            isInventoryTracked = true
+        });
+        Assert.Equal(HttpStatusCode.OK, createInventoryCategory.StatusCode);
+        var inventoryCategoryId = (await createInventoryCategory.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        var createIngredient = await client.PostAsJsonAsync("/api/inventory/ingredients", new
+        {
+            categoryId = inventoryCategoryId,
+            measurementUnitId = gramUnitId,
+            name = "Café molido",
+            description = "Tueste medio",
+            minimumStock = 10,
+            initialStock = 5
+        });
+        Assert.Equal(HttpStatusCode.OK, createIngredient.StatusCode);
+        var ingredientJson = await createIngredient.Content.ReadFromJsonAsync<JsonElement>();
+        var ingredientId = ingredientJson.GetProperty("id").GetGuid();
+        Assert.Equal(5m, ingredientJson.GetProperty("currentStock").GetDecimal());
+        Assert.True(ingredientJson.GetProperty("isBelowMinimum").GetBoolean());
+
+        var inventory = await client.GetAsync("/api/inventory?page=1&pageSize=10&belowMinimum=true");
+        Assert.Equal(HttpStatusCode.OK, inventory.StatusCode);
+        var inventoryJson = await inventory.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal((1, 1), (inventoryJson.GetProperty("totalCount").GetInt32(), inventoryJson.GetProperty("totalPages").GetInt32()));
+        Assert.Equal("ingredient", inventoryJson.GetProperty("items")[0].GetProperty("itemType").GetString());
+
+        var purchase = await client.PostAsJsonAsync("/api/inventory/movements", new
+        {
+            ingredientId,
+            direction = "increase",
+            reason = "purchase",
+            quantity = 10,
+            note = "Compra semanal"
+        });
+        Assert.Equal(HttpStatusCode.OK, purchase.StatusCode);
+        Assert.Equal(15m, (await purchase.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("stockAfter").GetDecimal());
+
+        var waste = await client.PostAsJsonAsync("/api/inventory/movements", new
+        {
+            ingredientId,
+            direction = "decrease",
+            reason = "waste",
+            quantity = 3
+        });
+        Assert.Equal(HttpStatusCode.OK, waste.StatusCode);
+        Assert.Equal(12m, (await waste.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("stockAfter").GetDecimal());
+
+        var insufficientStock = await client.PostAsJsonAsync("/api/inventory/movements", new
+        {
+            ingredientId,
+            direction = "decrease",
+            reason = "loss",
+            quantity = 20
+        });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, insufficientStock.StatusCode);
+        Assert.Equal("INVENTORY_INSUFFICIENT_STOCK",
+            (await insufficientStock.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("error").GetProperty("code").GetString());
+
+        var movements = await client.GetAsync($"/api/inventory/movements?ingredientId={ingredientId}&page=1&pageSize=2");
+        Assert.Equal(HttpStatusCode.OK, movements.StatusCode);
+        var movementsJson = await movements.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal((3, 2, 2), (
+            movementsJson.GetProperty("totalCount").GetInt32(),
+            movementsJson.GetProperty("items").GetArrayLength(),
+            movementsJson.GetProperty("totalPages").GetInt32()));
+
+        var ingredients = await client.GetAsync("/api/inventory/ingredients?page=1&pageSize=10&search=caf%C3%A9");
+        Assert.Equal(HttpStatusCode.OK, ingredients.StatusCode);
+        Assert.Equal(1, (await ingredients.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("totalCount").GetInt32());
+
+        var deleteUsedUnit = await client.DeleteAsync($"/api/inventory/complements/units/{gramUnitId}");
+        Assert.Equal(HttpStatusCode.Conflict, deleteUsedUnit.StatusCode);
+        var deleteIngredient = await client.DeleteAsync($"/api/inventory/ingredients/{ingredientId}");
+        Assert.Equal(HttpStatusCode.Conflict, deleteIngredient.StatusCode);
+        var deleteUsedCategory = await client.DeleteAsync($"/api/categories/{inventoryCategoryId}");
+        Assert.Equal(HttpStatusCode.Conflict, deleteUsedCategory.StatusCode);
+
+        var disableIngredient = await client.PatchAsJsonAsync(
+            $"/api/inventory/ingredients/{ingredientId}/status", new { isActive = false });
+        Assert.Equal(HttpStatusCode.OK, disableIngredient.StatusCode);
+        Assert.False((await disableIngredient.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("isActive").GetBoolean());
+
+        var createCustomUnit = await client.PostAsJsonAsync(
+            "/api/inventory/complements/units", new { code = "ml", name = "mililitros" });
+        Assert.Equal(HttpStatusCode.OK, createCustomUnit.StatusCode);
+        var customUnitId = (await createCustomUnit.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var updateCustomUnit = await client.PutAsJsonAsync(
+            $"/api/inventory/complements/units/{customUnitId}", new { code = "lt", name = "litros" });
+        Assert.Equal(HttpStatusCode.OK, updateCustomUnit.StatusCode);
+        var deleteCustomUnit = await client.DeleteAsync($"/api/inventory/complements/units/{customUnitId}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteCustomUnit.StatusCode);
 
         var list = await client.GetAsync("/api/tenants");
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);

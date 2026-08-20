@@ -107,6 +107,71 @@ public interface IDeleteCategoryUseCase
     Task<Result> ExecuteAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken);
 }
 
+public interface IListInventoryUseCase
+{
+    Task<Result<PagedResponse<InventoryItemDto>>> ExecuteAsync(Guid tenantId, InventoryQueryRequest request, CancellationToken cancellationToken);
+}
+
+public interface IListIngredientsUseCase
+{
+    Task<Result<PagedResponse<IngredientDto>>> ExecuteAsync(Guid tenantId, IngredientQueryRequest request, CancellationToken cancellationToken);
+}
+
+public interface ICreateIngredientUseCase
+{
+    Task<Result<IngredientDto>> ExecuteAsync(Guid tenantId, Guid userId, CreateIngredientRequest request, CancellationToken cancellationToken);
+}
+
+public interface IUpdateIngredientUseCase
+{
+    Task<Result<IngredientDto>> ExecuteAsync(Guid tenantId, Guid ingredientId, UpdateIngredientRequest request, CancellationToken cancellationToken);
+}
+
+public interface ISetIngredientStatusUseCase
+{
+    Task<Result<IngredientDto>> ExecuteAsync(Guid tenantId, Guid ingredientId, SetIngredientStatusRequest request, CancellationToken cancellationToken);
+}
+
+public interface IDeleteIngredientUseCase
+{
+    Task<Result> ExecuteAsync(Guid tenantId, Guid ingredientId, CancellationToken cancellationToken);
+}
+
+public interface IListInventoryMovementsUseCase
+{
+    Task<Result<PagedResponse<InventoryMovementDto>>> ExecuteAsync(Guid tenantId, InventoryMovementQueryRequest request, CancellationToken cancellationToken);
+}
+
+public interface ICreateInventoryMovementUseCase
+{
+    Task<Result<InventoryMovementDto>> ExecuteAsync(Guid tenantId, Guid userId, CreateInventoryMovementRequest request, CancellationToken cancellationToken);
+}
+
+public interface IListMeasurementUnitsUseCase
+{
+    Task<Result<PagedResponse<MeasurementUnitDto>>> ExecuteAsync(Guid tenantId, MeasurementUnitQueryRequest request, CancellationToken cancellationToken);
+}
+
+public interface ICreateMeasurementUnitUseCase
+{
+    Task<Result<MeasurementUnitDto>> ExecuteAsync(Guid tenantId, CreateMeasurementUnitRequest request, CancellationToken cancellationToken);
+}
+
+public interface IUpdateMeasurementUnitUseCase
+{
+    Task<Result<MeasurementUnitDto>> ExecuteAsync(Guid tenantId, Guid unitId, UpdateMeasurementUnitRequest request, CancellationToken cancellationToken);
+}
+
+public interface ISetMeasurementUnitStatusUseCase
+{
+    Task<Result<MeasurementUnitDto>> ExecuteAsync(Guid tenantId, Guid unitId, SetMeasurementUnitStatusRequest request, CancellationToken cancellationToken);
+}
+
+public interface IDeleteMeasurementUnitUseCase
+{
+    Task<Result> ExecuteAsync(Guid tenantId, Guid unitId, CancellationToken cancellationToken);
+}
+
 public interface IPermissionService
 {
     Task<bool> IsAllowedAsync(Guid tenantId, Guid roleId, string permissionCode, CancellationToken cancellationToken);

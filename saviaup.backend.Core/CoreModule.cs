@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using SaviaUp.Backend.Core.Authentication;
 using SaviaUp.Backend.Core.Categories;
+using SaviaUp.Backend.Core.Inventory;
 using SaviaUp.Backend.Core.Navigation;
 using SaviaUp.Backend.Core.Security;
 using SaviaUp.Backend.Core.Tenants;
@@ -30,6 +31,19 @@ public static class CoreModule
         services.AddScoped<IUpdateCategoryUseCase, UpdateCategoryUseCase>();
         services.AddScoped<ISetCategoryStatusUseCase, SetCategoryStatusUseCase>();
         services.AddScoped<IDeleteCategoryUseCase, DeleteCategoryUseCase>();
+        services.AddScoped<IListInventoryUseCase, ListInventoryUseCase>();
+        services.AddScoped<IListIngredientsUseCase, ListIngredientsUseCase>();
+        services.AddScoped<ICreateIngredientUseCase, CreateIngredientUseCase>();
+        services.AddScoped<IUpdateIngredientUseCase, UpdateIngredientUseCase>();
+        services.AddScoped<ISetIngredientStatusUseCase, SetIngredientStatusUseCase>();
+        services.AddScoped<IDeleteIngredientUseCase, DeleteIngredientUseCase>();
+        services.AddScoped<IListInventoryMovementsUseCase, ListInventoryMovementsUseCase>();
+        services.AddScoped<ICreateInventoryMovementUseCase, CreateInventoryMovementUseCase>();
+        services.AddScoped<IListMeasurementUnitsUseCase, ListMeasurementUnitsUseCase>();
+        services.AddScoped<ICreateMeasurementUnitUseCase, CreateMeasurementUnitUseCase>();
+        services.AddScoped<IUpdateMeasurementUnitUseCase, UpdateMeasurementUnitUseCase>();
+        services.AddScoped<ISetMeasurementUnitStatusUseCase, SetMeasurementUnitStatusUseCase>();
+        services.AddScoped<IDeleteMeasurementUnitUseCase, DeleteMeasurementUnitUseCase>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<SessionIssuer>();
         services.AddSingleton<PasswordPolicy>();

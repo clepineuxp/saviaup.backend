@@ -1,5 +1,6 @@
 using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
+using SaviaUp.Backend.Domain.Results;
 
 namespace SaviaUp.Backend.Domain.Ports;
 
@@ -53,7 +54,53 @@ public interface ICategoryRepository
         Guid? excludedCategoryId,
         CancellationToken cancellationToken);
     Task AddAsync(Category category, CancellationToken cancellationToken);
+    Task<bool> IsInUseAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken);
     void Remove(Category category);
+}
+
+public interface IIngredientRepository
+{
+    Task<PageData<Ingredient>> GetPageAsync(
+        Guid tenantId,
+        IngredientQueryRequest request,
+        CancellationToken cancellationToken);
+    Task<PageData<InventoryItemDto>> GetInventoryPageAsync(
+        Guid tenantId,
+        InventoryQueryRequest request,
+        CancellationToken cancellationToken);
+    Task<Ingredient?> GetByIdAsync(Guid tenantId, Guid ingredientId, CancellationToken cancellationToken);
+    Task<Ingredient?> GetForStockUpdateAsync(Guid tenantId, Guid ingredientId, CancellationToken cancellationToken);
+    Task AddAsync(Ingredient ingredient, CancellationToken cancellationToken);
+    Task<bool> HasMovementsAsync(Guid tenantId, Guid ingredientId, CancellationToken cancellationToken);
+    void Remove(Ingredient ingredient);
+}
+
+public interface IInventoryMovementRepository
+{
+    Task<PageData<InventoryMovement>> GetPageAsync(
+        Guid tenantId,
+        InventoryMovementQueryRequest request,
+        CancellationToken cancellationToken);
+    Task AddAsync(InventoryMovement movement, CancellationToken cancellationToken);
+}
+
+public interface IMeasurementUnitRepository
+{
+    Task<PageData<MeasurementUnit>> GetPageAsync(
+        Guid tenantId,
+        MeasurementUnitQueryRequest request,
+        CancellationToken cancellationToken);
+    Task<MeasurementUnit?> GetByIdAsync(Guid tenantId, Guid unitId, CancellationToken cancellationToken);
+    Task<bool> CodeOrNameExistsAsync(
+        Guid tenantId,
+        string normalizedCode,
+        string normalizedName,
+        Guid? excludedUnitId,
+        CancellationToken cancellationToken);
+    Task AddAsync(MeasurementUnit unit, CancellationToken cancellationToken);
+    Task AddDefaultsAsync(Guid tenantId, DateTimeOffset now, CancellationToken cancellationToken);
+    Task<bool> IsInUseAsync(Guid tenantId, Guid unitId, CancellationToken cancellationToken);
+    void Remove(MeasurementUnit unit);
 }
 
 public interface IRefreshTokenRepository

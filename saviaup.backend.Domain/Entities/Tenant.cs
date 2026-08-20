@@ -10,4 +10,7 @@ public sealed class Tenant
     public ICollection<TenantMembership> Memberships { get; set; } = [];
     public ICollection<Role> Roles { get; set; } = [];
     public ICollection<Category> Categories { get; set; } = [];
+    public ICollection<MeasurementUnit> MeasurementUnits { get; set; } = [];
+    public ICollection<Ingredient> Ingredients { get; set; } = [];
+    public ICollection<InventoryMovement> InventoryMovements { get; set; } = [];
 }
