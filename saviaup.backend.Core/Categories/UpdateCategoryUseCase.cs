@@ -7,6 +7,7 @@ namespace SaviaUp.Backend.Core.Categories;
 
 public sealed class UpdateCategoryUseCase(
     ICategoryRepository categoryRepository,
+    IProductRepository productRepository,
     IDateTimeProvider dateTimeProvider,
     IUnitOfWork unitOfWork) : IUpdateCategoryUseCase
 {
@@ -37,12 +38,22 @@ public sealed class UpdateCategoryUseCase(
             return Result<CategoryDto>.Failure(Errors.CategoryNameAlreadyExists);
         }
 
+        var now = dateTimeProvider.UtcNow;
+        var inventoryTrackingWasDisabled = category.IsInventoryTracked && !values.IsInventoryTracked;
         category.Name = values.Name;
         category.NormalizedName = values.NormalizedName;
         category.Description = values.Description;
         category.ImageUrl = values.ImageUrl;
         category.IsInventoryTracked = values.IsInventoryTracked;
-        category.UpdatedAt = dateTimeProvider.UtcNow;
+        category.UpdatedAt = now;
+        if (inventoryTrackingWasDisabled)
+        {
+            await productRepository.DisableInventoryTrackingByCategoryAsync(
+                tenantId,
+                categoryId,
+                now,
+                cancellationToken);
+        }
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<CategoryDto>.Success(CategoryRules.ToDto(category));
     }

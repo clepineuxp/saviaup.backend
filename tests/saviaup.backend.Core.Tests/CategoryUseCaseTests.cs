@@ -111,6 +111,7 @@ public sealed class CategoryUseCaseTests
             .ReturnsAsync(false);
         var useCase = new UpdateCategoryUseCase(
             repository.Object,
+            Mock.Of<IProductRepository>(),
             new FixedClock(TestSupport.Now),
             UnitOfWork().Object);
 
@@ -145,6 +146,7 @@ public sealed class CategoryUseCaseTests
         var unitOfWork = UnitOfWork();
         var useCase = new UpdateCategoryUseCase(
             repository.Object,
+            Mock.Of<IProductRepository>(),
             new FixedClock(TestSupport.Now),
             unitOfWork.Object);
 
@@ -157,6 +159,51 @@ public sealed class CategoryUseCaseTests
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorCodes.CategoryNameAlreadyExists, result.Error!.Code);
         unitOfWork.Verify(value => value.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateCategory_WhenInventoryTrackingIsDisabled_DisablesItForProducts()
+    {
+        var tenantId = Guid.NewGuid();
+        var category = Category(tenantId);
+        category.IsInventoryTracked = true;
+        var categories = new Mock<ICategoryRepository>();
+        categories.Setup(value => value.GetByIdAsync(
+                tenantId,
+                category.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(category);
+        categories.Setup(value => value.NameExistsAsync(
+                tenantId,
+                category.NormalizedName,
+                category.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        var products = new Mock<IProductRepository>();
+        products.Setup(value => value.DisableInventoryTrackingByCategoryAsync(
+                tenantId,
+                category.Id,
+                TestSupport.Now,
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        var useCase = new UpdateCategoryUseCase(
+            categories.Object,
+            products.Object,
+            new FixedClock(TestSupport.Now),
+            UnitOfWork().Object);
+
+        var result = await useCase.ExecuteAsync(
+            tenantId,
+            category.Id,
+            new UpdateCategoryRequest(category.Name, null, null, false),
+            default);
+
+        Assert.True(result.IsSuccess);
+        products.Verify(value => value.DisableInventoryTrackingByCategoryAsync(
+            tenantId,
+            category.Id,
+            TestSupport.Now,
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SaviaUp.Backend.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SaviaUp.Backend.Infrastructure.Persistence;
 namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(SaviaUpDbContext))]
-    partial class SaviaUpDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260820220645_AddTenantProducts")]
+    partial class AddTenantProducts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -598,10 +601,8 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Type")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasDefaultValue("NORMAL");
+                        .HasColumnType("character varying(10)");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");

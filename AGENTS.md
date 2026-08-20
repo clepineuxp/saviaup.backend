@@ -2,7 +2,7 @@
 
 ## Propósito
 
-Este repositorio contiene el backend inicial de **Savia Up**, una plataforma SaaS multi-tenant para restaurantes y gastrobares. La solución cubre identidad, autenticación, sesiones, recuperación de contraseña, tenants, roles, permisos, navegación, categorías, inventario, ingredientes, movimientos, complementos, internacionalización, persistencia PostgreSQL, documentación HTTP, health checks y pruebas.
+Este repositorio contiene el backend inicial de **Savia Up**, una plataforma SaaS multi-tenant para restaurantes y gastrobares. La solución cubre identidad, autenticación, sesiones, recuperación de contraseña, tenants, roles, permisos, navegación, categorías, productos, inventario, ingredientes, movimientos, complementos, internacionalización, persistencia PostgreSQL, documentación HTTP, health checks y pruebas.
 
 Lee este archivo completo antes de modificar el repositorio. Las decisiones descritas aquí son invariantes del proyecto, no sugerencias opcionales.
 
@@ -100,6 +100,7 @@ Entidades actuales:
 - `Permission`: permiso global identificado por `Code`.
 - `RolePermission`: relación compuesta rol/permiso.
 - `Category`: categoría funcional perteneciente a un tenant, con nombre normalizado, descripción/imagen opcionales, clasificación inventariable, estado y timestamps.
+- `Product`: producto tenant-aware de tipo `NORMAL` o `COMBO`, con categoría obligatoria, precio de venta, descripción/imagen/tiempo de preparación opcionales, clasificación inventariable, estado y timestamps.
 - `MeasurementUnit`: unidad perteneciente a un tenant, con código/nombre normalizados, estado y timestamps.
 - `Ingredient`: ingrediente tenant-aware con categoría y unidad obligatorias, stock mínimo/actual, estado y timestamps.
 - `InventoryMovement`: registro inmutable de entrada/salida, motivo, cantidad, stock anterior/posterior, usuario creador y fecha.
@@ -112,6 +113,7 @@ Contratos HTTP/aplicación:
 - Usuario: `UserDto` para sesión y `UserInfoDto` para nombre, apellido, organización y rol actuales.
 - Navegación: `AvailableModulesResponse`, secciones, módulos/opciones ordenados y copy de estado vacío.
 - Categorías: listado y contratos de creación, actualización y cambio de estado.
+- Productos: listado paginado y contratos de creación, actualización y cambio de estado.
 - Inventario: listados paginados de existencias, ingredientes, movimientos y unidades; contratos de creación/edición/estado para ingredientes y unidades, y creación de movimientos.
 - Tenants: listado, creación y respuesta de sesión contextualizada.
 - Todos los contratos públicos son DTO; nunca se exponen entidades directamente.
@@ -147,6 +149,7 @@ Casos de uso actuales:
 - `UpdateCategoryUseCase`.
 - `SetCategoryStatusUseCase`.
 - `DeleteCategoryUseCase`.
+- `ListProductsUseCase`, `CreateProductUseCase`, `UpdateProductUseCase`, `SetProductStatusUseCase`, `DeleteProductUseCase`.
 - `ListInventoryUseCase`.
 - `ListIngredientsUseCase`, `CreateIngredientUseCase`, `UpdateIngredientUseCase`, `SetIngredientStatusUseCase`, `DeleteIngredientUseCase`.
 - `ListInventoryMovementsUseCase`, `CreateInventoryMovementUseCase`.
@@ -168,7 +171,7 @@ Reglas de Core:
 
 Persistencia:
 
-- `SaviaUpDbContext` contiene los trece `DbSet` actuales.
+- `SaviaUpDbContext` contiene los catorce `DbSet` actuales.
 - Cada entidad tiene `IEntityTypeConfiguration<T>` independiente.
 - Los repositorios usan consultas específicas, `AsNoTracking` para lectura y tracking solo cuando hay escritura.
 - `ModuleRepository` devuelve un módulo activo cuando el rol activo posee al menos un permiso de ese módulo dentro del tenant solicitado.
@@ -205,6 +208,8 @@ Restricciones importantes:
 `AddCategoriesModule` agrega el módulo `categories`, los permisos `categories.read`/`categories.manage` y los asigna a los roles `TENANT_OWNER` existentes.
 `AddTenantCategories` crea la tabla tenant-aware `categories`, su FK restrictiva e índices de unicidad/listado.
 `AddInventoryManagement` crea `measurement_units`, `ingredients` e `inventory_movements`, agrega los siete permisos granulares de inventario, los asigna a `TENANT_OWNER` existentes y crea `gr`, `kg` y `und` para tenants existentes.
+`AddTenantProducts` crea `products`, sus FKs restrictivas hacia tenant/categoría, restricciones de tipo/precio/tiempo e índices tenant-aware para los filtros del listado.
+`AddProductTypeDefault` fija `NORMAL` como valor por defecto de `products.Type` también a nivel PostgreSQL.
 
 Adapters de seguridad:
 
@@ -244,6 +249,12 @@ POST   /api/categories
 PUT    /api/categories/{categoryId}
 PATCH  /api/categories/{categoryId}/status
 DELETE /api/categories/{categoryId}
+
+GET    /api/products?page=1&pageSize=20&search=&categoryId=&type=&includeInactive=false
+POST   /api/products
+PUT    /api/products/{productId}
+PATCH  /api/products/{productId}/status
+DELETE /api/products/{productId}
 
 GET    /api/inventory?page=1&pageSize=20&search=&belowMinimum=
 GET    /api/inventory/ingredients?page=1&pageSize=20&search=&categoryId=&includeInactive=false
@@ -397,8 +408,21 @@ El catálogo falla explícitamente si la base de datos devuelve un módulo sin c
 - `ImageUrl` es opcional, admite únicamente URL absoluta HTTP/HTTPS y máximo 2048 caracteres. La API no recibe ni almacena binarios en esta fase.
 - `IsInventoryTracked` indica si los productos de esa categoría participan en inventario.
 - `IsActive` es reversible mediante `PATCH /status`. El listado normal omite categorías inactivas; administración usa `includeInactive=true`.
-- `DELETE` realiza eliminación física solo cuando no hay ingredientes asociados; en caso contrario devuelve `CATEGORY_IN_USE`. Las FK usan `Restrict` y debe preferirse desactivar.
+- `DELETE` realiza eliminación física solo cuando no hay ingredientes ni productos asociados; en caso contrario devuelve `CATEGORY_IN_USE`. Las FK usan `Restrict` y debe preferirse desactivar.
 - Crear/actualizar valida duplicados en Core y la base de datos conserva la restricción como última barrera.
+
+## Invariantes de productos
+
+- Todo producto pertenece exactamente a un tenant y a una categoría de ese mismo tenant. `TenantId` se obtiene siempre del claim autenticado y nunca del body/query.
+- `products.read` autoriza el listado; `products.manage` autoriza creación, actualización, cambio de estado y eliminación.
+- `Type` solo admite `NORMAL` o `COMBO`, sin distinguir mayúsculas/minúsculas en la entrada. Si se omite al crear o actualizar, el valor efectivo es `NORMAL`.
+- El nombre es obligatorio, se recorta y colapsa espacios internos, y tiene máximo 120 caracteres. No existe una restricción de unicidad de nombre para productos.
+- `SalePrice` es obligatorio, positivo y usa precisión `numeric(18,2)`. `PreparationTimeMinutes` es opcional y no negativo.
+- `Description` es opcional y tiene máximo 1000 caracteres. `ImageUrl` es opcional, admite solo URL absoluta HTTP/HTTPS y tiene máximo 2048 caracteres; no se reciben binarios ni multipart en esta fase.
+- La categoría debe estar activa. `IsInventoryTracked` solo puede ser `true` cuando la categoría elegida es inventariable; Core lo fuerza a `false` si la categoría no lo permite, tanto al crear como al actualizar. Si una categoría deja de ser inventariable, todos sus productos se actualizan a `false` en la misma persistencia.
+- Todos los listados son paginados y aceptan búsqueda por nombre, filtro por categoría, filtro por tipo e `includeInactive`. Toda consulta filtra explícitamente por tenant.
+- `IsActive` cambia de forma reversible mediante `PATCH /status`. El listado normal omite productos inactivos.
+- `DELETE` elimina físicamente el producto actual mientras no existan restricciones de uso futuras. Las relaciones con tenant y categoría usan `Restrict`.
 
 ## Invariantes de inventario
 
@@ -436,6 +460,8 @@ El frontend local está en `../saviaup.frontend` y consume `http://localhost:500
 - `expiresAt` representa la expiración del access token por compatibilidad con el frontend.
 - Los nombres JSON usan camelCase.
 - Las cuatro vistas de inventario consumen exclusivamente los endpoints paginados y habilitan acciones según los permisos granulares, no según el nombre del rol.
+- La vista `/app/products` consume exclusivamente el listado paginado, carga categorías activas desde `/api/categories` y habilita mutaciones con `products.manage`; el selector requiere además `categories.read`.
+- El formulario de producto inicia `type` en `NORMAL` y deshabilita/fuerza `isInventoryTracked=false` cuando la categoría elegida no es inventariable. El backend repite siempre esta validación.
 - El prompt de adaptación del frontend se entrega únicamente en conversación; no se versiona un archivo `.md` de prompt.
 - Si cambia un DTO o endpoint, actualizar pruebas de integración y el adaptador correspondiente del frontend en la misma tarea cuando esté en alcance.
 
@@ -540,8 +566,8 @@ dotnet format saviaup.backend.sln --verify-no-changes --no-restore
 
 Cobertura actual:
 
-- Core: login correcto/inexistente/password erróneo/desactivado; registro correcto/duplicado; refresh correcto/expirado/revocado/reutilizado; reset correcto/inválido/expirado/usado; forgot neutral; selección de tenant; permisos; navegación; información de usuario; CRUD, normalización, duplicados, validación y estado de categorías.
-- Integración: registro, login, refresh, tenants, navegación, información de usuario, flujo completo de categorías, traducciones y middleware 401/403/membership revocada/request continúa.
+- Core: login correcto/inexistente/password erróneo/desactivado; registro correcto/duplicado; refresh correcto/expirado/revocado/reutilizado; reset correcto/inválido/expirado/usado; forgot neutral; selección de tenant; permisos; navegación; información de usuario; CRUD, normalización, duplicados, validación y estado de categorías; reglas, filtros, estado y CRUD de productos.
+- Integración: registro, login, refresh, tenants, navegación, información de usuario, flujos completos de categorías y productos, traducciones y middleware 401/403/membership revocada/request continúa.
 - IntegrationTests reemplaza Npgsql por EF InMemory solo dentro del host de pruebas.
 
 Al agregar o cambiar comportamiento:

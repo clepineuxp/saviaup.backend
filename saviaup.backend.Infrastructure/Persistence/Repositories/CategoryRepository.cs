@@ -35,10 +35,13 @@ public sealed class CategoryRepository(SaviaUpDbContext context) : ICategoryRepo
     public async Task AddAsync(Category category, CancellationToken cancellationToken)
         => await context.Categories.AddAsync(category, cancellationToken);
 
-    public Task<bool> IsInUseAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken)
-        => context.Ingredients.AsNoTracking().AnyAsync(
-            ingredient => ingredient.TenantId == tenantId && ingredient.CategoryId == categoryId,
-            cancellationToken);
+    public async Task<bool> IsInUseAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken)
+        => await context.Ingredients.AsNoTracking().AnyAsync(
+                ingredient => ingredient.TenantId == tenantId && ingredient.CategoryId == categoryId,
+                cancellationToken)
+            || await context.Products.AsNoTracking().AnyAsync(
+                product => product.TenantId == tenantId && product.CategoryId == categoryId,
+                cancellationToken);
 
     public void Remove(Category category) => context.Categories.Remove(category);
 }

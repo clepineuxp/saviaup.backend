@@ -172,6 +172,31 @@ public interface IDeleteMeasurementUnitUseCase
     Task<Result> ExecuteAsync(Guid tenantId, Guid unitId, CancellationToken cancellationToken);
 }
 
+public interface IListProductsUseCase
+{
+    Task<Result<PagedResponse<ProductDto>>> ExecuteAsync(Guid tenantId, ProductQueryRequest request, CancellationToken cancellationToken);
+}
+
+public interface ICreateProductUseCase
+{
+    Task<Result<ProductDto>> ExecuteAsync(Guid tenantId, CreateProductRequest request, CancellationToken cancellationToken);
+}
+
+public interface IUpdateProductUseCase
+{
+    Task<Result<ProductDto>> ExecuteAsync(Guid tenantId, Guid productId, UpdateProductRequest request, CancellationToken cancellationToken);
+}
+
+public interface ISetProductStatusUseCase
+{
+    Task<Result<ProductDto>> ExecuteAsync(Guid tenantId, Guid productId, SetProductStatusRequest request, CancellationToken cancellationToken);
+}
+
+public interface IDeleteProductUseCase
+{
+    Task<Result> ExecuteAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
+}
+
 public interface IPermissionService
 {
     Task<bool> IsAllowedAsync(Guid tenantId, Guid roleId, string permissionCode, CancellationToken cancellationToken);

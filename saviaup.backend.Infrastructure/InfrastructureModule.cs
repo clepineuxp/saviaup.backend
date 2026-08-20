@@ -31,6 +31,7 @@ public static class InfrastructureModule
         services.AddScoped<IIngredientRepository, IngredientRepository>();
         services.AddScoped<IInventoryMovementRepository, InventoryMovementRepository>();
         services.AddScoped<IMeasurementUnitRepository, MeasurementUnitRepository>();
+        services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

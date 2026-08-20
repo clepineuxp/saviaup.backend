@@ -250,6 +250,89 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         var deleteCustomUnit = await client.DeleteAsync($"/api/inventory/complements/units/{customUnitId}");
         Assert.Equal(HttpStatusCode.NoContent, deleteCustomUnit.StatusCode);
 
+        var createProductCategory = await client.PostAsJsonAsync("/api/categories", new
+        {
+            name = "Platos preparados",
+            isInventoryTracked = false
+        });
+        Assert.Equal(HttpStatusCode.OK, createProductCategory.StatusCode);
+        var productCategoryId = (await createProductCategory.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        var createProduct = await client.PostAsJsonAsync("/api/products", new
+        {
+            name = "Hamburguesa clásica",
+            categoryId = productCategoryId,
+            salePrice = 25900,
+            description = "Preparada al momento",
+            imageUrl = "https://cdn.saviaup.test/products/burger.webp",
+            preparationTimeMinutes = 15,
+            isInventoryTracked = true
+        });
+        Assert.Equal(HttpStatusCode.OK, createProduct.StatusCode);
+        var productJson = await createProduct.Content.ReadFromJsonAsync<JsonElement>();
+        var productId = productJson.GetProperty("id").GetGuid();
+        Assert.Equal("NORMAL", productJson.GetProperty("type").GetString());
+        Assert.False(productJson.GetProperty("isInventoryTracked").GetBoolean());
+
+        var productList = await client.GetAsync(
+            $"/api/products?page=1&pageSize=10&search=hamburguesa&categoryId={productCategoryId}&type=NORMAL");
+        Assert.Equal(HttpStatusCode.OK, productList.StatusCode);
+        var productListJson = await productList.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, productListJson.GetProperty("totalCount").GetInt32());
+        Assert.Equal(productId, productListJson.GetProperty("items")[0].GetProperty("id").GetGuid());
+
+        var updateProduct = await client.PutAsJsonAsync($"/api/products/{productId}", new
+        {
+            type = "COMBO",
+            name = "Combo hamburguesa",
+            categoryId = inventoryCategoryId,
+            salePrice = 34900,
+            description = (string?)null,
+            imageUrl = (string?)null,
+            preparationTimeMinutes = 20,
+            isInventoryTracked = true
+        });
+        Assert.Equal(HttpStatusCode.OK, updateProduct.StatusCode);
+        var updatedProductJson = await updateProduct.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("COMBO", updatedProductJson.GetProperty("type").GetString());
+        Assert.True(updatedProductJson.GetProperty("isInventoryTracked").GetBoolean());
+
+        var disableCategoryInventory = await client.PutAsJsonAsync(
+            $"/api/categories/{inventoryCategoryId}", new
+            {
+                name = "Materia prima",
+                description = (string?)null,
+                imageUrl = (string?)null,
+                isInventoryTracked = false
+            });
+        Assert.Equal(HttpStatusCode.OK, disableCategoryInventory.StatusCode);
+        var productAfterCategoryChange = await client.GetAsync(
+            $"/api/products?page=1&pageSize=10&categoryId={inventoryCategoryId}");
+        var productAfterCategoryChangeJson = await productAfterCategoryChange.Content
+            .ReadFromJsonAsync<JsonElement>();
+        Assert.False(productAfterCategoryChangeJson.GetProperty("items")[0]
+            .GetProperty("isInventoryTracked").GetBoolean());
+
+        var disableProduct = await client.PatchAsJsonAsync(
+            $"/api/products/{productId}/status", new { isActive = false });
+        Assert.Equal(HttpStatusCode.OK, disableProduct.StatusCode);
+        Assert.False((await disableProduct.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("isActive").GetBoolean());
+
+        var activeProducts = await client.GetAsync("/api/products?page=1&pageSize=10");
+        Assert.Equal(0, (await activeProducts.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("totalCount").GetInt32());
+        var inactiveProducts = await client.GetAsync("/api/products?page=1&pageSize=10&includeInactive=true");
+        Assert.Equal(1, (await inactiveProducts.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("totalCount").GetInt32());
+
+        var deleteProduct = await client.DeleteAsync($"/api/products/{productId}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteProduct.StatusCode);
+        var deletedProduct = await client.PatchAsJsonAsync(
+            $"/api/products/{productId}/status", new { isActive = true });
+        Assert.Equal(HttpStatusCode.NotFound, deletedProduct.StatusCode);
+
         var list = await client.GetAsync("/api/tenants");
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);
         Assert.Single((await list.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray());

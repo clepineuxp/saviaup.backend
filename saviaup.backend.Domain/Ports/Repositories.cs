@@ -103,6 +103,23 @@ public interface IMeasurementUnitRepository
     void Remove(MeasurementUnit unit);
 }
 
+public interface IProductRepository
+{
+    Task<PageData<Product>> GetPageAsync(
+        Guid tenantId,
+        ProductQueryRequest request,
+        ProductType? type,
+        CancellationToken cancellationToken);
+    Task<Product?> GetByIdAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
+    Task DisableInventoryTrackingByCategoryAsync(
+        Guid tenantId,
+        Guid categoryId,
+        DateTimeOffset updatedAt,
+        CancellationToken cancellationToken);
+    Task AddAsync(Product product, CancellationToken cancellationToken);
+    void Remove(Product product);
+}
+
 public interface IRefreshTokenRepository
 {
     Task<RefreshToken?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken);

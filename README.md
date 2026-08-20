@@ -67,15 +67,15 @@ dotnet run --project saviaup.backend.Api
 
 La API escucha en `http://localhost:5000`; Swagger queda en `/swagger` durante Development y el health check en `/health` valida aplicación y PostgreSQL.
 
-La migración `InitialIdentityAndTenancy` crea:
+El historial de migraciones crea:
 
 ```text
 users, tenants, tenant_memberships, roles, modules, permissions,
 role_permissions, refresh_tokens, password_reset_tokens, categories,
-measurement_units, ingredients, inventory_movements
+measurement_units, ingredients, inventory_movements, products
 ```
 
-Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`, nombres normalizados de categoría/unidad por tenant, códigos de permisos, relación role/permission y hashes de tokens. Las relaciones sensibles usan eliminación `Restrict`. El seed contiene únicamente módulos y permisos globales. `AddCategoriesModule` agrega los permisos del módulo, `AddTenantCategories` crea categorías y `AddInventoryManagement` crea unidades, ingredientes, movimientos, permisos granulares y el backfill `gr`/`kg`/`und`.
+Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`, nombres normalizados de categoría/unidad por tenant, códigos de permisos, relación role/permission y hashes de tokens. Las relaciones sensibles usan eliminación `Restrict`. El seed contiene únicamente módulos y permisos globales. `AddCategoriesModule` agrega los permisos del módulo, `AddTenantCategories` crea categorías, `AddInventoryManagement` crea unidades, ingredientes, movimientos, permisos granulares y el backfill `gr`/`kg`/`und`, `AddTenantProducts` crea el catálogo de productos tenant-aware y `AddProductTypeDefault` fija `NORMAL` como default de base de datos.
 
 ## Docker
 
@@ -112,6 +112,12 @@ POST   /api/categories
 PUT    /api/categories/{categoryId}
 PATCH  /api/categories/{categoryId}/status
 DELETE /api/categories/{categoryId}
+
+GET    /api/products?page=1&pageSize=20&search=&categoryId=&type=&includeInactive=false
+POST   /api/products
+PUT    /api/products/{productId}
+PATCH  /api/products/{productId}/status
+DELETE /api/products/{productId}
 
 GET    /api/inventory?page=1&pageSize=20&search=&belowMinimum=
 GET    /api/inventory/ingredients?page=1&pageSize=20&search=&categoryId=&includeInactive=false
@@ -200,7 +206,30 @@ Creación y actualización usan:
 
 La respuesta agrega `id`, `isActive`, `createdAt` y `updatedAt`. `description` e `imageUrl` son opcionales; la imagen se representa como URL HTTP/HTTPS, no como archivo binario. Los nombres se comparan sin distinguir mayúsculas ni espacios sobrantes y no se repiten dentro de un tenant.
 
-`GET /api/categories` devuelve solo activas para consumo de productos, inventarios y menús. La pantalla administrativa puede solicitar `includeInactive=true`. `PATCH /api/categories/{id}/status` recibe `{ "isActive": false }` y permite deshabilitar o reactivar. `DELETE` elimina físicamente la categoría solo si no tiene ingredientes; si está en uso devuelve `CATEGORY_IN_USE`.
+`GET /api/categories` devuelve solo activas para consumo de productos, inventarios y menús. La pantalla administrativa puede solicitar `includeInactive=true`. `PATCH /api/categories/{id}/status` recibe `{ "isActive": false }` y permite deshabilitar o reactivar. `DELETE` elimina físicamente la categoría solo si no tiene ingredientes ni productos; si está en uso devuelve `CATEGORY_IN_USE`.
+
+## Productos
+
+Los productos pertenecen al tenant activo y requieren una categoría activa del mismo tenant. `products.read` permite listar y `products.manage` permite crear, actualizar, activar/desactivar y eliminar. El listado usa paginación real y admite `search`, `categoryId`, `type=NORMAL|COMBO` e `includeInactive`.
+
+Creación y actualización usan el mismo contrato:
+
+```json
+{
+  "type": "NORMAL",
+  "name": "Hamburguesa clásica",
+  "categoryId": "00000000-0000-0000-0000-000000000000",
+  "salePrice": 25000.0,
+  "description": "Carne, queso y vegetales",
+  "imageUrl": "https://cdn.example.com/products/burger.webp",
+  "preparationTimeMinutes": 15,
+  "isInventoryTracked": true
+}
+```
+
+`type` acepta `NORMAL` y `COMBO`; al omitirse usa `NORMAL`. Nombre, categoría y precio positivo son obligatorios. Descripción, URL HTTP/HTTPS y tiempo de preparación no negativo son opcionales. `salePrice` se persiste como `numeric(18,2)`.
+
+La clasificación inventariable depende de la categoría: si la categoría seleccionada no es inventariable, Core fuerza `isInventoryTracked=false` incluso si el cliente envía `true`. Si una categoría cambia de inventariable a no inventariable, sus productos también se actualizan a `false`. `PATCH /api/products/{id}/status` recibe `{ "isActive": false }`; `DELETE` realiza eliminación física y responde `204`.
 
 ## Inventario, ingredientes, movimientos y complementos
 
@@ -276,6 +305,6 @@ dotnet build
 dotnet test
 ```
 
-`Core.Tests` cubre autenticación, tenants, permisos, navegación, información contextual, categorías, ingredientes, movimientos, stock y unidades. `IntegrationTests` arranca la API con EF InMemory y verifica el flujo completo, incluidos paginado, defaults por tenant, stock inicial, entradas/salidas, stock insuficiente y restricciones de eliminación, además del middleware 401/403 y membership activa.
+`Core.Tests` cubre autenticación, tenants, permisos, navegación, información contextual, categorías, productos, ingredientes, movimientos, stock y unidades. `IntegrationTests` arranca la API con EF InMemory y verifica los flujos HTTP de categorías y productos, además de paginado, defaults por tenant, stock inicial, entradas/salidas, stock insuficiente, restricciones de eliminación, middleware 401/403 y membership activa.
 
 El frontend conectado está en `../saviaup.frontend`: desarrollo usa `useMockApi: false` y `apiUrl: http://localhost:5000`.

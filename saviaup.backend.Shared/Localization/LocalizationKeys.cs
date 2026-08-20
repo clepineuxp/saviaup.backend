@@ -26,6 +26,7 @@ public static class LocalizationKeys
     public const string MeasurementUnitInUse = "inventory.units.inUse";
     public const string InventoryMovementInvalid = "inventory.movements.invalid";
     public const string InventoryInsufficientStock = "inventory.movements.insufficientStock";
+    public const string ProductNotFound = "products.notFound";
     public const string Validation = "common.validation";
     public const string InternalError = "common.internalError";
 

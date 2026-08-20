@@ -23,6 +23,7 @@ public static class ErrorCodes
     public const string MeasurementUnitInUse = "MEASUREMENT_UNIT_IN_USE";
     public const string InventoryMovementInvalid = "INVENTORY_MOVEMENT_INVALID";
     public const string InventoryInsufficientStock = "INVENTORY_INSUFFICIENT_STOCK";
+    public const string ProductNotFound = "PRODUCT_NOT_FOUND";
     public const string Validation = "VALIDATION_ERROR";
     public const string Internal = "INTERNAL_ERROR";
 }

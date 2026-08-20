@@ -25,4 +25,5 @@ internal static class Errors
     public static readonly Error MeasurementUnitInUse = new(ErrorCodes.MeasurementUnitInUse, LocalizationKeys.MeasurementUnitInUse, ErrorType.Conflict);
     public static readonly Error InventoryMovementInvalid = new(ErrorCodes.InventoryMovementInvalid, LocalizationKeys.InventoryMovementInvalid, ErrorType.Validation);
     public static readonly Error InventoryInsufficientStock = new(ErrorCodes.InventoryInsufficientStock, LocalizationKeys.InventoryInsufficientStock, ErrorType.Business);
+    public static readonly Error ProductNotFound = new(ErrorCodes.ProductNotFound, LocalizationKeys.ProductNotFound, ErrorType.NotFound);
 }

@@ -19,6 +19,7 @@ public sealed class SaviaUpDbContext(DbContextOptions<SaviaUpDbContext> options)
     public DbSet<MeasurementUnit> MeasurementUnits => Set<MeasurementUnit>();
     public DbSet<Ingredient> Ingredients => Set<Ingredient>();
     public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
+    public DbSet<Product> Products => Set<Product>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
         => modelBuilder.ApplyConfigurationsFromAssembly(typeof(SaviaUpDbContext).Assembly);

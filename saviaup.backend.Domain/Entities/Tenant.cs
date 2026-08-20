@@ -13,4 +13,5 @@ public sealed class Tenant
     public ICollection<MeasurementUnit> MeasurementUnits { get; set; } = [];
     public ICollection<Ingredient> Ingredients { get; set; } = [];
     public ICollection<InventoryMovement> InventoryMovements { get; set; } = [];
+    public ICollection<Product> Products { get; set; } = [];
 }

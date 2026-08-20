@@ -50,6 +50,7 @@ public static class TranslationCatalog
                     [LocalizationKeys.MeasurementUnitInUse] = "La unidad tiene ingredientes asociados y no puede eliminarse.",
                     [LocalizationKeys.InventoryMovementInvalid] = "El tipo, motivo o cantidad del movimiento de inventario no es válido.",
                     [LocalizationKeys.InventoryInsufficientStock] = "El ingrediente no tiene existencias suficientes para realizar la salida.",
+                    [LocalizationKeys.ProductNotFound] = "No encontramos el producto solicitado.",
                     [LocalizationKeys.Validation] = "Revisa los datos enviados.",
                     [LocalizationKeys.InternalError] = "Ocurrió un error inesperado."
                 }),
@@ -95,6 +96,7 @@ public static class TranslationCatalog
                     [LocalizationKeys.MeasurementUnitInUse] = "The unit has associated ingredients and cannot be deleted.",
                     [LocalizationKeys.InventoryMovementInvalid] = "The inventory movement type, reason, or quantity is invalid.",
                     [LocalizationKeys.InventoryInsufficientStock] = "The ingredient does not have enough stock for this decrease.",
+                    [LocalizationKeys.ProductNotFound] = "The requested product was not found.",
                     [LocalizationKeys.Validation] = "Review the submitted data.",
                     [LocalizationKeys.InternalError] = "An unexpected error occurred."
                 })
