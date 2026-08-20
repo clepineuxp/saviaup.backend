@@ -1,0 +1,96 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Moq;
+using SaviaUp.Backend.Api.Attributes;
+using SaviaUp.Backend.Api.Middleware;
+using SaviaUp.Backend.Domain.Ports;
+
+namespace SaviaUp.Backend.IntegrationTests;
+
+public sealed class PermissionAuthorizationMiddlewareTests
+{
+    [Fact]
+    public async Task MissingJwt_Returns401()
+    {
+        var context = Context(new AuthorizeAttribute());
+        var middleware = new PermissionAuthorizationMiddleware(_ => Task.CompletedTask);
+
+        await middleware.InvokeAsync(
+            context,
+            Mock.Of<ICurrentUserContext>(),
+            Mock.Of<IRefreshTokenRepository>(),
+            Mock.Of<IPermissionService>(),
+            Mock.Of<IDateTimeProvider>());
+
+        Assert.Equal(StatusCodes.Status401Unauthorized, context.Response.StatusCode);
+        Assert.Equal("AUTH_UNAUTHENTICATED", await ErrorCode(context));
+    }
+
+    [Fact]
+    public async Task AuthenticatedUserWithoutPermission_Returns403()
+    {
+        var user = AuthenticatedUser();
+        var sessions = new Mock<IRefreshTokenRepository>();
+        sessions.Setup(repository => repository.HasActiveSessionAsync(user.Object.UserId!.Value, user.Object.SessionId!.Value, It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var permissions = new Mock<IPermissionService>();
+        permissions.Setup(service => service.IsAllowedAsync(user.Object.TenantId!.Value, user.Object.RoleId!.Value, "orders.create", It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        var context = Context(new AuthorizeAttribute(), new RequireTenantAttribute(), new RequirePermissionAttribute("orders.create"));
+        var middleware = new PermissionAuthorizationMiddleware(_ => Task.CompletedTask);
+
+        await middleware.InvokeAsync(context, user.Object, sessions.Object, permissions.Object, Clock());
+
+        Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
+        Assert.Equal("AUTH_FORBIDDEN", await ErrorCode(context));
+    }
+
+    [Fact]
+    public async Task AuthenticatedUserWithPermission_ContinuesPipeline()
+    {
+        var continued = false;
+        var user = AuthenticatedUser();
+        var sessions = new Mock<IRefreshTokenRepository>();
+        sessions.Setup(repository => repository.HasActiveSessionAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var permissions = new Mock<IPermissionService>();
+        permissions.Setup(service => service.IsAllowedAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), "orders.create", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var context = Context(new AuthorizeAttribute(), new RequireTenantAttribute(), new RequirePermissionAttribute("orders.create"));
+        var middleware = new PermissionAuthorizationMiddleware(_ => { continued = true; return Task.CompletedTask; });
+
+        await middleware.InvokeAsync(context, user.Object, sessions.Object, permissions.Object, Clock());
+
+        Assert.True(continued);
+    }
+
+    private static DefaultHttpContext Context(params object[] metadata)
+    {
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+        context.SetEndpoint(new Endpoint(_ => Task.CompletedTask, new EndpointMetadataCollection(metadata), "test"));
+        return context;
+    }
+
+    private static Mock<ICurrentUserContext> AuthenticatedUser()
+    {
+        var user = new Mock<ICurrentUserContext>();
+        user.SetupGet(value => value.IsAuthenticated).Returns(true);
+        user.SetupGet(value => value.UserId).Returns(Guid.NewGuid());
+        user.SetupGet(value => value.SessionId).Returns(Guid.NewGuid());
+        user.SetupGet(value => value.TenantId).Returns(Guid.NewGuid());
+        user.SetupGet(value => value.RoleId).Returns(Guid.NewGuid());
+        return user;
+    }
+
+    private static IDateTimeProvider Clock()
+    {
+        var clock = new Mock<IDateTimeProvider>();
+        clock.SetupGet(value => value.UtcNow).Returns(DateTimeOffset.UtcNow);
+        return clock.Object;
+    }
+
+    private static async Task<string> ErrorCode(DefaultHttpContext context)
+    {
+        context.Response.Body.Position = 0;
+        var json = await JsonDocument.ParseAsync(context.Response.Body);
+        return json.RootElement.GetProperty("error").GetProperty("code").GetString()!;
+    }
+}
