@@ -46,6 +46,36 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         Assert.Equal("Secret Garden", createJson.GetProperty("tenant").GetProperty("name").GetString());
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", contextualAccessToken);
+        client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("es-CO");
+
+        var modules = await client.GetAsync("/api/modules/available");
+        Assert.Equal(HttpStatusCode.OK, modules.StatusCode);
+        var modulesJson = await modules.Content.ReadFromJsonAsync<JsonElement>();
+        var sections = modulesJson.GetProperty("sections").EnumerateArray().ToArray();
+        Assert.Equal(4, sections.Length);
+        Assert.Equal(9, sections.Sum(section => section.GetProperty("modules").GetArrayLength()));
+        Assert.All(sections, section => Assert.Empty(section.GetProperty("options").EnumerateArray()));
+        Assert.Equal([1, 2, 3, 4], sections.Select(section => section.GetProperty("order").GetInt32()));
+        Assert.False(sections[0].GetProperty("isGrouped").GetBoolean());
+        Assert.True(sections[1].GetProperty("isGrouped").GetBoolean());
+        Assert.Equal(
+            ["orders", "reports", "billing"],
+            sections[1].GetProperty("modules").EnumerateArray().Select(module => module.GetProperty("code").GetString()));
+        Assert.Contains(
+            sections[2].GetProperty("modules").EnumerateArray(),
+            module => module.GetProperty("code").GetString() == "categories"
+                && module.GetProperty("name").GetString() == "Categorías"
+                && module.GetProperty("order").GetInt32() == 2);
+        Assert.Equal(JsonValueKind.Null, modulesJson.GetProperty("emptyStateMessage").ValueKind);
+
+        var userInfo = await client.GetAsync("/api/users/me/info");
+        Assert.Equal(HttpStatusCode.OK, userInfo.StatusCode);
+        var userInfoJson = await userInfo.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Ana", userInfoJson.GetProperty("firstName").GetString());
+        Assert.Equal("Prueba", userInfoJson.GetProperty("lastName").GetString());
+        Assert.Equal("Secret Garden", userInfoJson.GetProperty("organization").GetProperty("name").GetString());
+        Assert.Equal("TENANT_OWNER", userInfoJson.GetProperty("role").GetProperty("code").GetString());
+
         var list = await client.GetAsync("/api/tenants");
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);
         Assert.Single((await list.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray());
@@ -80,5 +110,7 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("Sign in", json.GetProperty("auth.login.title").GetString());
+        Assert.Equal("Operations", json.GetProperty("navigation.sections.operation").GetString());
+        Assert.Equal("Categories", json.GetProperty("modules.categories").GetString());
     }
 }

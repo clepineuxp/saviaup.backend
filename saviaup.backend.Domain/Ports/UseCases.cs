@@ -53,6 +53,21 @@ public interface IGetCurrentUserUseCase
     Task<Result<UserDto>> ExecuteAsync(Guid userId, Guid? tenantId, Guid? roleId, CancellationToken cancellationToken);
 }
 
+public interface IGetUserInfoUseCase
+{
+    Task<Result<UserInfoDto>> ExecuteAsync(Guid userId, Guid tenantId, Guid roleId, CancellationToken cancellationToken);
+}
+
+public interface IGetAvailableModulesUseCase
+{
+    Task<Result<AvailableModulesResponse>> ExecuteAsync(
+        Guid userId,
+        Guid tenantId,
+        Guid roleId,
+        string? language,
+        CancellationToken cancellationToken);
+}
+
 public interface IPermissionService
 {
     Task<bool> IsAllowedAsync(Guid tenantId, Guid roleId, string permissionCode, CancellationToken cancellationToken);

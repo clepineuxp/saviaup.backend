@@ -21,6 +21,7 @@
     <RootNamespace>SaviaUp.Backend.Api</RootNamespace>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>33e04e24-6a9f-439b-a279-bc278322aae8</UserSecretsId>
   </PropertyGroup>
 
 </Project>

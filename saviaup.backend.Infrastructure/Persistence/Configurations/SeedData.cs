@@ -15,7 +15,8 @@ internal static class SeedData
         (Guid.Parse("10000000-0000-0000-0000-000000000005"), "kitchen", "Kitchen"),
         (Guid.Parse("10000000-0000-0000-0000-000000000006"), "reports", "Reports"),
         (Guid.Parse("10000000-0000-0000-0000-000000000007"), "billing", "Billing"),
-        (Guid.Parse("10000000-0000-0000-0000-000000000008"), "settings", "Settings")
+        (Guid.Parse("10000000-0000-0000-0000-000000000008"), "settings", "Settings"),
+        (Guid.Parse("10000000-0000-0000-0000-000000000009"), "categories", "Categories")
     ];
 
     public static readonly DomainModule[] Modules = ModuleDefinitions
@@ -36,7 +37,9 @@ internal static class SeedData
         Permission("20000000-0000-0000-0000-000000000010", 4, PermissionCodes.KitchenRead),
         Permission("20000000-0000-0000-0000-000000000011", 5, PermissionCodes.ReportsRead),
         Permission("20000000-0000-0000-0000-000000000012", 6, PermissionCodes.BillingManage),
-        Permission("20000000-0000-0000-0000-000000000013", 7, PermissionCodes.SettingsManage)
+        Permission("20000000-0000-0000-0000-000000000013", 7, PermissionCodes.SettingsManage),
+        Permission("20000000-0000-0000-0000-000000000014", 8, PermissionCodes.CategoriesRead),
+        Permission("20000000-0000-0000-0000-000000000015", 8, PermissionCodes.CategoriesManage)
     ];
 
     private static Permission Permission(string id, int moduleIndex, string code) => new()

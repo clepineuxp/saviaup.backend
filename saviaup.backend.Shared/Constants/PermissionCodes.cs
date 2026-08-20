@@ -11,6 +11,8 @@ public static class PermissionCodes
     public const string InventoryManage = "inventory.manage";
     public const string ProductsRead = "products.read";
     public const string ProductsManage = "products.manage";
+    public const string CategoriesRead = "categories.read";
+    public const string CategoriesManage = "categories.manage";
     public const string KitchenRead = "kitchen.read";
     public const string ReportsRead = "reports.read";
     public const string BillingManage = "billing.manage";
@@ -19,7 +21,7 @@ public static class PermissionCodes
     public static readonly IReadOnlyCollection<string> All =
     [
         OrdersRead, OrdersCreate, OrdersCancel, TablesRead, TablesManage,
-        InventoryRead, InventoryManage, ProductsRead, ProductsManage,
+        InventoryRead, InventoryManage, ProductsRead, ProductsManage, CategoriesRead, CategoriesManage,
         KitchenRead, ReportsRead, BillingManage, SettingsManage
     ];
 }

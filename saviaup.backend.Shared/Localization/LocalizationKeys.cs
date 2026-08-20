@@ -15,6 +15,11 @@ public static class LocalizationKeys
     public const string TenantRequired = "tenant.required";
     public const string TenantAccessDenied = "tenant.accessDenied";
     public const string TenantNotFound = "tenant.notFound";
+    public const string NavigationNoModules = "navigation.noModules";
     public const string Validation = "common.validation";
     public const string InternalError = "common.internalError";
+
+    public static string ModuleName(string moduleCode) => $"modules.{moduleCode}";
+    public static string NavigationSectionName(string sectionCode) => $"navigation.sections.{sectionCode}";
+    public static string NavigationOptionName(string optionCode) => $"navigation.options.{optionCode}";
 }

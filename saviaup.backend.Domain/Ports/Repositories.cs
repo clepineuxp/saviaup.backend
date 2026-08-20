@@ -32,6 +32,14 @@ public interface IPermissionRepository
     Task<IReadOnlyCollection<string>> GetForRoleAsync(Guid tenantId, Guid roleId, CancellationToken cancellationToken);
 }
 
+public interface IModuleRepository
+{
+    Task<IReadOnlyCollection<AvailableModuleReference>> GetAvailableForRoleAsync(
+        Guid tenantId,
+        Guid roleId,
+        CancellationToken cancellationToken);
+}
+
 public interface IRefreshTokenRepository
 {
     Task<RefreshToken?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken);

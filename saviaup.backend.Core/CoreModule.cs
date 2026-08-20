@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SaviaUp.Backend.Core.Authentication;
+using SaviaUp.Backend.Core.Navigation;
 using SaviaUp.Backend.Core.Security;
 using SaviaUp.Backend.Core.Tenants;
 using SaviaUp.Backend.Core.Users;
@@ -21,6 +22,8 @@ public static class CoreModule
         services.AddScoped<ICreateTenantUseCase, CreateTenantUseCase>();
         services.AddScoped<ISelectTenantUseCase, SelectTenantUseCase>();
         services.AddScoped<IGetCurrentUserUseCase, GetCurrentUserUseCase>();
+        services.AddScoped<IGetUserInfoUseCase, GetUserInfoUseCase>();
+        services.AddScoped<IGetAvailableModulesUseCase, GetAvailableModulesUseCase>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<SessionIssuer>();
         services.AddSingleton<PasswordPolicy>();
