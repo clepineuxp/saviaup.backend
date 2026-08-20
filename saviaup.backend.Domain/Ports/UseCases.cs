@@ -68,6 +68,45 @@ public interface IGetAvailableModulesUseCase
         CancellationToken cancellationToken);
 }
 
+public interface IListCategoriesUseCase
+{
+    Task<Result<IReadOnlyCollection<CategoryDto>>> ExecuteAsync(
+        Guid tenantId,
+        bool includeInactive,
+        CancellationToken cancellationToken);
+}
+
+public interface ICreateCategoryUseCase
+{
+    Task<Result<CategoryDto>> ExecuteAsync(
+        Guid tenantId,
+        CreateCategoryRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IUpdateCategoryUseCase
+{
+    Task<Result<CategoryDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid categoryId,
+        UpdateCategoryRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface ISetCategoryStatusUseCase
+{
+    Task<Result<CategoryDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid categoryId,
+        SetCategoryStatusRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IDeleteCategoryUseCase
+{
+    Task<Result> ExecuteAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken);
+}
+
 public interface IPermissionService
 {
     Task<bool> IsAllowedAsync(Guid tenantId, Guid roleId, string permissionCode, CancellationToken cancellationToken);

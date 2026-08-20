@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Moq;
 using SaviaUp.Backend.Api.Attributes;
 using SaviaUp.Backend.Api.Middleware;
+using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
 
 namespace SaviaUp.Backend.IntegrationTests;
@@ -20,6 +21,7 @@ public sealed class PermissionAuthorizationMiddlewareTests
             context,
             Mock.Of<ICurrentUserContext>(),
             Mock.Of<IRefreshTokenRepository>(),
+            Mock.Of<ITenantRepository>(),
             Mock.Of<IPermissionService>(),
             Mock.Of<IDateTimeProvider>());
 
@@ -38,7 +40,7 @@ public sealed class PermissionAuthorizationMiddlewareTests
         var context = Context(new AuthorizeAttribute(), new RequireTenantAttribute(), new RequirePermissionAttribute("orders.create"));
         var middleware = new PermissionAuthorizationMiddleware(_ => Task.CompletedTask);
 
-        await middleware.InvokeAsync(context, user.Object, sessions.Object, permissions.Object, Clock());
+        await middleware.InvokeAsync(context, user.Object, sessions.Object, ActiveTenant(user), permissions.Object, Clock());
 
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
         Assert.Equal("AUTH_FORBIDDEN", await ErrorCode(context));
@@ -56,9 +58,36 @@ public sealed class PermissionAuthorizationMiddlewareTests
         var context = Context(new AuthorizeAttribute(), new RequireTenantAttribute(), new RequirePermissionAttribute("orders.create"));
         var middleware = new PermissionAuthorizationMiddleware(_ => { continued = true; return Task.CompletedTask; });
 
-        await middleware.InvokeAsync(context, user.Object, sessions.Object, permissions.Object, Clock());
+        await middleware.InvokeAsync(context, user.Object, sessions.Object, ActiveTenant(user), permissions.Object, Clock());
 
         Assert.True(continued);
+    }
+
+    [Fact]
+    public async Task InactiveTenantMembership_Returns403()
+    {
+        var user = AuthenticatedUser();
+        var sessions = new Mock<IRefreshTokenRepository>();
+        sessions.Setup(repository => repository.HasActiveSessionAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<Guid>(),
+                It.IsAny<DateTimeOffset>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        var tenants = ActiveTenant(user, isMembershipActive: false);
+        var context = Context(new AuthorizeAttribute(), new RequireTenantAttribute());
+        var middleware = new PermissionAuthorizationMiddleware(_ => Task.CompletedTask);
+
+        await middleware.InvokeAsync(
+            context,
+            user.Object,
+            sessions.Object,
+            tenants,
+            Mock.Of<IPermissionService>(),
+            Clock());
+
+        Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
+        Assert.Equal("TENANT_ACCESS_DENIED", await ErrorCode(context));
     }
 
     private static DefaultHttpContext Context(params object[] metadata)
@@ -78,6 +107,36 @@ public sealed class PermissionAuthorizationMiddlewareTests
         user.SetupGet(value => value.TenantId).Returns(Guid.NewGuid());
         user.SetupGet(value => value.RoleId).Returns(Guid.NewGuid());
         return user;
+    }
+
+    private static ITenantRepository ActiveTenant(
+        Mock<ICurrentUserContext> user,
+        bool isMembershipActive = true)
+    {
+        var tenant = new Tenant { Id = user.Object.TenantId!.Value, IsActive = true };
+        var role = new Role
+        {
+            Id = user.Object.RoleId!.Value,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            IsActive = true
+        };
+        var membership = new TenantMembership
+        {
+            UserId = user.Object.UserId!.Value,
+            TenantId = tenant.Id,
+            Tenant = tenant,
+            RoleId = role.Id,
+            Role = role,
+            IsActive = isMembershipActive
+        };
+        var repository = new Mock<ITenantRepository>();
+        repository.Setup(value => value.GetMembershipAsync(
+                user.Object.UserId.Value,
+                tenant.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(membership);
+        return repository.Object;
     }
 
     private static IDateTimeProvider Clock()

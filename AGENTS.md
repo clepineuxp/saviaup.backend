@@ -99,6 +99,7 @@ Entidades actuales:
 - `Module`: módulo global funcional.
 - `Permission`: permiso global identificado por `Code`.
 - `RolePermission`: relación compuesta rol/permiso.
+- `Category`: categoría funcional perteneciente a un tenant, con nombre normalizado, descripción/imagen opcionales, clasificación inventariable, estado y timestamps.
 - `RefreshToken`: hash, sesión, contexto, expiración, revocación y reemplazo.
 - `PasswordResetToken`: hash, expiración y consumo único.
 
@@ -107,12 +108,13 @@ Contratos HTTP/aplicación:
 - Autenticación: login, registro, refresh, logout, forgot/reset password.
 - Usuario: `UserDto` para sesión y `UserInfoDto` para nombre, apellido, organización y rol actuales.
 - Navegación: `AvailableModulesResponse`, secciones, módulos/opciones ordenados y copy de estado vacío.
+- Categorías: listado y contratos de creación, actualización y cambio de estado.
 - Tenants: listado, creación y respuesta de sesión contextualizada.
 - Todos los contratos públicos son DTO; nunca se exponen entidades directamente.
 
 Puertos:
 
-- Repositorios específicos por agregado/uso: usuarios, tenants, roles, permisos, módulos y tokens.
+- Repositorios específicos por agregado/uso: usuarios, tenants, roles, permisos, módulos, categorías y tokens.
 - Servicios externos: `IPasswordHasher`, `IJwtTokenService`, `ITokenGenerator`, `IEmailSender`, `IDateTimeProvider`.
 - Contexto: `ICurrentUserContext`.
 - Casos de uso segregados por operación.
@@ -136,6 +138,11 @@ Casos de uso actuales:
 - `GetCurrentUserUseCase`.
 - `GetUserInfoUseCase`.
 - `GetAvailableModulesUseCase`.
+- `ListCategoriesUseCase`.
+- `CreateCategoryUseCase`.
+- `UpdateCategoryUseCase`.
+- `SetCategoryStatusUseCase`.
+- `DeleteCategoryUseCase`.
 - `PermissionService`.
 
 `SessionIssuer` centraliza la creación coordinada de access token, refresh token y DTO de sesión. `PasswordPolicy` centraliza todas las reglas de contraseña.
@@ -153,7 +160,7 @@ Reglas de Core:
 
 Persistencia:
 
-- `SaviaUpDbContext` contiene los nueve `DbSet` actuales.
+- `SaviaUpDbContext` contiene los diez `DbSet` actuales.
 - Cada entidad tiene `IEntityTypeConfiguration<T>` independiente.
 - Los repositorios usan consultas específicas, `AsNoTracking` para lectura y tracking solo cuando hay escritura.
 - `ModuleRepository` devuelve un módulo activo cuando el rol activo posee al menos un permiso de ese módulo dentro del tenant solicitado.
@@ -188,6 +195,7 @@ Restricciones importantes:
 
 `SeedData` contiene únicamente módulos y permisos globales. No agregar usuarios o tenants reales al seed.
 `AddCategoriesModule` agrega el módulo `categories`, los permisos `categories.read`/`categories.manage` y los asigna a los roles `TENANT_OWNER` existentes.
+`AddTenantCategories` crea la tabla tenant-aware `categories`, su FK restrictiva e índices de unicidad/listado.
 
 Adapters de seguridad:
 
@@ -221,6 +229,13 @@ POST /api/tenants/{tenantId}/select
 GET  /api/users/me
 GET  /api/users/me/info
 GET  /api/modules/available
+
+GET    /api/categories?includeInactive=false
+POST   /api/categories
+PUT    /api/categories/{categoryId}
+PATCH  /api/categories/{categoryId}/status
+DELETE /api/categories/{categoryId}
+
 GET  /api/i18n/{language}
 GET  /health
 ```
@@ -308,6 +323,7 @@ No registrar access tokens, refresh tokens, reset tokens, claves JWT o credencia
 - Seleccionar tenant valida membership, actualiza `LastTenantId`, revoca tokens previos de la sesión y entrega un par nuevo.
 - El header `X-Tenant-Id`, si existe, debe coincidir con el claim; nunca sustituye al contexto firmado.
 - La autorización depende de `(TenantId, RoleId, PermissionCode)`, nunca del nombre visible del rol.
+- Todo endpoint con `[RequireTenant]` vuelve a comprobar membership, tenant y rol activos antes de continuar; un claim firmado no sustituye esa validación actual.
 - La navegación se resuelve para el rol del token contextual; nunca acepta `tenantId` o `roleId` enviados por el cliente.
 - Antes de resolver módulos se vuelve a validar que membership, tenant y rol continúen activos y que el rol coincida con el claim.
 - Un módulo se habilita si el rol tiene al menos un permiso perteneciente a ese módulo. No se requieren todos sus permisos.
@@ -345,6 +361,19 @@ Al crear un módulo nuevo es obligatorio, dentro del mismo cambio:
 5. Actualizar pruebas unitarias, integradas y documentación.
 
 El catálogo falla explícitamente si la base de datos devuelve un módulo sin configuración de navegación. Los órdenes duplicados dentro de una sección tampoco son válidos.
+
+## Invariantes de categorías
+
+- Toda categoría pertenece exactamente a un tenant y todas las consultas reciben `TenantId` desde el claim, nunca desde body/query.
+- `categories.read` autoriza el listado; `categories.manage` autoriza creación, actualización, cambio de estado y eliminación.
+- El nombre visible se recorta y colapsa espacios internos. `NormalizedName` usa mayúsculas y soporta unicidad case-insensitive dentro del tenant.
+- El índice único `(TenantId, NormalizedName)` permite repetir un nombre en tenants diferentes, pero no dentro de la misma organización, incluso si cambia mayúsculas o espacios.
+- `Description` es opcional y tiene máximo 1000 caracteres.
+- `ImageUrl` es opcional, admite únicamente URL absoluta HTTP/HTTPS y máximo 2048 caracteres. La API no recibe ni almacena binarios en esta fase.
+- `IsInventoryTracked` indica si los productos de esa categoría participan en inventario.
+- `IsActive` es reversible mediante `PATCH /status`. El listado normal omite categorías inactivas; administración usa `includeInactive=true`.
+- `DELETE` realiza eliminación física. Cuando productos/inventarios referencien categorías, sus FK deben usar `Restrict` y el caso de uso tendrá que devolver un conflicto estable si la categoría está en uso.
+- Crear/actualizar valida duplicados en Core y la base de datos conserva la restricción como última barrera.
 
 ## Contrato con el frontend
 
@@ -467,8 +496,8 @@ dotnet format saviaup.backend.sln --verify-no-changes --no-restore
 
 Cobertura actual:
 
-- Core: login correcto/inexistente/password erróneo/desactivado; registro correcto/duplicado; refresh correcto/expirado/revocado/reutilizado; reset correcto/inválido/expirado/usado; forgot neutral; selección de tenant; permisos; navegación localizada, agrupada y ordenada/estado vacío; información de usuario y validación del rol contextual.
-- Integración: registro, login, refresh, listado/creación/selección de tenant, secciones/módulos disponibles incluido `categories`, información contextual de usuario, traducciones y middleware 401/403/request continúa.
+- Core: login correcto/inexistente/password erróneo/desactivado; registro correcto/duplicado; refresh correcto/expirado/revocado/reutilizado; reset correcto/inválido/expirado/usado; forgot neutral; selección de tenant; permisos; navegación; información de usuario; CRUD, normalización, duplicados, validación y estado de categorías.
+- Integración: registro, login, refresh, tenants, navegación, información de usuario, flujo completo de categorías, traducciones y middleware 401/403/membership revocada/request continúa.
 - IntegrationTests reemplaza Npgsql por EF InMemory solo dentro del host de pruebas.
 
 Al agregar o cambiar comportamiento:
@@ -491,6 +520,7 @@ Al agregar o cambiar comportamiento:
 - Conservar respuestas y códigos compatibles salvo que exista una migración explícita del contrato.
 - No modificar archivos ajenos a la tarea ni descartar cambios del usuario.
 - No crear commit o push salvo solicitud expresa del usuario.
+- Los prompts solicitados para otros agentes se entregan en la conversación y no se guardan en el repositorio salvo petición explícita de crear un archivo.
 
 ## Checklist de cambio
 

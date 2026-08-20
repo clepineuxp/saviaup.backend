@@ -16,6 +16,8 @@ public static class LocalizationKeys
     public const string TenantAccessDenied = "tenant.accessDenied";
     public const string TenantNotFound = "tenant.notFound";
     public const string NavigationNoModules = "navigation.noModules";
+    public const string CategoryNotFound = "categories.notFound";
+    public const string CategoryNameAlreadyExists = "categories.nameAlreadyExists";
     public const string Validation = "common.validation";
     public const string InternalError = "common.internalError";
 

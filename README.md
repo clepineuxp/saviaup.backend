@@ -71,10 +71,10 @@ La migración `InitialIdentityAndTenancy` crea:
 
 ```text
 users, tenants, tenant_memberships, roles, modules, permissions,
-role_permissions, refresh_tokens, password_reset_tokens
+role_permissions, refresh_tokens, password_reset_tokens, categories
 ```
 
-Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`, códigos de permisos, relación role/permission y hashes de tokens. Las relaciones sensibles usan eliminación `Restrict`. El seed contiene únicamente módulos y permisos globales. La migración `AddCategoriesModule` agrega `categories.read`/`categories.manage` y conserva el acceso de los owners existentes.
+Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`, nombres normalizados de categoría por tenant, códigos de permisos, relación role/permission y hashes de tokens. Las relaciones sensibles usan eliminación `Restrict`. El seed contiene únicamente módulos y permisos globales. `AddCategoriesModule` agrega los permisos del módulo y `AddTenantCategories` crea el agregado funcional.
 
 ## Docker
 
@@ -105,6 +105,13 @@ POST /api/tenants/{tenantId}/select
 GET  /api/users/me
 GET  /api/users/me/info
 GET  /api/modules/available
+
+GET    /api/categories?includeInactive=false
+POST   /api/categories
+PUT    /api/categories/{categoryId}
+PATCH  /api/categories/{categoryId}/status
+DELETE /api/categories/{categoryId}
+
 GET  /api/i18n/{language}
 GET  /health
 ```
@@ -158,6 +165,25 @@ Orden actual:
 ```
 
 La fuente de verdad es `Core/Navigation/NavigationCatalog.cs`. Cada módulo nuevo debe declarar sección/subcategoría y orden, además de seed, permisos, migración, copies y pruebas. El contrato incluye `options` para crecer con accesos administrativos respaldados por permisos `.manage`.
+
+## Categorías
+
+Las categorías se administran dentro del tenant activo y se mostrarán en frontend bajo `Inventario → Categorías`. El listado requiere `categories.read`; las mutaciones requieren `categories.manage`.
+
+Creación y actualización usan:
+
+```json
+{
+  "name": "Bebidas frías",
+  "description": "Preparadas en barra",
+  "imageUrl": "https://cdn.example.com/categories/drinks.webp",
+  "isInventoryTracked": true
+}
+```
+
+La respuesta agrega `id`, `isActive`, `createdAt` y `updatedAt`. `description` e `imageUrl` son opcionales; la imagen se representa como URL HTTP/HTTPS, no como archivo binario. Los nombres se comparan sin distinguir mayúsculas ni espacios sobrantes y no se repiten dentro de un tenant.
+
+`GET /api/categories` devuelve solo activas para consumo de productos, inventarios y menús. La pantalla administrativa puede solicitar `includeInactive=true`. `PATCH /api/categories/{id}/status` recibe `{ "isActive": false }` y permite deshabilitar o reactivar. `DELETE` elimina físicamente la categoría mientras no existan relaciones restrictivas futuras.
 
 ## JWT, sesiones y multi-tenancy
 
@@ -213,6 +239,6 @@ dotnet build
 dotnet test
 ```
 
-`Core.Tests` cubre login, registro, rotación/reutilización/expiración de refresh, reset, respuesta neutral de recovery, selección de tenant, permisos, navegación localizada/agrupada/ordenada, estado vacío e información contextual del usuario. `IntegrationTests` arranca la API con EF InMemory y verifica registro, login, refresh, listado/creación/selección de tenant, secciones y módulos disponibles —incluido `categories`—, información de usuario, traducciones y el middleware 401/403/continuación.
+`Core.Tests` cubre autenticación, tenants, permisos, navegación, información contextual y reglas CRUD de categorías. `IntegrationTests` arranca la API con EF InMemory y verifica el flujo completo, incluidos duplicados, edición, deshabilitación, filtros y eliminación de categorías, además del middleware 401/403 y membership activa.
 
 El frontend conectado está en `../saviaup.frontend`: desarrollo usa `useMockApi: false` y `apiUrl: http://localhost:5000`.

@@ -40,6 +40,8 @@ public static class TranslationCatalog
                     [LocalizationKeys.ModuleName("reports")] = "Reportes",
                     [LocalizationKeys.ModuleName("billing")] = "Facturación",
                     [LocalizationKeys.ModuleName("settings")] = "Configuración",
+                    [LocalizationKeys.CategoryNotFound] = "No encontramos la categoría solicitada.",
+                    [LocalizationKeys.CategoryNameAlreadyExists] = "Ya existe una categoría con ese nombre en la organización.",
                     [LocalizationKeys.Validation] = "Revisa los datos enviados.",
                     [LocalizationKeys.InternalError] = "Ocurrió un error inesperado."
                 }),
@@ -75,6 +77,8 @@ public static class TranslationCatalog
                     [LocalizationKeys.ModuleName("reports")] = "Reports",
                     [LocalizationKeys.ModuleName("billing")] = "Billing",
                     [LocalizationKeys.ModuleName("settings")] = "Settings",
+                    [LocalizationKeys.CategoryNotFound] = "The requested category was not found.",
+                    [LocalizationKeys.CategoryNameAlreadyExists] = "A category with that name already exists in the organization.",
                     [LocalizationKeys.Validation] = "Review the submitted data.",
                     [LocalizationKeys.InternalError] = "An unexpected error occurred."
                 })

@@ -13,6 +13,8 @@ public static class ErrorCodes
     public const string TenantRequired = "TENANT_REQUIRED";
     public const string TenantNotFound = "TENANT_NOT_FOUND";
     public const string TenantAccessDenied = "TENANT_ACCESS_DENIED";
+    public const string CategoryNotFound = "CATEGORY_NOT_FOUND";
+    public const string CategoryNameAlreadyExists = "CATEGORY_NAME_ALREADY_EXISTS";
     public const string Validation = "VALIDATION_ERROR";
     public const string Internal = "INTERNAL_ERROR";
 }

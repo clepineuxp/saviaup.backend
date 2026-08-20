@@ -76,6 +76,68 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         Assert.Equal("Secret Garden", userInfoJson.GetProperty("organization").GetProperty("name").GetString());
         Assert.Equal("TENANT_OWNER", userInfoJson.GetProperty("role").GetProperty("code").GetString());
 
+        var createCategory = await client.PostAsJsonAsync("/api/categories", new
+        {
+            name = "  Bebidas   frías ",
+            description = "Bebidas preparadas en barra",
+            imageUrl = "https://cdn.saviaup.test/categories/drinks.webp",
+            isInventoryTracked = true
+        });
+        Assert.Equal(HttpStatusCode.OK, createCategory.StatusCode);
+        var categoryJson = await createCategory.Content.ReadFromJsonAsync<JsonElement>();
+        var categoryId = categoryJson.GetProperty("id").GetGuid();
+        Assert.Equal("Bebidas frías", categoryJson.GetProperty("name").GetString());
+        Assert.True(categoryJson.GetProperty("isInventoryTracked").GetBoolean());
+        Assert.True(categoryJson.GetProperty("isActive").GetBoolean());
+
+        var duplicateCategory = await client.PostAsJsonAsync("/api/categories", new
+        {
+            name = "bebidas frías",
+            isInventoryTracked = false
+        });
+        Assert.Equal(HttpStatusCode.Conflict, duplicateCategory.StatusCode);
+        var duplicateJson = await duplicateCategory.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(
+            "CATEGORY_NAME_ALREADY_EXISTS",
+            duplicateJson.GetProperty("error").GetProperty("code").GetString());
+
+        var activeCategories = await client.GetAsync("/api/categories");
+        Assert.Equal(HttpStatusCode.OK, activeCategories.StatusCode);
+        Assert.Single((await activeCategories.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray());
+
+        var updateCategory = await client.PutAsJsonAsync($"/api/categories/{categoryId}", new
+        {
+            name = "Bebidas sin alcohol",
+            description = (string?)null,
+            imageUrl = (string?)null,
+            isInventoryTracked = false
+        });
+        Assert.Equal(HttpStatusCode.OK, updateCategory.StatusCode);
+        var updatedCategoryJson = await updateCategory.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Bebidas sin alcohol", updatedCategoryJson.GetProperty("name").GetString());
+        Assert.Equal(JsonValueKind.Null, updatedCategoryJson.GetProperty("description").ValueKind);
+        Assert.False(updatedCategoryJson.GetProperty("isInventoryTracked").GetBoolean());
+
+        var disableCategory = await client.PatchAsJsonAsync(
+            $"/api/categories/{categoryId}/status",
+            new { isActive = false });
+        Assert.Equal(HttpStatusCode.OK, disableCategory.StatusCode);
+        Assert.False((await disableCategory.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("isActive").GetBoolean());
+
+        var activeCategoriesAfterDisable = await client.GetAsync("/api/categories");
+        Assert.Empty((await activeCategoriesAfterDisable.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray());
+
+        var allCategories = await client.GetAsync("/api/categories?includeInactive=true");
+        var inactiveCategory = Assert.Single((await allCategories.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray());
+        Assert.Equal(categoryId, inactiveCategory.GetProperty("id").GetGuid());
+        Assert.False(inactiveCategory.GetProperty("isActive").GetBoolean());
+
+        var deleteCategory = await client.DeleteAsync($"/api/categories/{categoryId}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteCategory.StatusCode);
+        var categoriesAfterDelete = await client.GetAsync("/api/categories?includeInactive=true");
+        Assert.Empty((await categoriesAfterDelete.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray());
+
         var list = await client.GetAsync("/api/tenants");
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);
         Assert.Single((await list.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray());

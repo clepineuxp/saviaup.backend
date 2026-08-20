@@ -40,6 +40,22 @@ public interface IModuleRepository
         CancellationToken cancellationToken);
 }
 
+public interface ICategoryRepository
+{
+    Task<IReadOnlyCollection<Category>> GetForTenantAsync(
+        Guid tenantId,
+        bool includeInactive,
+        CancellationToken cancellationToken);
+    Task<Category?> GetByIdAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken);
+    Task<bool> NameExistsAsync(
+        Guid tenantId,
+        string normalizedName,
+        Guid? excludedCategoryId,
+        CancellationToken cancellationToken);
+    Task AddAsync(Category category, CancellationToken cancellationToken);
+    void Remove(Category category);
+}
+
 public interface IRefreshTokenRepository
 {
     Task<RefreshToken?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken);

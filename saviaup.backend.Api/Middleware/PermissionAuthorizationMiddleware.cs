@@ -12,6 +12,7 @@ public sealed class PermissionAuthorizationMiddleware(RequestDelegate next)
         HttpContext context,
         ICurrentUserContext currentUser,
         IRefreshTokenRepository refreshTokenRepository,
+        ITenantRepository tenantRepository,
         IPermissionService permissionService,
         IDateTimeProvider dateTimeProvider)
     {
@@ -45,6 +46,22 @@ public sealed class PermissionAuthorizationMiddleware(RequestDelegate next)
         {
             await WriteAsync(context, StatusCodes.Status403Forbidden, ErrorCodes.TenantRequired, LocalizationKeys.TenantRequired);
             return;
+        }
+        if (requiresTenant)
+        {
+            var membership = await tenantRepository.GetMembershipAsync(
+                currentUser.UserId.Value,
+                currentUser.TenantId!.Value,
+                context.RequestAborted);
+            if (membership is null
+                || !membership.IsActive
+                || !membership.Tenant.IsActive
+                || !membership.Role.IsActive
+                || membership.RoleId != currentUser.RoleId)
+            {
+                await WriteAsync(context, StatusCodes.Status403Forbidden, ErrorCodes.TenantAccessDenied, LocalizationKeys.TenantAccessDenied);
+                return;
+            }
         }
 
         var requestedTenant = context.Request.Headers[HeaderNames.TenantId].ToString();

@@ -15,4 +15,6 @@ internal static class Errors
     public static readonly Error Validation = new(ErrorCodes.Validation, LocalizationKeys.Validation, ErrorType.Validation);
     public static readonly Error TenantNotFound = new(ErrorCodes.TenantNotFound, LocalizationKeys.TenantNotFound, ErrorType.NotFound);
     public static readonly Error TenantAccessDenied = new(ErrorCodes.TenantAccessDenied, LocalizationKeys.TenantAccessDenied, ErrorType.Forbidden);
+    public static readonly Error CategoryNotFound = new(ErrorCodes.CategoryNotFound, LocalizationKeys.CategoryNotFound, ErrorType.NotFound);
+    public static readonly Error CategoryNameAlreadyExists = new(ErrorCodes.CategoryNameAlreadyExists, LocalizationKeys.CategoryNameAlreadyExists, ErrorType.Conflict);
 }

@@ -9,4 +9,5 @@ public sealed class Tenant
     public DateTimeOffset UpdatedAt { get; set; }
     public ICollection<TenantMembership> Memberships { get; set; } = [];
     public ICollection<Role> Roles { get; set; } = [];
+    public ICollection<Category> Categories { get; set; } = [];
 }
