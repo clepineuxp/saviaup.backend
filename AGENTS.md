@@ -86,6 +86,7 @@ Cada capa tiene su módulo de DI:
 - `Localization/TranslationCatalog.cs`: traducciones `es` y `en`, con fallback español.
 
 Los códigos internos nunca se traducen. Solo se traduce el mensaje mostrado.
+Todo módulo nuevo del seed debe agregar sus copies `modules.{code}` en español e inglés, su sección/orden en `NavigationCatalog` y pruebas de localización/orden.
 
 ### Domain
 
@@ -104,13 +105,14 @@ Entidades actuales:
 Contratos HTTP/aplicación:
 
 - Autenticación: login, registro, refresh, logout, forgot/reset password.
-- Usuario: `UserDto`, tenant activo, rol y permisos efectivos para representación de UI.
+- Usuario: `UserDto` para sesión y `UserInfoDto` para nombre, apellido, organización y rol actuales.
+- Navegación: `AvailableModulesResponse`, secciones, módulos/opciones ordenados y copy de estado vacío.
 - Tenants: listado, creación y respuesta de sesión contextualizada.
 - Todos los contratos públicos son DTO; nunca se exponen entidades directamente.
 
 Puertos:
 
-- Repositorios específicos por agregado/uso: usuarios, tenants, roles, permisos y tokens.
+- Repositorios específicos por agregado/uso: usuarios, tenants, roles, permisos, módulos y tokens.
 - Servicios externos: `IPasswordHasher`, `IJwtTokenService`, `ITokenGenerator`, `IEmailSender`, `IDateTimeProvider`.
 - Contexto: `ICurrentUserContext`.
 - Casos de uso segregados por operación.
@@ -132,6 +134,8 @@ Casos de uso actuales:
 - `CreateTenantUseCase`.
 - `SelectTenantUseCase`.
 - `GetCurrentUserUseCase`.
+- `GetUserInfoUseCase`.
+- `GetAvailableModulesUseCase`.
 - `PermissionService`.
 
 `SessionIssuer` centraliza la creación coordinada de access token, refresh token y DTO de sesión. `PasswordPolicy` centraliza todas las reglas de contraseña.
@@ -152,10 +156,12 @@ Persistencia:
 - `SaviaUpDbContext` contiene los nueve `DbSet` actuales.
 - Cada entidad tiene `IEntityTypeConfiguration<T>` independiente.
 - Los repositorios usan consultas específicas, `AsNoTracking` para lectura y tracking solo cuando hay escritura.
+- `ModuleRepository` devuelve un módulo activo cuando el rol activo posee al menos un permiso de ese módulo dentro del tenant solicitado.
+- `NavigationCatalog` en Core es la fuente de verdad de presentación: subcategoría/sección y orden de cada módulo, además de opciones administrativas extensibles.
 - `UnitOfWork` abre transacciones para proveedores relacionales.
 - `SaviaUpDbContextFactory` permite ejecutar `dotnet ef`.
 
-La migración actual es `InitialIdentityAndTenancy` y crea:
+`InitialIdentityAndTenancy` crea:
 
 ```text
 users
@@ -181,6 +187,7 @@ Restricciones importantes:
 - relaciones sensibles con `DeleteBehavior.Restrict`; preferir desactivación mediante `IsActive`.
 
 `SeedData` contiene únicamente módulos y permisos globales. No agregar usuarios o tenants reales al seed.
+`AddCategoriesModule` agrega el módulo `categories`, los permisos `categories.read`/`categories.manage` y los asigna a los roles `TENANT_OWNER` existentes.
 
 Adapters de seguridad:
 
@@ -212,11 +219,13 @@ POST /api/tenants
 POST /api/tenants/{tenantId}/select
 
 GET  /api/users/me
+GET  /api/users/me/info
+GET  /api/modules/available
 GET  /api/i18n/{language}
 GET  /health
 ```
 
-`/api/i18n/{language}` es público. Los endpoints de auth sensibles usan rate limiting. Tenants y `/users/me` requieren autenticación y sesión activa, pero no exigen tenant seleccionado.
+`/api/i18n/{language}` es público. Los endpoints de auth sensibles usan rate limiting. Tenants y `/users/me` requieren autenticación y sesión activa, pero no exigen tenant seleccionado. `/users/me/info` y `/modules/available` exigen tenant y rol activos mediante `[RequireTenant]`.
 
 Componentes HTTP importantes:
 
@@ -299,6 +308,43 @@ No registrar access tokens, refresh tokens, reset tokens, claves JWT o credencia
 - Seleccionar tenant valida membership, actualiza `LastTenantId`, revoca tokens previos de la sesión y entrega un par nuevo.
 - El header `X-Tenant-Id`, si existe, debe coincidir con el claim; nunca sustituye al contexto firmado.
 - La autorización depende de `(TenantId, RoleId, PermissionCode)`, nunca del nombre visible del rol.
+- La navegación se resuelve para el rol del token contextual; nunca acepta `tenantId` o `roleId` enviados por el cliente.
+- Antes de resolver módulos se vuelve a validar que membership, tenant y rol continúen activos y que el rol coincida con el claim.
+- Un módulo se habilita si el rol tiene al menos un permiso perteneciente a ese módulo. No se requieren todos sus permisos.
+- Solo se devuelven módulos y roles activos. La respuesta no duplica módulos aunque existan múltiples permisos asignados.
+- `NavigationCatalog` ordena secciones y módulos con enteros positivos independientes. El orden de la base de datos no controla la UI.
+- Una sección se omite si el rol no tiene elementos disponibles en ella.
+- `isGrouped` es `true` solo cuando la sección visible contiene más de un módulo/opción; con un único módulo el frontend debe renderizar ese acceso directamente, sin pestaña contenedora.
+- Las opciones futuras se declaran en la sección con código, módulo propietario, orden y permiso requerido terminado en `.manage`; el backend solo devuelve las autorizadas.
+- Si no hay módulos ni opciones disponibles, `sections` queda vacío y `emptyStateMessage` contiene el copy localizado para contactar al administrador.
+
+Configuración actual de navegación:
+
+```text
+1 sales / Ventas
+  1 tables
+2 operation / Operación
+  1 orders
+  2 reports
+  3 billing
+3 inventory / Inventario
+  1 products
+  2 categories
+  3 inventory
+  4 kitchen
+4 configuration / Configuración
+  1 settings
+```
+
+Al crear un módulo nuevo es obligatorio, dentro del mismo cambio:
+
+1. Declarar módulo y permisos en `SeedData`/`PermissionCodes` y crear una migración.
+2. Declarar exactamente una sección/subcategoría y un orden de módulo único en `NavigationCatalog`.
+3. Declarar la sección y su orden si es nueva.
+4. Agregar copies `es`/`en` para módulo, sección y cualquier opción.
+5. Actualizar pruebas unitarias, integradas y documentación.
+
+El catálogo falla explícitamente si la base de datos devuelve un módulo sin configuración de navegación. Los órdenes duplicados dentro de una sección tampoco son válidos.
 
 ## Contrato con el frontend
 
@@ -308,6 +354,13 @@ El frontend local está en `../saviaup.frontend` y consume `http://localhost:500
 - Registro devuelve `{ session, nextStep }`.
 - Refresh devuelve `{ accessToken, refreshToken, expiresAt, accessTokenExpiresAt, refreshTokenExpiresAt }`.
 - Crear/seleccionar tenant devuelve `{ tenant, tokens }`.
+- `GET /api/users/me/info` devuelve `{ firstName, lastName, organization, role }` para el contexto activo.
+- `GET /api/modules/available` devuelve `{ sections, emptyStateMessage }`.
+- Cada sección contiene `{ code, name, order, isGrouped, modules, options }`; cada módulo contiene `{ id, code, name, order }`.
+- Las opciones usan `{ code, moduleCode, name, order }`; actualmente el catálogo no publica opciones, pero el contrato queda preparado para opciones `.manage` futuras.
+- `name` y `emptyStateMessage` se localizan con `Accept-Language` (`es`/`en`, fallback `es`). Los valores `code` son estables y nunca se traducen.
+- Con al menos una sección, `emptyStateMessage` es `null`; sin elementos disponibles, el frontend debe mostrar ese copy en lugar de una navegación vacía.
+- El frontend debe respetar los órdenes recibidos y no recrear agrupaciones ni ordenarlas alfabéticamente.
 - El frontend debe persistir los nuevos tokens antes de navegar a `/app`.
 - `expiresAt` representa la expiración del access token por compatibilidad con el frontend.
 - Los nombres JSON usan camelCase.
@@ -407,8 +460,8 @@ dotnet format saviaup.backend.sln --verify-no-changes --no-restore
 
 Cobertura actual:
 
-- Core: login correcto/inexistente/password erróneo/desactivado; registro correcto/duplicado; refresh correcto/expirado/revocado/reutilizado; reset correcto/inválido/expirado/usado; forgot neutral; selección de tenant y permisos.
-- Integración: registro, login, refresh, listado/creación/selección de tenant, traducciones y middleware 401/403/request continúa.
+- Core: login correcto/inexistente/password erróneo/desactivado; registro correcto/duplicado; refresh correcto/expirado/revocado/reutilizado; reset correcto/inválido/expirado/usado; forgot neutral; selección de tenant; permisos; navegación localizada, agrupada y ordenada/estado vacío; información de usuario y validación del rol contextual.
+- Integración: registro, login, refresh, listado/creación/selección de tenant, secciones/módulos disponibles incluido `categories`, información contextual de usuario, traducciones y middleware 401/403/request continúa.
 - IntegrationTests reemplaza Npgsql por EF InMemory solo dentro del host de pruebas.
 
 Al agregar o cambiar comportamiento:
@@ -449,3 +502,4 @@ Antes de entregar:
 ## Documentación adicional
 
 `README.md` contiene la guía de uso para desarrolladores y operadores. Este `AGENTS.md` contiene las reglas de implementación para agentes y colaboradores. Si ambos divergen, corregirlos dentro del mismo cambio.
+`FRONTEND_NAVIGATION_ADAPTATION_PROMPT.md` contiene el prompt vigente para adaptar el frontend al contrato de navegación.

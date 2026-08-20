@@ -69,7 +69,7 @@ users, tenants, tenant_memberships, roles, modules, permissions,
 role_permissions, refresh_tokens, password_reset_tokens
 ```
 
-Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`, códigos de permisos, relación role/permission y hashes de tokens. Las relaciones sensibles usan eliminación `Restrict`. El seed contiene únicamente módulos y permisos globales.
+Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`, códigos de permisos, relación role/permission y hashes de tokens. Las relaciones sensibles usan eliminación `Restrict`. El seed contiene únicamente módulos y permisos globales. La migración `AddCategoriesModule` agrega `categories.read`/`categories.manage` y conserva el acceso de los owners existentes.
 
 ## Docker
 
@@ -98,11 +98,61 @@ POST /api/tenants
 POST /api/tenants/{tenantId}/select
 
 GET  /api/users/me
+GET  /api/users/me/info
+GET  /api/modules/available
 GET  /api/i18n/{language}
 GET  /health
 ```
 
-Los endpoints de tenants y `/users/me` requieren usuario y sesión válidos, pero funcionan sin tenant activo. Los futuros endpoints operativos pueden combinar `[RequireTenant]` y `[RequirePermission(PermissionCodes.X)]`.
+Los endpoints de tenants y `/users/me` requieren usuario y sesión válidos, pero funcionan sin tenant activo. `/api/users/me/info` y `/api/modules/available` requieren un token contextualizado con tenant y rol activos. Los futuros endpoints operativos pueden combinar `[RequireTenant]` y `[RequirePermission(PermissionCodes.X)]`.
+
+### Contexto visible y navegación
+
+`GET /api/users/me/info` entrega el contexto que se muestra después de ingresar:
+
+```json
+{
+  "firstName": "Ana",
+  "lastName": "Prueba",
+  "organization": { "id": "...", "name": "Secret Garden" },
+  "role": { "id": "...", "code": "TENANT_OWNER", "name": "Owner" }
+}
+```
+
+`GET /api/modules/available` calcula la navegación desde los permisos actuales del rol. Un módulo activo aparece cuando el rol posee al menos uno de sus permisos, sin duplicarse aunque posea varios:
+
+```json
+{
+  "sections": [
+    {
+      "code": "operation",
+      "name": "Operación",
+      "order": 2,
+      "isGrouped": true,
+      "modules": [
+        { "id": "...", "code": "orders", "name": "Pedidos", "order": 1 },
+        { "id": "...", "code": "reports", "name": "Reportes", "order": 2 },
+        { "id": "...", "code": "billing", "name": "Facturación", "order": 3 }
+      ],
+      "options": []
+    }
+  ],
+  "emptyStateMessage": null
+}
+```
+
+Los nombres se localizan con `Accept-Language` (`es` o `en`, fallback español) y el frontend debe usar `code` como identificador estable. Secciones y módulos ya vienen ordenados. `isGrouped: false` indica que el único módulo debe mostrarse directamente, sin pestaña. Cuando el rol no tiene módulos u opciones, `sections` es `[]` y `emptyStateMessage` indica que debe contactar al administrador para gestionar los permisos.
+
+Orden actual:
+
+```text
+1 Ventas: Mesas
+2 Operación: Pedidos, Reportes, Facturación
+3 Inventario: Productos, Categorías, Inventario, Cocina
+4 Configuración: Configuración
+```
+
+La fuente de verdad es `Core/Navigation/NavigationCatalog.cs`. Cada módulo nuevo debe declarar sección/subcategoría y orden, además de seed, permisos, migración, copies y pruebas. El contrato incluye `options` para crecer con accesos administrativos respaldados por permisos `.manage`.
 
 ## JWT, sesiones y multi-tenancy
 
@@ -158,6 +208,6 @@ dotnet build
 dotnet test
 ```
 
-`Core.Tests` cubre login, registro, rotación/reutilización/expiración de refresh, reset, respuesta neutral de recovery, selección de tenant y permisos. `IntegrationTests` arranca la API con EF InMemory y verifica registro, login, refresh, listado/creación/selección de tenant, traducciones y el middleware 401/403/continuación.
+`Core.Tests` cubre login, registro, rotación/reutilización/expiración de refresh, reset, respuesta neutral de recovery, selección de tenant, permisos, navegación localizada/agrupada/ordenada, estado vacío e información contextual del usuario. `IntegrationTests` arranca la API con EF InMemory y verifica registro, login, refresh, listado/creación/selección de tenant, secciones y módulos disponibles —incluido `categories`—, información de usuario, traducciones y el middleware 401/403/continuación.
 
 El frontend conectado está en `../saviaup.frontend`: desarrollo usa `useMockApi: false` y `apiUrl: http://localhost:5000`.
