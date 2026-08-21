@@ -7,6 +7,7 @@ public static class SettingsDefaults
     public const string UsesTables = "business.usesTables";
     public const string DeliveryEnabled = "business.deliveryEnabled";
     public const string RequiresOpenCashRegister = "business.requiresOpenCashRegister";
+    public const string EnableCustomSales = "business.enableCustomSales";
     public const string ShowVoluntaryTip = "business.showVoluntaryTip";
     public const string TipMessage = "business.tipMessage";
     public const string SuggestedTipPercentage = "business.suggestedTipPercentage";
@@ -16,6 +17,7 @@ public static class SettingsDefaults
         Parameter(tenantId, UsesTables, "true", "boolean", now),
         Parameter(tenantId, DeliveryEnabled, "false", "boolean", now),
         Parameter(tenantId, RequiresOpenCashRegister, "false", "boolean", now),
+        Parameter(tenantId, EnableCustomSales, "false", "boolean", now),
         Parameter(tenantId, ShowVoluntaryTip, "true", "boolean", now),
         Parameter(tenantId, TipMessage, "Servicio Voluntario", "string", now),
         Parameter(tenantId, SuggestedTipPercentage, "10", "integer", now)

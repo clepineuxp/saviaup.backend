@@ -39,6 +39,7 @@ public sealed record BusinessSettingsDto(
     bool UsesTables,
     bool DeliveryEnabled,
     bool RequiresOpenCashRegister,
+    bool EnableCustomSales,
     bool ShowVoluntaryTip,
     string TipMessage,
     int SuggestedTipPercentage);
@@ -47,6 +48,7 @@ public sealed record UpdateBusinessSettingsRequest(
     bool UsesTables,
     bool DeliveryEnabled,
     bool RequiresOpenCashRegister,
+    bool EnableCustomSales,
     bool ShowVoluntaryTip,
     [Required, MaxLength(200)] string TipMessage,
     [Range(0, 100)] int SuggestedTipPercentage);

@@ -56,13 +56,36 @@ public sealed class SettingsUseCaseTests
         var repository = new Mock<ISettingsRepository>();
         repository.Setup(value => value.GetTenantForUpdateAsync(tenant.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tenant);
         repository.Setup(value => value.GetParametersAsync(tenant.Id, It.IsAny<CancellationToken>())).ReturnsAsync(parameters);
+        repository.Setup(value => value.GetEnabledPermissionCodesAsync(tenant.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([PermissionCodes.CashRegistersManage]);
         var useCase = new BusinessSettingsUseCase(repository.Object, new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
 
-        var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, true, "Propina voluntaria", 12), default);
+        var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, true, true, "Propina voluntaria", 12), default);
 
         Assert.True(result.IsSuccess);
         Assert.True(tenant.RequiresOpenCashRegister);
+        Assert.True(result.Value!.EnableCustomSales);
         Assert.Equal("12", parameters.Single(item => item.Key == SettingsDefaults.SuggestedTipPercentage).Value);
+    }
+
+    [Fact]
+    public async Task Business_UpdateWhenCashRegisterModuleNotEnabled_ForcesCashRuleToFalse()
+    {
+        var tenant = new Tenant { Id = Guid.NewGuid(), Name = "Savia", RequiresOpenCashRegister = true };
+        var parameters = SettingsDefaults.CreateBusinessParameters(tenant.Id, TestSupport.Now).ToArray();
+        var repository = new Mock<ISettingsRepository>();
+        repository.Setup(value => value.GetTenantForUpdateAsync(tenant.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tenant);
+        repository.Setup(value => value.GetParametersAsync(tenant.Id, It.IsAny<CancellationToken>())).ReturnsAsync(parameters);
+        repository.Setup(value => value.GetEnabledPermissionCodesAsync(tenant.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([PermissionCodes.TablesRead]);
+        var useCase = new BusinessSettingsUseCase(repository.Object, new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
+
+        var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, false, true, "Propina voluntaria", 10), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(tenant.RequiresOpenCashRegister);
+        Assert.False(result.Value!.RequiresOpenCashRegister);
+        Assert.False(result.Value!.EnableCustomSales);
     }
 
     [Fact]

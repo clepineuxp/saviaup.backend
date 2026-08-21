@@ -25,7 +25,8 @@ internal static class NavigationCatalog
             [
                 new("orders", 1),
                 new("reports", 2),
-                new("billing", 3)
+                new("billing", 3),
+                new("cash_registers", 4)
             ],
             []),
         new("inventory", 3,
@@ -38,7 +39,10 @@ internal static class NavigationCatalog
             []),
         new("configuration", 4,
             [new("settings", 1)],
-            [new("tables.manage", "tables", "tables.manage", 2)])
+            [
+                new("tables.manage", "tables", "tables.manage", 2),
+                new("cash-registers.manage", "cash_registers", "cash-registers.manage", 3)
+            ])
     ];
 
     public static readonly IReadOnlyDictionary<string, NavigationModuleDefinition> Modules = CreateModuleIndex();

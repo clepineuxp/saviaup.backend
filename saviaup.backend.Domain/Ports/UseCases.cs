@@ -257,6 +257,45 @@ public interface IUpdateTableOrderUseCase
     Task<Result<RestaurantTableDto>> ExecuteAsync(Guid tenantId, Guid tableId, UpdateTableOrderRequest request, CancellationToken cancellationToken);
 }
 
+public interface IListCashRegistersUseCase
+{
+    Task<Result<IReadOnlyCollection<CashRegisterDto>>> ExecuteAsync(
+        Guid tenantId,
+        bool includeInactive,
+        CancellationToken cancellationToken);
+}
+
+public interface ICreateCashRegisterUseCase
+{
+    Task<Result<CashRegisterDto>> ExecuteAsync(
+        Guid tenantId,
+        CreateCashRegisterRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IUpdateCashRegisterUseCase
+{
+    Task<Result<CashRegisterDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid cashRegisterId,
+        UpdateCashRegisterRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface ISetCashRegisterStatusUseCase
+{
+    Task<Result<CashRegisterDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid cashRegisterId,
+        SetCashRegisterStatusRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IDeleteCashRegisterUseCase
+{
+    Task<Result> ExecuteAsync(Guid tenantId, Guid cashRegisterId, CancellationToken cancellationToken);
+}
+
 public interface IPermissionService
 {
     Task<bool> IsAllowedAsync(Guid tenantId, Guid roleId, string permissionCode, CancellationToken cancellationToken);

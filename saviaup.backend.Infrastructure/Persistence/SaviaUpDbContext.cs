@@ -22,6 +22,7 @@ public sealed class SaviaUpDbContext(DbContextOptions<SaviaUpDbContext> options)
     public DbSet<Product> Products => Set<Product>();
     public DbSet<DiningArea> DiningAreas => Set<DiningArea>();
     public DbSet<RestaurantTable> RestaurantTables => Set<RestaurantTable>();
+    public DbSet<CashRegister> CashRegisters => Set<CashRegister>();
     public DbSet<CashRegisterShift> CashRegisterShifts => Set<CashRegisterShift>();
     public DbSet<OrganizationParameter> OrganizationParameters => Set<OrganizationParameter>();
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();

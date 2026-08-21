@@ -53,11 +53,11 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         var modulesJson = await modules.Content.ReadFromJsonAsync<JsonElement>();
         var sections = modulesJson.GetProperty("sections").EnumerateArray().ToArray();
         Assert.Equal(4, sections.Length);
-        Assert.Equal(9, sections.Sum(section => section.GetProperty("modules").GetArrayLength()));
+        Assert.Equal(10, sections.Sum(section => section.GetProperty("modules").GetArrayLength()));
         var options = sections.SelectMany(section => section.GetProperty("options").EnumerateArray()).ToArray();
-        var tableManagement = Assert.Single(options);
-        Assert.Equal("tables.manage", tableManagement.GetProperty("code").GetString());
-        Assert.Equal("tables", tableManagement.GetProperty("moduleCode").GetString());
+        Assert.Equal(2, options.Length);
+        Assert.Contains(options, option => option.GetProperty("code").GetString() == "tables.manage");
+        Assert.Contains(options, option => option.GetProperty("code").GetString() == "cash-registers.manage");
         Assert.Equal([1, 2, 3, 4], sections.Select(section => section.GetProperty("order").GetInt32()));
         Assert.False(sections[0].GetProperty("isGrouped").GetBoolean());
         Assert.True(sections[1].GetProperty("isGrouped").GetBoolean());
