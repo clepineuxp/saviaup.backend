@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SaviaUp.Backend.Core.Authentication;
+using SaviaUp.Backend.Core.CashRegisters;
 using SaviaUp.Backend.Core.Categories;
 using SaviaUp.Backend.Core.Inventory;
 using SaviaUp.Backend.Core.Navigation;
@@ -64,6 +65,11 @@ public static class CoreModule
         services.AddScoped<IGetTableOperationUseCase, GetTableOperationUseCase>();
         services.AddScoped<ISetTableOperationUseCase, SetTableOperationUseCase>();
         services.AddScoped<IUpdateTableOrderUseCase, UpdateTableOrderUseCase>();
+        services.AddScoped<IListCashRegistersUseCase, ListCashRegistersUseCase>();
+        services.AddScoped<ICreateCashRegisterUseCase, CreateCashRegisterUseCase>();
+        services.AddScoped<IUpdateCashRegisterUseCase, UpdateCashRegisterUseCase>();
+        services.AddScoped<ISetCashRegisterStatusUseCase, SetCashRegisterStatusUseCase>();
+        services.AddScoped<IDeleteCashRegisterUseCase, DeleteCashRegisterUseCase>();
         services.AddScoped<IOrganizationSettingsUseCase, OrganizationSettingsUseCase>();
         services.AddScoped<IBusinessSettingsUseCase, BusinessSettingsUseCase>();
         services.AddScoped<IPaymentMethodsSettingsUseCase, PaymentMethodsSettingsUseCase>();

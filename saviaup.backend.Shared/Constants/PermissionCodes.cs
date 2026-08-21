@@ -35,6 +35,9 @@ public static class PermissionCodes
     public const string SettingsUsersManage = "settings.users.manage";
     public const string SettingsRolesRead = "settings.roles.read";
     public const string SettingsRolesManage = "settings.roles.manage";
+    public const string CashRegistersRead = "cash-registers.read";
+    public const string CashRegistersOperate = "cash-registers.operate";
+    public const string CashRegistersManage = "cash-registers.manage";
 
     public static readonly IReadOnlyCollection<string> All =
     [
@@ -49,6 +52,7 @@ public static class PermissionCodes
         SettingsBusinessRead, SettingsBusinessManage,
         SettingsPaymentMethodsRead, SettingsPaymentMethodsManage,
         SettingsUsersRead, SettingsUsersManage,
-        SettingsRolesRead, SettingsRolesManage
+        SettingsRolesRead, SettingsRolesManage,
+        CashRegistersRead, CashRegistersOperate, CashRegistersManage
     ];
 }

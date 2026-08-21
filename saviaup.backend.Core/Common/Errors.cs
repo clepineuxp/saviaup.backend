@@ -45,4 +45,8 @@ internal static class Errors
     public static readonly Error OrganizationOwnerRequired = new(ErrorCodes.OrganizationOwnerRequired, LocalizationKeys.OrganizationOwnerRequired, ErrorType.Conflict);
     public static readonly Error OrganizationInvitationExists = new(ErrorCodes.OrganizationInvitationExists, LocalizationKeys.OrganizationInvitationExists, ErrorType.Conflict);
     public static readonly Error PermissionNotEnabled = new(ErrorCodes.PermissionNotEnabled, LocalizationKeys.PermissionNotEnabled, ErrorType.Validation);
+    public static readonly Error CashRegisterNotFound = new(ErrorCodes.CashRegisterNotFound, LocalizationKeys.CashRegisterNotFound, ErrorType.NotFound);
+    public static readonly Error CashRegisterNameAlreadyExists = new(ErrorCodes.CashRegisterNameAlreadyExists, LocalizationKeys.CashRegisterNameAlreadyExists, ErrorType.Conflict);
+    public static readonly Error CashRegisterSingleActiveExceeded = new(ErrorCodes.CashRegisterSingleActiveExceeded, LocalizationKeys.CashRegisterSingleActiveExceeded, ErrorType.Conflict);
+    public static readonly Error CashRegisterInUse = new(ErrorCodes.CashRegisterInUse, LocalizationKeys.CashRegisterInUse, ErrorType.Conflict);
 }

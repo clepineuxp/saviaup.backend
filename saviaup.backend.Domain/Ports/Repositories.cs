@@ -143,6 +143,17 @@ public interface IRestaurantTableRepository
     void Remove(RestaurantTable table);
 }
 
+public interface ICashRegisterRepository
+{
+    Task<IReadOnlyCollection<CashRegister>> GetForTenantAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);
+    Task<CashRegister?> GetByIdAsync(Guid tenantId, Guid id, CancellationToken cancellationToken);
+    Task<bool> NameExistsAsync(Guid tenantId, string normalizedName, Guid? excludedId, CancellationToken cancellationToken);
+    Task<bool> HasOtherActiveAsync(Guid tenantId, Guid? excludedId, CancellationToken cancellationToken);
+    Task AddAsync(CashRegister cashRegister, CancellationToken cancellationToken);
+    Task<bool> IsInUseAsync(Guid tenantId, Guid id, CancellationToken cancellationToken);
+    void Remove(CashRegister cashRegister);
+}
+
 public interface ICashRegisterShiftRepository
 {
     Task<bool> HasOpenShiftAsync(Guid tenantId, CancellationToken cancellationToken);

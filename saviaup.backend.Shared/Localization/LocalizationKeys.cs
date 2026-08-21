@@ -48,6 +48,10 @@ public static class LocalizationKeys
     public const string OrganizationOwnerRequired = "settings.users.ownerRequired";
     public const string OrganizationInvitationExists = "settings.users.invitationExists";
     public const string PermissionNotEnabled = "settings.roles.permissionNotEnabled";
+    public const string CashRegisterNotFound = "cashRegisters.notFound";
+    public const string CashRegisterNameAlreadyExists = "cashRegisters.nameAlreadyExists";
+    public const string CashRegisterSingleActiveExceeded = "cashRegisters.singleActiveExceeded";
+    public const string CashRegisterInUse = "cashRegisters.inUse";
     public const string Validation = "common.validation";
     public const string InternalError = "common.internalError";
 
