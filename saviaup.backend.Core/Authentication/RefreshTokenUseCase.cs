@@ -29,7 +29,7 @@ public sealed class RefreshTokenUseCase(
         if (existing.TenantId.HasValue)
         {
             membership = await tenantRepository.GetMembershipAsync(user.Id, existing.TenantId.Value, cancellationToken);
-            if (membership is null || !membership.IsActive || !membership.Tenant.IsActive || !membership.Role.IsActive || membership.RoleId != existing.RoleId)
+            if (membership is null || !membership.IsEnabledAt(now) || !membership.Tenant.IsActive || !membership.Role.IsActive || membership.RoleId != existing.RoleId)
                 return Result<TokenResponse>.Failure(Errors.RefreshInvalid);
         }
 

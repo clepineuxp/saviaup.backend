@@ -33,4 +33,16 @@ internal static class Errors
     public static readonly Error RestaurantTableAlreadyExists = new(ErrorCodes.RestaurantTableAlreadyExists, LocalizationKeys.RestaurantTableAlreadyExists, ErrorType.Conflict);
     public static readonly Error RestaurantTableOccupied = new(ErrorCodes.RestaurantTableOccupied, LocalizationKeys.RestaurantTableOccupied, ErrorType.Conflict);
     public static readonly Error CashRegisterClosed = new(ErrorCodes.CashRegisterClosed, LocalizationKeys.CashRegisterClosed, ErrorType.Business);
+    public static readonly Error OrganizationDocumentOwnerOnly = new(ErrorCodes.OrganizationDocumentOwnerOnly, LocalizationKeys.OrganizationDocumentOwnerOnly, ErrorType.Forbidden);
+    public static readonly Error OrganizationLogoInvalid = new(ErrorCodes.OrganizationLogoInvalid, LocalizationKeys.OrganizationLogoInvalid, ErrorType.Validation);
+    public static readonly Error PaymentMethodNotFound = new(ErrorCodes.PaymentMethodNotFound, LocalizationKeys.PaymentMethodNotFound, ErrorType.NotFound);
+    public static readonly Error PaymentMethodAlreadyExists = new(ErrorCodes.PaymentMethodAlreadyExists, LocalizationKeys.PaymentMethodAlreadyExists, ErrorType.Conflict);
+    public static readonly Error SettingsRoleNotFound = new(ErrorCodes.SettingsRoleNotFound, LocalizationKeys.SettingsRoleNotFound, ErrorType.NotFound);
+    public static readonly Error SettingsRoleAlreadyExists = new(ErrorCodes.SettingsRoleAlreadyExists, LocalizationKeys.SettingsRoleAlreadyExists, ErrorType.Conflict);
+    public static readonly Error SettingsRoleProtected = new(ErrorCodes.SettingsRoleProtected, LocalizationKeys.SettingsRoleProtected, ErrorType.Conflict);
+    public static readonly Error SettingsRoleInUse = new(ErrorCodes.SettingsRoleInUse, LocalizationKeys.SettingsRoleInUse, ErrorType.Conflict);
+    public static readonly Error OrganizationUserNotFound = new(ErrorCodes.OrganizationUserNotFound, LocalizationKeys.OrganizationUserNotFound, ErrorType.NotFound);
+    public static readonly Error OrganizationOwnerRequired = new(ErrorCodes.OrganizationOwnerRequired, LocalizationKeys.OrganizationOwnerRequired, ErrorType.Conflict);
+    public static readonly Error OrganizationInvitationExists = new(ErrorCodes.OrganizationInvitationExists, LocalizationKeys.OrganizationInvitationExists, ErrorType.Conflict);
+    public static readonly Error PermissionNotEnabled = new(ErrorCodes.PermissionNotEnabled, LocalizationKeys.PermissionNotEnabled, ErrorType.Validation);
 }

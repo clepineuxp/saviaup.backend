@@ -10,6 +10,7 @@ public sealed class PermissionRepository(SaviaUpDbContext context) : IPermission
             rolePermission => rolePermission.RoleId == roleId
                 && rolePermission.Role.TenantId == tenantId
                 && rolePermission.Role.IsActive
+                && rolePermission.Permission.TenantPermissions.Any(enabled => enabled.TenantId == tenantId)
                 && rolePermission.Permission.Code == permissionCode,
             cancellationToken);
 
@@ -17,7 +18,8 @@ public sealed class PermissionRepository(SaviaUpDbContext context) : IPermission
         => await context.RolePermissions.AsNoTracking()
             .Where(rolePermission => rolePermission.RoleId == roleId
                 && rolePermission.Role.TenantId == tenantId
-                && rolePermission.Role.IsActive)
+                && rolePermission.Role.IsActive
+                && rolePermission.Permission.TenantPermissions.Any(enabled => enabled.TenantId == tenantId))
             .OrderBy(rolePermission => rolePermission.Permission.Code)
             .Select(rolePermission => rolePermission.Permission.Code)
             .ToArrayAsync(cancellationToken);

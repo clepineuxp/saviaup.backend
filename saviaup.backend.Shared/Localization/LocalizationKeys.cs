@@ -12,6 +12,8 @@ public static class LocalizationKeys
     public const string PasswordResetSent = "auth.passwordResetSent";
     public const string PasswordResetSubject = "auth.passwordResetSubject";
     public const string PasswordResetBody = "auth.passwordResetBody";
+    public const string OrganizationInvitationSubject = "settings.users.invitationSubject";
+    public const string OrganizationInvitationBody = "settings.users.invitationBody";
     public const string TenantRequired = "tenant.required";
     public const string TenantAccessDenied = "tenant.accessDenied";
     public const string TenantNotFound = "tenant.notFound";
@@ -34,6 +36,18 @@ public static class LocalizationKeys
     public const string RestaurantTableAlreadyExists = "tables.alreadyExists";
     public const string RestaurantTableOccupied = "tables.occupied";
     public const string CashRegisterClosed = "tables.cashRegisterClosed";
+    public const string OrganizationDocumentOwnerOnly = "settings.organization.documentOwnerOnly";
+    public const string OrganizationLogoInvalid = "settings.organization.logoInvalid";
+    public const string PaymentMethodNotFound = "settings.payments.notFound";
+    public const string PaymentMethodAlreadyExists = "settings.payments.alreadyExists";
+    public const string SettingsRoleNotFound = "settings.roles.notFound";
+    public const string SettingsRoleAlreadyExists = "settings.roles.alreadyExists";
+    public const string SettingsRoleProtected = "settings.roles.protected";
+    public const string SettingsRoleInUse = "settings.roles.inUse";
+    public const string OrganizationUserNotFound = "settings.users.notFound";
+    public const string OrganizationOwnerRequired = "settings.users.ownerRequired";
+    public const string OrganizationInvitationExists = "settings.users.invitationExists";
+    public const string PermissionNotEnabled = "settings.roles.permissionNotEnabled";
     public const string Validation = "common.validation";
     public const string InternalError = "common.internalError";
 

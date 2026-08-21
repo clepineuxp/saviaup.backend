@@ -2,7 +2,7 @@
 
 ## Propósito
 
-Este repositorio contiene el backend inicial de **Savia Up**, una plataforma SaaS multi-tenant para restaurantes y gastrobares. La solución cubre identidad, autenticación, sesiones, recuperación de contraseña, tenants, roles, permisos, navegación, categorías, productos, inventario, ingredientes, movimientos, complementos, salas, mesas, operación en tiempo real, internacionalización, persistencia PostgreSQL, documentación HTTP, health checks y pruebas.
+Este repositorio contiene el backend inicial de **Savia Up**, una plataforma SaaS multi-tenant para restaurantes y gastrobares. La solución cubre identidad, autenticación, sesiones, recuperación de contraseña, organizaciones, roles, permisos, navegación, configuración organizacional y de negocio, medios de pago, invitaciones, categorías, productos, inventario, ingredientes, movimientos, complementos, salas, mesas, operación en tiempo real, internacionalización, persistencia PostgreSQL, documentación HTTP, health checks y pruebas.
 
 Lee este archivo completo antes de modificar el repositorio. Las decisiones descritas aquí son invariantes del proyecto, no sugerencias opcionales.
 
@@ -104,6 +104,10 @@ Entidades actuales:
 - `DiningArea`: sala tenant-aware con nombre normalizado único, orden único y estado activo.
 - `RestaurantTable`: mesa tenant-aware asignada a una sala, con capacidad, coordenadas 2D, forma, flags de domicilio/caja, estado y referencia opcional a la orden activa.
 - `CashRegisterShift`: hook persistente mínimo para conocer si existe un turno de caja abierto cuando el tenant lo exige.
+- `OrganizationParameter`: parámetro extensible y tipado por organización, identificado por una clave estable.
+- `PaymentMethod`: medio de pago tenant-aware con nombre único, estado y participación en apertura de caja.
+- `TenantPermission`: catálogo de permisos globales habilitados explícitamente para una organización.
+- `TenantInvitation`: invitación por correo a una organización y rol, pendiente hasta que se registre la cuenta.
 - `MeasurementUnit`: unidad perteneciente a un tenant, con código/nombre normalizados, estado y timestamps.
 - `Ingredient`: ingrediente tenant-aware con categoría y unidad obligatorias, stock mínimo/actual, estado y timestamps.
 - `InventoryMovement`: registro inmutable de entrada/salida, motivo, cantidad, stock anterior/posterior, usuario creador y fecha.
@@ -160,6 +164,7 @@ Casos de uso actuales:
 - `ListInventoryMovementsUseCase`, `CreateInventoryMovementUseCase`.
 - `ListMeasurementUnitsUseCase`, `CreateMeasurementUnitUseCase`, `UpdateMeasurementUnitUseCase`, `SetMeasurementUnitStatusUseCase`, `DeleteMeasurementUnitUseCase`.
 - `PermissionService`.
+- `OrganizationSettingsUseCase`, `BusinessSettingsUseCase`, `PaymentMethodsSettingsUseCase` y `AccessSettingsUseCase`.
 
 `SessionIssuer` centraliza la creación coordinada de access token, refresh token y DTO de sesión. `PasswordPolicy` centraliza todas las reglas de contraseña.
 
@@ -176,7 +181,7 @@ Reglas de Core:
 
 Persistencia:
 
-- `SaviaUpDbContext` contiene los diecisiete `DbSet` actuales.
+- `SaviaUpDbContext` contiene los veintiún `DbSet` actuales.
 - Cada entidad tiene `IEntityTypeConfiguration<T>` independiente.
 - Los repositorios usan consultas específicas, `AsNoTracking` para lectura y tracking solo cuando hay escritura.
 - `ModuleRepository` devuelve un módulo activo cuando el rol activo posee al menos un permiso de ese módulo dentro del tenant solicitado.
@@ -216,6 +221,7 @@ Restricciones importantes:
 `AddTenantProducts` crea `products`, sus FKs restrictivas hacia tenant/categoría, restricciones de tipo/precio/tiempo e índices tenant-aware para los filtros del listado.
 `AddProductTypeDefault` fija `NORMAL` como valor por defecto de `products.Type` también a nivel PostgreSQL.
 `AddTableManagement` crea salas, mesas y turnos de caja, agrega `tables.operate`, lo asigna a propietarios existentes y añade `RequiresOpenCashRegister` al tenant.
+`AddOrganizationSettings` amplía la organización, crea parámetros, medios de pago, invitaciones y permisos habilitados por organización; hace backfill de parámetros/permisos, conserva los administradores con `settings.manage` y no crea medios de pago en organizaciones existentes.
 
 Adapters de seguridad:
 
@@ -290,6 +296,16 @@ DELETE /api/inventory/complements/units/{unitId}
 
 GET  /api/i18n/{language}
 GET  /health
+
+GET/PUT/POST/DELETE /api/settings/organization[/logo]
+GET/PUT             /api/settings/business
+GET/POST            /api/settings/payment-methods
+PUT/PATCH/DELETE    /api/settings/payment-methods/{paymentMethodId}[/status]
+GET                 /api/settings/access/permissions
+GET/POST            /api/settings/access/roles
+PUT/PATCH/DELETE    /api/settings/access/roles/{roleId}[/status]
+GET/POST            /api/settings/access/users
+PATCH/DELETE        /api/settings/access/users/{entryId}
 ```
 
 `/api/i18n/{language}` es público. Los endpoints de auth sensibles usan rate limiting. Tenants y `/users/me` requieren autenticación y sesión activa, pero no exigen tenant seleccionado. `/users/me/info` y `/modules/available` exigen tenant y rol activos mediante `[RequireTenant]`.
@@ -457,6 +473,20 @@ El catálogo falla explícitamente si la base de datos devuelve un módulo sin c
 - Las unidades son el primer tipo de complemento; las rutas se anidan bajo `/api/inventory/complements/units` para poder añadir otros complementos sin romper el contrato.
 - Cada tenant nuevo recibe `gr`/`gramos`, `kg`/`kilogramos` y `und`/`unidades`; la migración hace backfill a tenants existentes. Código y nombre son únicos, normalizados y case-insensitive dentro de cada tenant.
 - No se elimina físicamente un ingrediente con movimientos, una unidad usada o una categoría usada. Se devuelve conflicto estable y se ofrece desactivación reversible.
+
+## Invariantes de configuración
+
+- La interfaz y los copies públicos usan siempre **organización**; `Tenant` permanece únicamente como nombre técnico interno.
+- La información, parámetros, medios de pago, roles, membresías e invitaciones se filtran por el `TenantId` firmado. Ningún request puede escoger otra organización.
+- Permisos granulares: `settings.organization.read/manage`, `settings.business.read/manage`, `settings.payment-methods.read/manage`, `settings.users.read/manage` y `settings.roles.read/manage`. `settings.manage` se conserva solo por compatibilidad y no se ofrece al crear roles nuevos.
+- `tenant_permissions` define el límite máximo de capacidades de una organización. La autorización, navegación y asignación de roles exigen que el permiso esté habilitado allí.
+- Solo `TENANT_OWNER` puede modificar el documento de la organización. El rol propietario del sistema no se edita, desactiva ni elimina y siempre debe existir al menos una membresía propietaria activa.
+- El logo se persiste como `bytea`, admite únicamente PNG/JPEG/WebP, máximo 2 MB, y se entrega por un endpoint autenticado. No registrar contenido ni nombres sensibles.
+- Los parámetros usan claves estables y valor tipado para crecer sin agregar columnas. Las seis claves iniciales viven en `SettingsDefaults`; `RequiresOpenCashRegister` se sincroniza también con `Tenant` por compatibilidad operativa.
+- Cada organización nueva recibe `Efectivo`, `Tarjeta/Datafono` y `Transferencia`; la migración no hace backfill de medios de pago en organizaciones existentes.
+- Las invitaciones se normalizan por correo y son únicas por organización. Si la cuenta ya existe se crea la membresía inmediatamente; si no existe queda `PENDING` y el registro posterior crea la membresía y marca la invitación aceptada. `IEmailSender` notifica un enlace de login/registro sin registrar la URL completa en modo Development.
+- Una membresía puede deshabilitarse indefinidamente (`IsActive=false`, `DisabledUntil=null`) o hasta una fecha. Al vencer la fecha recupera acceso sin intervención y todos los flujos de autenticación/autorización aplican la misma regla.
+- Los roles personalizados solo reciben permisos habilitados para la organización. Un rol asignado no puede eliminarse; debe desactivarse o reasignar primero a sus usuarios.
 
 ## Invariantes de salas y mesas
 

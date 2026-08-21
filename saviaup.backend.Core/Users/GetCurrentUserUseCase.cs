@@ -8,7 +8,8 @@ namespace SaviaUp.Backend.Core.Users;
 public sealed class GetCurrentUserUseCase(
     IUserRepository userRepository,
     ITenantRepository tenantRepository,
-    IPermissionRepository permissionRepository) : IGetCurrentUserUseCase
+    IPermissionRepository permissionRepository,
+    IDateTimeProvider clock) : IGetCurrentUserUseCase
 {
     public async Task<Result<UserDto>> ExecuteAsync(
         Guid userId,
@@ -25,7 +26,7 @@ public sealed class GetCurrentUserUseCase(
         if (tenantId.HasValue && roleId.HasValue)
         {
             var membership = await tenantRepository.GetMembershipAsync(userId, tenantId.Value, cancellationToken);
-            if (membership is not null && membership.RoleId == roleId && membership.IsActive && membership.Tenant.IsActive && membership.Role.IsActive)
+            if (membership is not null && membership.RoleId == roleId && membership.IsEnabledAt(clock.UtcNow) && membership.Tenant.IsActive && membership.Role.IsActive)
             {
                 activeTenant = new ActiveTenantDto(membership.TenantId, membership.Tenant.Name);
                 role = new RoleDto(membership.RoleId, membership.Role.Code, membership.Role.Name);

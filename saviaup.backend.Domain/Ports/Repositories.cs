@@ -166,6 +166,38 @@ public interface IPasswordResetTokenRepository
     Task<bool> TryMarkUsedAsync(Guid tokenId, DateTimeOffset usedAt, CancellationToken cancellationToken);
 }
 
+public interface ISettingsRepository
+{
+    Task<Tenant?> GetTenantForUpdateAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<OrganizationParameter>> GetParametersAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task AddParametersAsync(IEnumerable<OrganizationParameter> parameters, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<PaymentMethod>> GetPaymentMethodsAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);
+    Task<PaymentMethod?> GetPaymentMethodAsync(Guid tenantId, Guid paymentMethodId, CancellationToken cancellationToken);
+    Task<bool> PaymentMethodNameExistsAsync(Guid tenantId, string normalizedName, Guid? excludedId, CancellationToken cancellationToken);
+    Task AddPaymentMethodAsync(PaymentMethod paymentMethod, CancellationToken cancellationToken);
+    void RemovePaymentMethod(PaymentMethod paymentMethod);
+    Task EnableAllPermissionsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<EnabledModulePermissionsDto>> GetEnabledPermissionCatalogAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<string>> GetEnabledPermissionCodesAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<Role>> GetRolesAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);
+    Task<Role?> GetRoleForUpdateAsync(Guid tenantId, Guid roleId, CancellationToken cancellationToken);
+    Task<bool> RoleCodeOrNameExistsAsync(Guid tenantId, string code, string name, Guid? excludedId, CancellationToken cancellationToken);
+    Task AddRoleAsync(Role role, CancellationToken cancellationToken);
+    Task ReplaceRolePermissionsAsync(Guid roleId, IReadOnlyCollection<string> permissionCodes, CancellationToken cancellationToken);
+    Task<bool> RoleIsInUseAsync(Guid tenantId, Guid roleId, CancellationToken cancellationToken);
+    void RemoveRole(Role role);
+    Task<IReadOnlyCollection<TenantMembership>> GetMembershipsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<TenantMembership?> GetMembershipForUpdateAsync(Guid tenantId, Guid membershipId, CancellationToken cancellationToken);
+    Task<bool> HasAnotherActiveOwnerAsync(Guid tenantId, Guid excludedMembershipId, DateTimeOffset now, CancellationToken cancellationToken);
+    void RemoveMembership(TenantMembership membership);
+    Task<IReadOnlyCollection<TenantInvitation>> GetInvitationsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<TenantInvitation?> GetInvitationAsync(Guid tenantId, Guid invitationId, CancellationToken cancellationToken);
+    Task<TenantInvitation?> GetInvitationByEmailAsync(Guid tenantId, string normalizedEmail, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<TenantInvitation>> GetPendingInvitationsAsync(string normalizedEmail, CancellationToken cancellationToken);
+    Task AddInvitationAsync(TenantInvitation invitation, CancellationToken cancellationToken);
+    void RemoveInvitation(TenantInvitation invitation);
+}
+
 public interface IUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

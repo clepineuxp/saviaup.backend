@@ -23,7 +23,7 @@ public sealed class LoginUseCase(
         var membership = user.LastTenantId.HasValue
             ? await tenantRepository.GetMembershipAsync(user.Id, user.LastTenantId.Value, cancellationToken)
             : null;
-        if (membership is not null && (!membership.IsActive || !membership.Tenant.IsActive || !membership.Role.IsActive))
+        if (membership is not null && (!membership.IsEnabledAt(dateTimeProvider.UtcNow) || !membership.Tenant.IsActive || !membership.Role.IsActive))
             membership = null;
         if (membership is null && user.LastTenantId.HasValue)
         {

@@ -9,7 +9,8 @@ namespace SaviaUp.Backend.Core.Navigation;
 public sealed class GetAvailableModulesUseCase(
     IModuleRepository moduleRepository,
     ITenantRepository tenantRepository,
-    IPermissionRepository permissionRepository) : IGetAvailableModulesUseCase
+    IPermissionRepository permissionRepository,
+    IDateTimeProvider clock) : IGetAvailableModulesUseCase
 {
     public async Task<Result<AvailableModulesResponse>> ExecuteAsync(
         Guid userId,
@@ -20,7 +21,7 @@ public sealed class GetAvailableModulesUseCase(
     {
         var membership = await tenantRepository.GetMembershipAsync(userId, tenantId, cancellationToken);
         if (membership is null
-            || !membership.IsActive
+            || !membership.IsEnabledAt(clock.UtcNow)
             || !membership.Tenant.IsActive
             || !membership.Role.IsActive
             || membership.RoleId != roleId)

@@ -1,5 +1,6 @@
 using SaviaUp.Backend.Core.Authentication;
 using SaviaUp.Backend.Core.Common;
+using SaviaUp.Backend.Core.Settings;
 using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
@@ -12,6 +13,7 @@ public sealed class CreateTenantUseCase(
     ITenantRepository tenantRepository,
     IRoleRepository roleRepository,
     IMeasurementUnitRepository measurementUnitRepository,
+    ISettingsRepository settingsRepository,
     IRefreshTokenRepository refreshTokenRepository,
     SessionIssuer sessionIssuer,
     IDateTimeProvider dateTimeProvider,
@@ -66,6 +68,10 @@ public sealed class CreateTenantUseCase(
             await roleRepository.AddAsync(role, transactionToken);
             await tenantRepository.AddMembershipAsync(membership, transactionToken);
             await roleRepository.AssignAllPermissionsAsync(role.Id, transactionToken);
+            await settingsRepository.EnableAllPermissionsAsync(tenant.Id, transactionToken);
+            await settingsRepository.AddParametersAsync(SettingsDefaults.CreateBusinessParameters(tenant.Id, now), transactionToken);
+            foreach (var paymentMethod in SettingsDefaults.CreatePaymentMethods(tenant.Id, now))
+                await settingsRepository.AddPaymentMethodAsync(paymentMethod, transactionToken);
             await measurementUnitRepository.AddDefaultsAsync(tenant.Id, now, transactionToken);
             user.LastTenantId = tenant.Id;
             user.UpdatedAt = now;

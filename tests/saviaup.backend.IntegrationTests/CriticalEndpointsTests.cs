@@ -88,6 +88,74 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         Assert.Contains("inventory.movements.manage", currentPermissions);
         Assert.Contains("inventory.complements.manage", currentPermissions);
         Assert.Contains("tables.operate", currentPermissions);
+        Assert.Contains("settings.organization.manage", currentPermissions);
+        Assert.Contains("settings.roles.manage", currentPermissions);
+
+        var organization = await client.GetAsync("/api/settings/organization");
+        Assert.Equal(HttpStatusCode.OK, organization.StatusCode);
+        Assert.True((await organization.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("canEditDocument").GetBoolean());
+        var updateOrganization = await client.PutAsJsonAsync("/api/settings/organization", new
+        {
+            name = "Secret Garden Bogotá",
+            responsibleName = "Ana Prueba",
+            document = "900123456",
+            contactName = "Administración",
+            email = "contacto@secretgarden.test",
+            address = "Calle 1 # 2-3",
+            country = "Colombia",
+            state = "Bogotá D.C.",
+            city = "Bogotá",
+            phone = "+57 300 000 0000",
+            website = "https://secretgarden.test"
+        });
+        Assert.Equal(HttpStatusCode.OK, updateOrganization.StatusCode);
+        Assert.Equal("Secret Garden Bogotá", (await updateOrganization.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("name").GetString());
+
+        var business = await client.PutAsJsonAsync("/api/settings/business", new
+        {
+            usesTables = true,
+            deliveryEnabled = true,
+            requiresOpenCashRegister = false,
+            showVoluntaryTip = true,
+            tipMessage = "Servicio Voluntario",
+            suggestedTipPercentage = 12
+        });
+        Assert.Equal(HttpStatusCode.OK, business.StatusCode);
+        Assert.Equal(12, (await business.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("suggestedTipPercentage").GetInt32());
+
+        var defaultPayments = await client.GetAsync("/api/settings/payment-methods?includeInactive=true");
+        Assert.Equal(HttpStatusCode.OK, defaultPayments.StatusCode);
+        Assert.Equal(3, (await defaultPayments.Content.ReadFromJsonAsync<JsonElement>()).GetArrayLength());
+        var newPayment = await client.PostAsJsonAsync("/api/settings/payment-methods", new { name = "Bono", isIncludedInCashOpening = false });
+        Assert.Equal(HttpStatusCode.OK, newPayment.StatusCode);
+
+        var newRole = await client.PostAsJsonAsync("/api/settings/access/roles", new
+        {
+            name = "Auditor",
+            description = "Consulta configuración",
+            permissions = new[] { "settings.organization.read" }
+        });
+        Assert.Equal(HttpStatusCode.OK, newRole.StatusCode);
+        var auditorRoleId = (await newRole.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var invitedEmail = $"invited-{Guid.NewGuid():N}@saviaup.test";
+        var invitation = await client.PostAsJsonAsync("/api/settings/access/users", new { email = invitedEmail, roleId = auditorRoleId });
+        Assert.Equal(HttpStatusCode.OK, invitation.StatusCode);
+        Assert.Equal("PENDING", (await invitation.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
+        using (var invitedClient = factory.CreateClient())
+        {
+            var invitedRegistration = await invitedClient.PostAsJsonAsync("/api/auth/register", new
+            {
+                firstName = "Usuario",
+                lastName = "Invitado",
+                email = invitedEmail,
+                password
+            });
+            Assert.Equal(HttpStatusCode.OK, invitedRegistration.StatusCode);
+        }
+        var organizationUsers = await client.GetAsync("/api/settings/access/users");
+        Assert.Equal(HttpStatusCode.OK, organizationUsers.StatusCode);
+        Assert.Contains((await organizationUsers.Content.ReadFromJsonAsync<JsonElement>()).EnumerateArray(),
+            item => item.GetProperty("email").GetString() == invitedEmail && item.GetProperty("status").GetString() == "ACTIVE");
 
         var createCategory = await client.PostAsJsonAsync("/api/categories", new
         {

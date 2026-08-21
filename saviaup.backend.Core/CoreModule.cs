@@ -5,6 +5,7 @@ using SaviaUp.Backend.Core.Inventory;
 using SaviaUp.Backend.Core.Navigation;
 using SaviaUp.Backend.Core.Products;
 using SaviaUp.Backend.Core.Security;
+using SaviaUp.Backend.Core.Settings;
 using SaviaUp.Backend.Core.Tenants;
 using SaviaUp.Backend.Core.Tables;
 using SaviaUp.Backend.Core.Users;
@@ -63,6 +64,10 @@ public static class CoreModule
         services.AddScoped<IGetTableOperationUseCase, GetTableOperationUseCase>();
         services.AddScoped<ISetTableOperationUseCase, SetTableOperationUseCase>();
         services.AddScoped<IUpdateTableOrderUseCase, UpdateTableOrderUseCase>();
+        services.AddScoped<IOrganizationSettingsUseCase, OrganizationSettingsUseCase>();
+        services.AddScoped<IBusinessSettingsUseCase, BusinessSettingsUseCase>();
+        services.AddScoped<IPaymentMethodsSettingsUseCase, PaymentMethodsSettingsUseCase>();
+        services.AddScoped<IAccessSettingsUseCase, AccessSettingsUseCase>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<SessionIssuer>();
         services.AddSingleton<PasswordPolicy>();
