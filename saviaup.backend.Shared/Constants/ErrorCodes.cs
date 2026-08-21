@@ -24,6 +24,13 @@ public static class ErrorCodes
     public const string InventoryMovementInvalid = "INVENTORY_MOVEMENT_INVALID";
     public const string InventoryInsufficientStock = "INVENTORY_INSUFFICIENT_STOCK";
     public const string ProductNotFound = "PRODUCT_NOT_FOUND";
+    public const string DiningAreaNotFound = "DINING_AREA_NOT_FOUND";
+    public const string DiningAreaAlreadyExists = "DINING_AREA_ALREADY_EXISTS";
+    public const string DiningAreaInUse = "DINING_AREA_IN_USE";
+    public const string RestaurantTableNotFound = "RESTAURANT_TABLE_NOT_FOUND";
+    public const string RestaurantTableAlreadyExists = "RESTAURANT_TABLE_ALREADY_EXISTS";
+    public const string RestaurantTableOccupied = "RESTAURANT_TABLE_OCCUPIED";
+    public const string CashRegisterClosed = "CASH_REGISTER_CLOSED";
     public const string Validation = "VALIDATION_ERROR";
     public const string Internal = "INTERNAL_ERROR";
 }

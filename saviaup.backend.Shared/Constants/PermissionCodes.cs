@@ -7,6 +7,7 @@ public static class PermissionCodes
     public const string OrdersCancel = "orders.cancel";
     public const string TablesRead = "tables.read";
     public const string TablesManage = "tables.manage";
+    public const string TablesOperate = "tables.operate";
     public const string InventoryRead = "inventory.read";
     public const string InventoryManage = "inventory.manage";
     public const string InventoryStockRead = "inventory.stock.read";
@@ -27,7 +28,7 @@ public static class PermissionCodes
 
     public static readonly IReadOnlyCollection<string> All =
     [
-        OrdersRead, OrdersCreate, OrdersCancel, TablesRead, TablesManage,
+        OrdersRead, OrdersCreate, OrdersCancel, TablesRead, TablesManage, TablesOperate,
         InventoryRead, InventoryManage, InventoryStockRead,
         InventoryIngredientsRead, InventoryIngredientsManage,
         InventoryMovementsRead, InventoryMovementsManage,

@@ -54,7 +54,10 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         var sections = modulesJson.GetProperty("sections").EnumerateArray().ToArray();
         Assert.Equal(4, sections.Length);
         Assert.Equal(9, sections.Sum(section => section.GetProperty("modules").GetArrayLength()));
-        Assert.All(sections, section => Assert.Empty(section.GetProperty("options").EnumerateArray()));
+        var options = sections.SelectMany(section => section.GetProperty("options").EnumerateArray()).ToArray();
+        var tableManagement = Assert.Single(options);
+        Assert.Equal("tables.manage", tableManagement.GetProperty("code").GetString());
+        Assert.Equal("tables", tableManagement.GetProperty("moduleCode").GetString());
         Assert.Equal([1, 2, 3, 4], sections.Select(section => section.GetProperty("order").GetInt32()));
         Assert.False(sections[0].GetProperty("isGrouped").GetBoolean());
         Assert.True(sections[1].GetProperty("isGrouped").GetBoolean());
@@ -84,6 +87,7 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         Assert.Contains("inventory.ingredients.manage", currentPermissions);
         Assert.Contains("inventory.movements.manage", currentPermissions);
         Assert.Contains("inventory.complements.manage", currentPermissions);
+        Assert.Contains("tables.operate", currentPermissions);
 
         var createCategory = await client.PostAsJsonAsync("/api/categories", new
         {
@@ -332,6 +336,71 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         var deletedProduct = await client.PatchAsJsonAsync(
             $"/api/products/{productId}/status", new { isActive = true });
         Assert.Equal(HttpStatusCode.NotFound, deletedProduct.StatusCode);
+
+        var createArea = await client.PostAsJsonAsync("/api/table-areas", new
+        {
+            name = "  Salón   principal ",
+            order = 1,
+            isActive = true
+        });
+        Assert.Equal(HttpStatusCode.OK, createArea.StatusCode);
+        var areaJson = await createArea.Content.ReadFromJsonAsync<JsonElement>();
+        var areaId = areaJson.GetProperty("id").GetGuid();
+        Assert.Equal("Salón principal", areaJson.GetProperty("name").GetString());
+
+        var createTable = await client.PostAsJsonAsync("/api/tables", new
+        {
+            diningAreaId = areaId,
+            name = "Mesa 01",
+            capacity = 4,
+            positionX = 120,
+            positionY = 80,
+            shape = "RECTANGLE_HORIZONTAL",
+            isDelivery = false,
+            isCashRegister = false,
+            status = "AVAILABLE"
+        });
+        Assert.Equal(HttpStatusCode.OK, createTable.StatusCode);
+        var tableJson = await createTable.Content.ReadFromJsonAsync<JsonElement>();
+        var tableId = tableJson.GetProperty("id").GetGuid();
+        Assert.Equal("RECTANGLE_HORIZONTAL", tableJson.GetProperty("shape").GetString());
+
+        var initialTables = await client.GetAsync("/api/tables/operation");
+        Assert.Equal(HttpStatusCode.OK, initialTables.StatusCode);
+        var initialTablesJson = await initialTables.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, initialTablesJson.GetProperty("metrics").GetProperty("available").GetInt32());
+        Assert.Equal(
+            "RECTANGLE_HORIZONTAL",
+            initialTablesJson.GetProperty("areas")[0].GetProperty("tables")[0].GetProperty("shape").GetString());
+        Assert.False(initialTablesJson.GetProperty("cashRegister").GetProperty("isInteractionBlocked").GetBoolean());
+
+        var occupyTable = await client.PatchAsJsonAsync(
+            $"/api/tables/{tableId}/operation",
+            new { status = "OCCUPIED", activeOrderTotal = 18500 });
+        Assert.Equal(HttpStatusCode.OK, occupyTable.StatusCode);
+        var occupiedTableJson = await occupyTable.Content.ReadFromJsonAsync<JsonElement>();
+        var activeOrderId = occupiedTableJson.GetProperty("activeOrderId").GetGuid();
+        Assert.Equal("OCCUPIED", occupiedTableJson.GetProperty("status").GetString());
+
+        var updateOrder = await client.PatchAsJsonAsync(
+            $"/api/tables/{tableId}/order",
+            new { activeOrderId, total = 42000 });
+        Assert.Equal(HttpStatusCode.OK, updateOrder.StatusCode);
+        Assert.Equal(42000m, (await updateOrder.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("activeOrderTotal").GetDecimal());
+
+        var closeTable = await client.PatchAsJsonAsync(
+            $"/api/tables/{tableId}/operation",
+            new { status = "AVAILABLE" });
+        Assert.Equal(HttpStatusCode.OK, closeTable.StatusCode);
+        var closedTableJson = await closeTable.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(JsonValueKind.Null, closedTableJson.GetProperty("activeOrderId").ValueKind);
+        Assert.Equal(0m, closedTableJson.GetProperty("activeOrderTotal").GetDecimal());
+
+        var deleteTable = await client.DeleteAsync($"/api/tables/{tableId}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteTable.StatusCode);
+        var deleteArea = await client.DeleteAsync($"/api/table-areas/{areaId}");
+        Assert.Equal(HttpStatusCode.NoContent, deleteArea.StatusCode);
 
         var list = await client.GetAsync("/api/tenants");
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);

@@ -197,6 +197,66 @@ public interface IDeleteProductUseCase
     Task<Result> ExecuteAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
 }
 
+public interface IListDiningAreasUseCase
+{
+    Task<Result<IReadOnlyCollection<DiningAreaDto>>> ExecuteAsync(Guid tenantId, CancellationToken cancellationToken);
+}
+
+public interface ICreateDiningAreaUseCase
+{
+    Task<Result<DiningAreaDto>> ExecuteAsync(Guid tenantId, CreateDiningAreaRequest request, CancellationToken cancellationToken);
+}
+
+public interface IUpdateDiningAreaUseCase
+{
+    Task<Result<DiningAreaDto>> ExecuteAsync(Guid tenantId, Guid areaId, UpdateDiningAreaRequest request, CancellationToken cancellationToken);
+}
+
+public interface IReorderDiningAreasUseCase
+{
+    Task<Result<IReadOnlyCollection<DiningAreaDto>>> ExecuteAsync(Guid tenantId, ReorderDiningAreasRequest request, CancellationToken cancellationToken);
+}
+
+public interface IDeleteDiningAreaUseCase
+{
+    Task<Result> ExecuteAsync(Guid tenantId, Guid areaId, CancellationToken cancellationToken);
+}
+
+public interface IListRestaurantTablesUseCase
+{
+    Task<Result<IReadOnlyCollection<RestaurantTableDto>>> ExecuteAsync(Guid tenantId, Guid? areaId, CancellationToken cancellationToken);
+}
+
+public interface ICreateRestaurantTableUseCase
+{
+    Task<Result<RestaurantTableDto>> ExecuteAsync(Guid tenantId, CreateRestaurantTableRequest request, CancellationToken cancellationToken);
+}
+
+public interface IUpdateRestaurantTableUseCase
+{
+    Task<Result<RestaurantTableDto>> ExecuteAsync(Guid tenantId, Guid tableId, UpdateRestaurantTableRequest request, CancellationToken cancellationToken);
+}
+
+public interface IDeleteRestaurantTableUseCase
+{
+    Task<Result> ExecuteAsync(Guid tenantId, Guid tableId, CancellationToken cancellationToken);
+}
+
+public interface IGetTableOperationUseCase
+{
+    Task<Result<TableOperationSnapshotDto>> ExecuteAsync(Guid tenantId, CancellationToken cancellationToken);
+}
+
+public interface ISetTableOperationUseCase
+{
+    Task<Result<RestaurantTableDto>> ExecuteAsync(Guid tenantId, Guid tableId, SetTableOperationRequest request, CancellationToken cancellationToken);
+}
+
+public interface IUpdateTableOrderUseCase
+{
+    Task<Result<RestaurantTableDto>> ExecuteAsync(Guid tenantId, Guid tableId, UpdateTableOrderRequest request, CancellationToken cancellationToken);
+}
+
 public interface IPermissionService
 {
     Task<bool> IsAllowedAsync(Guid tenantId, Guid roleId, string permissionCode, CancellationToken cancellationToken);

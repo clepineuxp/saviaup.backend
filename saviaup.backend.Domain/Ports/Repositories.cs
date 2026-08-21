@@ -120,6 +120,34 @@ public interface IProductRepository
     void Remove(Product product);
 }
 
+public interface IDiningAreaRepository
+{
+    Task<IReadOnlyCollection<DiningArea>> GetForTenantAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<DiningArea>> GetForUpdateAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<DiningArea?> GetByIdAsync(Guid tenantId, Guid areaId, CancellationToken cancellationToken);
+    Task<bool> NameExistsAsync(Guid tenantId, string normalizedName, Guid? excludedAreaId, CancellationToken cancellationToken);
+    Task<bool> OrderExistsAsync(Guid tenantId, int order, Guid? excludedAreaId, CancellationToken cancellationToken);
+    Task<int> GetNextOrderAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task AddAsync(DiningArea area, CancellationToken cancellationToken);
+    Task<bool> IsInUseAsync(Guid tenantId, Guid areaId, CancellationToken cancellationToken);
+    void Remove(DiningArea area);
+}
+
+public interface IRestaurantTableRepository
+{
+    Task<IReadOnlyCollection<RestaurantTable>> GetForTenantAsync(Guid tenantId, Guid? areaId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<DiningArea>> GetOperationAreasAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<RestaurantTable?> GetByIdAsync(Guid tenantId, Guid tableId, CancellationToken cancellationToken);
+    Task<bool> NameExistsAsync(Guid tenantId, Guid areaId, string normalizedName, Guid? excludedTableId, CancellationToken cancellationToken);
+    Task AddAsync(RestaurantTable table, CancellationToken cancellationToken);
+    void Remove(RestaurantTable table);
+}
+
+public interface ICashRegisterShiftRepository
+{
+    Task<bool> HasOpenShiftAsync(Guid tenantId, CancellationToken cancellationToken);
+}
+
 public interface IRefreshTokenRepository
 {
     Task<RefreshToken?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken);

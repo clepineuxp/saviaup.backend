@@ -26,4 +26,11 @@ internal static class Errors
     public static readonly Error InventoryMovementInvalid = new(ErrorCodes.InventoryMovementInvalid, LocalizationKeys.InventoryMovementInvalid, ErrorType.Validation);
     public static readonly Error InventoryInsufficientStock = new(ErrorCodes.InventoryInsufficientStock, LocalizationKeys.InventoryInsufficientStock, ErrorType.Business);
     public static readonly Error ProductNotFound = new(ErrorCodes.ProductNotFound, LocalizationKeys.ProductNotFound, ErrorType.NotFound);
+    public static readonly Error DiningAreaNotFound = new(ErrorCodes.DiningAreaNotFound, LocalizationKeys.DiningAreaNotFound, ErrorType.NotFound);
+    public static readonly Error DiningAreaAlreadyExists = new(ErrorCodes.DiningAreaAlreadyExists, LocalizationKeys.DiningAreaAlreadyExists, ErrorType.Conflict);
+    public static readonly Error DiningAreaInUse = new(ErrorCodes.DiningAreaInUse, LocalizationKeys.DiningAreaInUse, ErrorType.Conflict);
+    public static readonly Error RestaurantTableNotFound = new(ErrorCodes.RestaurantTableNotFound, LocalizationKeys.RestaurantTableNotFound, ErrorType.NotFound);
+    public static readonly Error RestaurantTableAlreadyExists = new(ErrorCodes.RestaurantTableAlreadyExists, LocalizationKeys.RestaurantTableAlreadyExists, ErrorType.Conflict);
+    public static readonly Error RestaurantTableOccupied = new(ErrorCodes.RestaurantTableOccupied, LocalizationKeys.RestaurantTableOccupied, ErrorType.Conflict);
+    public static readonly Error CashRegisterClosed = new(ErrorCodes.CashRegisterClosed, LocalizationKeys.CashRegisterClosed, ErrorType.Business);
 }

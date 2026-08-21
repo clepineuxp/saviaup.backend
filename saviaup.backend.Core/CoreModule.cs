@@ -6,6 +6,7 @@ using SaviaUp.Backend.Core.Navigation;
 using SaviaUp.Backend.Core.Products;
 using SaviaUp.Backend.Core.Security;
 using SaviaUp.Backend.Core.Tenants;
+using SaviaUp.Backend.Core.Tables;
 using SaviaUp.Backend.Core.Users;
 using SaviaUp.Backend.Domain.Ports;
 
@@ -50,6 +51,18 @@ public static class CoreModule
         services.AddScoped<IUpdateProductUseCase, UpdateProductUseCase>();
         services.AddScoped<ISetProductStatusUseCase, SetProductStatusUseCase>();
         services.AddScoped<IDeleteProductUseCase, DeleteProductUseCase>();
+        services.AddScoped<IListDiningAreasUseCase, ListDiningAreasUseCase>();
+        services.AddScoped<ICreateDiningAreaUseCase, CreateDiningAreaUseCase>();
+        services.AddScoped<IUpdateDiningAreaUseCase, UpdateDiningAreaUseCase>();
+        services.AddScoped<IReorderDiningAreasUseCase, ReorderDiningAreasUseCase>();
+        services.AddScoped<IDeleteDiningAreaUseCase, DeleteDiningAreaUseCase>();
+        services.AddScoped<IListRestaurantTablesUseCase, ListRestaurantTablesUseCase>();
+        services.AddScoped<ICreateRestaurantTableUseCase, CreateRestaurantTableUseCase>();
+        services.AddScoped<IUpdateRestaurantTableUseCase, UpdateRestaurantTableUseCase>();
+        services.AddScoped<IDeleteRestaurantTableUseCase, DeleteRestaurantTableUseCase>();
+        services.AddScoped<IGetTableOperationUseCase, GetTableOperationUseCase>();
+        services.AddScoped<ISetTableOperationUseCase, SetTableOperationUseCase>();
+        services.AddScoped<IUpdateTableOrderUseCase, UpdateTableOrderUseCase>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<SessionIssuer>();
         services.AddSingleton<PasswordPolicy>();

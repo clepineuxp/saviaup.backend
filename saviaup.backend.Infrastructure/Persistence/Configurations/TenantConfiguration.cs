@@ -11,6 +11,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.ToTable("tenants");
         builder.HasKey(tenant => tenant.Id);
         builder.Property(tenant => tenant.Name).HasMaxLength(120).IsRequired();
+        builder.Property(tenant => tenant.RequiresOpenCashRegister).HasDefaultValue(false);
         builder.HasIndex(tenant => tenant.IsActive);
     }
 }

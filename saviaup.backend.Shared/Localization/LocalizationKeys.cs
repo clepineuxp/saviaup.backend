@@ -27,6 +27,13 @@ public static class LocalizationKeys
     public const string InventoryMovementInvalid = "inventory.movements.invalid";
     public const string InventoryInsufficientStock = "inventory.movements.insufficientStock";
     public const string ProductNotFound = "products.notFound";
+    public const string DiningAreaNotFound = "tables.areas.notFound";
+    public const string DiningAreaAlreadyExists = "tables.areas.alreadyExists";
+    public const string DiningAreaInUse = "tables.areas.inUse";
+    public const string RestaurantTableNotFound = "tables.notFound";
+    public const string RestaurantTableAlreadyExists = "tables.alreadyExists";
+    public const string RestaurantTableOccupied = "tables.occupied";
+    public const string CashRegisterClosed = "tables.cashRegisterClosed";
     public const string Validation = "common.validation";
     public const string InternalError = "common.internalError";
 

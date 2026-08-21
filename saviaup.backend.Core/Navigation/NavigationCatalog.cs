@@ -38,7 +38,7 @@ internal static class NavigationCatalog
             []),
         new("configuration", 4,
             [new("settings", 1)],
-            [])
+            [new("tables.manage", "tables", "tables.manage", 2)])
     ];
 
     public static readonly IReadOnlyDictionary<string, NavigationModuleDefinition> Modules = CreateModuleIndex();

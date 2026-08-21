@@ -20,6 +20,9 @@ public sealed class SaviaUpDbContext(DbContextOptions<SaviaUpDbContext> options)
     public DbSet<Ingredient> Ingredients => Set<Ingredient>();
     public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<DiningArea> DiningAreas => Set<DiningArea>();
+    public DbSet<RestaurantTable> RestaurantTables => Set<RestaurantTable>();
+    public DbSet<CashRegisterShift> CashRegisterShifts => Set<CashRegisterShift>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
         => modelBuilder.ApplyConfigurationsFromAssembly(typeof(SaviaUpDbContext).Assembly);

@@ -5,6 +5,7 @@ public sealed class Tenant
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public bool RequiresOpenCashRegister { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public ICollection<TenantMembership> Memberships { get; set; } = [];
@@ -14,4 +15,7 @@ public sealed class Tenant
     public ICollection<Ingredient> Ingredients { get; set; } = [];
     public ICollection<InventoryMovement> InventoryMovements { get; set; } = [];
     public ICollection<Product> Products { get; set; } = [];
+    public ICollection<DiningArea> DiningAreas { get; set; } = [];
+    public ICollection<RestaurantTable> RestaurantTables { get; set; } = [];
+    public ICollection<CashRegisterShift> CashRegisterShifts { get; set; } = [];
 }

@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using SaviaUp.Backend.Api.Configuration;
 using SaviaUp.Backend.Api.Health;
+using SaviaUp.Backend.Api.Hubs;
 using SaviaUp.Backend.Api.Middleware;
 using SaviaUp.Backend.Api.Models;
 using SaviaUp.Backend.Domain.Options;
@@ -65,12 +66,25 @@ public static class ApiModule
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
                     ClockSkew = TimeSpan.FromSeconds(30)
                 };
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        if (!string.IsNullOrWhiteSpace(accessToken)
+                            && context.HttpContext.Request.Path.StartsWithSegments("/hubs/tables"))
+                            context.Token = accessToken;
+                        return Task.CompletedTask;
+                    }
+                };
             });
         services.AddAuthorization();
 
         var origins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:4200"];
         services.AddCors(options => options.AddPolicy(CorsPolicy, policy =>
-            policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod()));
+            policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+        services.AddSignalR();
+        services.AddScoped<ITableRealtimeNotifier, TableRealtimeNotifier>();
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -124,6 +138,7 @@ public static class ApiModule
             app.UseSwaggerUI();
         }
         app.MapControllers();
+        app.MapHub<TablesHub>("/hubs/tables");
         app.MapHealthChecks("/health", new HealthCheckOptions { AllowCachingResponses = false });
         return app;
     }

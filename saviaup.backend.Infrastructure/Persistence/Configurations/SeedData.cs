@@ -46,7 +46,8 @@ internal static class SeedData
         Permission("20000000-0000-0000-0000-000000000019", 2, PermissionCodes.InventoryMovementsRead),
         Permission("20000000-0000-0000-0000-000000000020", 2, PermissionCodes.InventoryMovementsManage),
         Permission("20000000-0000-0000-0000-000000000021", 2, PermissionCodes.InventoryComplementsRead),
-        Permission("20000000-0000-0000-0000-000000000022", 2, PermissionCodes.InventoryComplementsManage)
+        Permission("20000000-0000-0000-0000-000000000022", 2, PermissionCodes.InventoryComplementsManage),
+        Permission("20000000-0000-0000-0000-000000000023", 1, PermissionCodes.TablesOperate)
     ];
 
     private static Permission Permission(string id, int moduleIndex, string code) => new()

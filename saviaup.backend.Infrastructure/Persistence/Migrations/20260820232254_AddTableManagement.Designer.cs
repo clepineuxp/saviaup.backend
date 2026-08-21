@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SaviaUp.Backend.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SaviaUp.Backend.Infrastructure.Persistence;
 namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(SaviaUpDbContext))]
-    partial class SaviaUpDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260820232254_AddTableManagement")]
+    partial class AddTableManagement
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -811,13 +814,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
-                    b.Property<string>("Shape")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasDefaultValue("SQUARE");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -847,8 +843,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("CK_restaurant_tables_PositionX", "\"PositionX\" BETWEEN -100000 AND 100000");
 
                             t.HasCheckConstraint("CK_restaurant_tables_PositionY", "\"PositionY\" BETWEEN -100000 AND 100000");
-
-                            t.HasCheckConstraint("CK_restaurant_tables_Shape", "\"Shape\" IN ('SQUARE', 'ROUND', 'RECTANGLEHORIZONTAL', 'RECTANGLEVERTICAL')");
                         });
                 });
 
