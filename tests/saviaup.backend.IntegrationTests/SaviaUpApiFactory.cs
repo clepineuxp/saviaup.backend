@@ -7,6 +7,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using SaviaUp.Backend.Infrastructure.Persistence;
+using SaviaUp.Backend.Infrastructure.Email;
+using SaviaUp.Backend.Domain.Ports;
 
 namespace SaviaUp.Backend.IntegrationTests;
 
@@ -34,6 +36,8 @@ public sealed class SaviaUpApiFactory : WebApplicationFactory<Program>
             services.RemoveAll<DbContextOptions<SaviaUpDbContext>>();
             services.RemoveAll<IDbContextOptionsConfiguration<SaviaUpDbContext>>();
             services.RemoveAll<SaviaUpDbContext>();
+            services.RemoveAll<IEmailSender>();
+            services.AddScoped<IEmailSender, DevelopmentEmailSender>();
             var inMemoryServices = new ServiceCollection()
                 .AddEntityFrameworkInMemoryDatabase()
                 .BuildServiceProvider();

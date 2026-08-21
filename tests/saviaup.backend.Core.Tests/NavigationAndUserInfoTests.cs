@@ -162,7 +162,7 @@ public sealed class NavigationAndUserInfoTests
         var tenants = new Mock<ITenantRepository>();
         tenants.Setup(value => value.GetMembershipAsync(user.Id, membership.TenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(membership);
-        var useCase = new GetUserInfoUseCase(users.Object, tenants.Object);
+        var useCase = new GetUserInfoUseCase(users.Object, tenants.Object, new FixedClock(TestSupport.Now));
 
         var result = await useCase.ExecuteAsync(user.Id, membership.TenantId, membership.RoleId, default);
 
@@ -182,7 +182,7 @@ public sealed class NavigationAndUserInfoTests
         var tenants = new Mock<ITenantRepository>();
         tenants.Setup(value => value.GetMembershipAsync(user.Id, membership.TenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(membership);
-        var useCase = new GetUserInfoUseCase(users.Object, tenants.Object);
+        var useCase = new GetUserInfoUseCase(users.Object, tenants.Object, new FixedClock(TestSupport.Now));
 
         var result = await useCase.ExecuteAsync(user.Id, membership.TenantId, Guid.NewGuid(), default);
 
@@ -206,7 +206,7 @@ public sealed class NavigationAndUserInfoTests
                 membership.RoleId,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
-        return (new GetAvailableModulesUseCase(modules.Object, tenants.Object, permissions.Object), membership);
+        return (new GetAvailableModulesUseCase(modules.Object, tenants.Object, permissions.Object, new FixedClock(TestSupport.Now)), membership);
     }
 
     private static TenantMembership Membership(User user)

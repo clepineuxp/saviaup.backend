@@ -64,7 +64,9 @@ public sealed class LoginAndRegisterUseCaseTests
         var hasher = new Mock<IPasswordHasher>();
         hasher.Setup(service => service.Hash(It.IsAny<string>())).Returns("HASHED-PASSWORD");
         var unitOfWork = new Mock<IUnitOfWork>();
-        var useCase = new RegisterUseCase(users.Object, hasher.Object, TestSupport.PasswordPolicy(), TestSupport.SessionIssuer(), new FixedClock(TestSupport.Now), unitOfWork.Object);
+        var settings = new Mock<ISettingsRepository>();
+        settings.Setup(value => value.GetPendingInvitationsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        var useCase = new RegisterUseCase(users.Object, Mock.Of<ITenantRepository>(), settings.Object, hasher.Object, TestSupport.PasswordPolicy(), TestSupport.SessionIssuer(), new FixedClock(TestSupport.Now), unitOfWork.Object);
 
         var result = await useCase.ExecuteAsync(new RegisterRequest("Ana", "Test", "ana@test.com", "Secure123!*"), default);
 
@@ -78,7 +80,7 @@ public sealed class LoginAndRegisterUseCaseTests
     {
         var users = new Mock<IUserRepository>();
         users.Setup(repository => repository.GetByNormalizedEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(User());
-        var useCase = new RegisterUseCase(users.Object, Mock.Of<IPasswordHasher>(), TestSupport.PasswordPolicy(), TestSupport.SessionIssuer(), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
+        var useCase = new RegisterUseCase(users.Object, Mock.Of<ITenantRepository>(), Mock.Of<ISettingsRepository>(), Mock.Of<IPasswordHasher>(), TestSupport.PasswordPolicy(), TestSupport.SessionIssuer(), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
         var result = await useCase.ExecuteAsync(new RegisterRequest("Ana", "Test", "ana@test.com", "Secure123!*"), default);
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorCodes.EmailAlreadyExists, result.Error!.Code);

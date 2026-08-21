@@ -9,6 +9,8 @@ namespace SaviaUp.Backend.Core.Authentication;
 
 public sealed class RegisterUseCase(
     IUserRepository userRepository,
+    ITenantRepository tenantRepository,
+    ISettingsRepository settingsRepository,
     IPasswordHasher passwordHasher,
     PasswordPolicy passwordPolicy,
     SessionIssuer sessionIssuer,
@@ -38,6 +40,23 @@ public sealed class RegisterUseCase(
             UpdatedAt = now
         };
         await userRepository.AddAsync(user, cancellationToken);
+        var invitations = await settingsRepository.GetPendingInvitationsAsync(normalizedEmail, cancellationToken);
+        foreach (var invitation in invitations)
+        {
+            await tenantRepository.AddMembershipAsync(new TenantMembership
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                User = user,
+                TenantId = invitation.TenantId,
+                Tenant = invitation.Tenant,
+                RoleId = invitation.RoleId,
+                Role = invitation.Role,
+                IsActive = true,
+                CreatedAt = now
+            }, cancellationToken);
+            invitation.AcceptedAt = now;
+        }
         var issued = await sessionIssuer.IssueAsync(user, Guid.NewGuid(), null, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<RegisterResponse>.Success(new RegisterResponse(issued.Session, "tenant-selection"));

@@ -25,6 +25,16 @@ public static class PermissionCodes
     public const string ReportsRead = "reports.read";
     public const string BillingManage = "billing.manage";
     public const string SettingsManage = "settings.manage";
+    public const string SettingsOrganizationRead = "settings.organization.read";
+    public const string SettingsOrganizationManage = "settings.organization.manage";
+    public const string SettingsBusinessRead = "settings.business.read";
+    public const string SettingsBusinessManage = "settings.business.manage";
+    public const string SettingsPaymentMethodsRead = "settings.payment-methods.read";
+    public const string SettingsPaymentMethodsManage = "settings.payment-methods.manage";
+    public const string SettingsUsersRead = "settings.users.read";
+    public const string SettingsUsersManage = "settings.users.manage";
+    public const string SettingsRolesRead = "settings.roles.read";
+    public const string SettingsRolesManage = "settings.roles.manage";
 
     public static readonly IReadOnlyCollection<string> All =
     [
@@ -34,6 +44,11 @@ public static class PermissionCodes
         InventoryMovementsRead, InventoryMovementsManage,
         InventoryComplementsRead, InventoryComplementsManage,
         ProductsRead, ProductsManage, CategoriesRead, CategoriesManage,
-        KitchenRead, ReportsRead, BillingManage, SettingsManage
+        KitchenRead, ReportsRead, BillingManage, SettingsManage,
+        SettingsOrganizationRead, SettingsOrganizationManage,
+        SettingsBusinessRead, SettingsBusinessManage,
+        SettingsPaymentMethodsRead, SettingsPaymentMethodsManage,
+        SettingsUsersRead, SettingsUsersManage,
+        SettingsRolesRead, SettingsRolesManage
     ];
 }

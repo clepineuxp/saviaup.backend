@@ -261,3 +261,41 @@ public interface IPermissionService
 {
     Task<bool> IsAllowedAsync(Guid tenantId, Guid roleId, string permissionCode, CancellationToken cancellationToken);
 }
+
+public interface IOrganizationSettingsUseCase
+{
+    Task<Result<OrganizationSettingsDto>> GetAsync(Guid tenantId, Guid roleId, CancellationToken cancellationToken);
+    Task<Result<OrganizationSettingsDto>> UpdateAsync(Guid tenantId, Guid roleId, UpdateOrganizationSettingsRequest request, CancellationToken cancellationToken);
+    Task<Result<OrganizationLogoDto>> GetLogoAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result> UploadLogoAsync(Guid tenantId, UploadOrganizationLogoRequest request, CancellationToken cancellationToken);
+    Task<Result> DeleteLogoAsync(Guid tenantId, CancellationToken cancellationToken);
+}
+
+public interface IBusinessSettingsUseCase
+{
+    Task<Result<BusinessSettingsDto>> GetAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<BusinessSettingsDto>> UpdateAsync(Guid tenantId, UpdateBusinessSettingsRequest request, CancellationToken cancellationToken);
+}
+
+public interface IPaymentMethodsSettingsUseCase
+{
+    Task<Result<IReadOnlyCollection<PaymentMethodDto>>> ListAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);
+    Task<Result<PaymentMethodDto>> CreateAsync(Guid tenantId, SavePaymentMethodRequest request, CancellationToken cancellationToken);
+    Task<Result<PaymentMethodDto>> UpdateAsync(Guid tenantId, Guid paymentMethodId, SavePaymentMethodRequest request, CancellationToken cancellationToken);
+    Task<Result<PaymentMethodDto>> SetStatusAsync(Guid tenantId, Guid paymentMethodId, SetPaymentMethodStatusRequest request, CancellationToken cancellationToken);
+    Task<Result> DeleteAsync(Guid tenantId, Guid paymentMethodId, CancellationToken cancellationToken);
+}
+
+public interface IAccessSettingsUseCase
+{
+    Task<Result<IReadOnlyCollection<EnabledModulePermissionsDto>>> GetPermissionsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<SettingsRoleDto>>> ListRolesAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);
+    Task<Result<SettingsRoleDto>> CreateRoleAsync(Guid tenantId, SaveSettingsRoleRequest request, CancellationToken cancellationToken);
+    Task<Result<SettingsRoleDto>> UpdateRoleAsync(Guid tenantId, Guid roleId, SaveSettingsRoleRequest request, CancellationToken cancellationToken);
+    Task<Result<SettingsRoleDto>> SetRoleStatusAsync(Guid tenantId, Guid roleId, SetSettingsRoleStatusRequest request, CancellationToken cancellationToken);
+    Task<Result> DeleteRoleAsync(Guid tenantId, Guid roleId, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<OrganizationUserDto>>> ListUsersAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<OrganizationUserDto>> InviteUserAsync(Guid tenantId, Guid invitedByUserId, InviteOrganizationUserRequest request, CancellationToken cancellationToken);
+    Task<Result<OrganizationUserDto>> UpdateUserAsync(Guid tenantId, Guid membershipId, UpdateOrganizationUserRequest request, CancellationToken cancellationToken);
+    Task<Result> DeleteUserAsync(Guid tenantId, Guid currentUserId, Guid entryId, CancellationToken cancellationToken);
+}

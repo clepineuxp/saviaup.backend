@@ -19,7 +19,9 @@ public sealed class TenantRepository(SaviaUpDbContext context) : ITenantReposito
     public async Task<IReadOnlyCollection<TenantDto>> GetForUserAsync(Guid userId, CancellationToken cancellationToken)
         => await context.TenantMemberships
             .AsNoTracking()
-            .Where(membership => membership.UserId == userId && membership.IsActive && membership.Tenant.IsActive && membership.Role.IsActive)
+            .Where(membership => membership.UserId == userId
+                && (membership.IsActive || membership.DisabledUntil <= DateTimeOffset.UtcNow)
+                && membership.Tenant.IsActive && membership.Role.IsActive)
             .OrderBy(membership => membership.Tenant.Name)
             .Select(membership => new TenantDto(membership.TenantId, membership.Tenant.Name, membership.RoleId, membership.Role.Name))
             .ToArrayAsync(cancellationToken);

@@ -25,6 +25,7 @@ public interface ITokenGenerator
 public interface IEmailSender
 {
     Task SendPasswordResetAsync(string email, string language, string resetLink, CancellationToken cancellationToken);
+    Task SendOrganizationInvitationAsync(string email, string language, string organizationName, string invitationLink, CancellationToken cancellationToken);
 }
 
 public interface IDateTimeProvider

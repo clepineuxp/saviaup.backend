@@ -23,6 +23,10 @@ public sealed class SaviaUpDbContext(DbContextOptions<SaviaUpDbContext> options)
     public DbSet<DiningArea> DiningAreas => Set<DiningArea>();
     public DbSet<RestaurantTable> RestaurantTables => Set<RestaurantTable>();
     public DbSet<CashRegisterShift> CashRegisterShifts => Set<CashRegisterShift>();
+    public DbSet<OrganizationParameter> OrganizationParameters => Set<OrganizationParameter>();
+    public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
+    public DbSet<TenantPermission> TenantPermissions => Set<TenantPermission>();
+    public DbSet<TenantInvitation> TenantInvitations => Set<TenantInvitation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
         => modelBuilder.ApplyConfigurationsFromAssembly(typeof(SaviaUpDbContext).Assembly);

@@ -35,6 +35,7 @@ public static class InfrastructureModule
         services.AddScoped<IDiningAreaRepository, DiningAreaRepository>();
         services.AddScoped<IRestaurantTableRepository, RestaurantTableRepository>();
         services.AddScoped<ICashRegisterShiftRepository, CashRegisterShiftRepository>();
+        services.AddScoped<ISettingsRepository, SettingsRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

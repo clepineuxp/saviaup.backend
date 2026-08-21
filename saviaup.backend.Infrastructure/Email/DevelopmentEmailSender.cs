@@ -11,6 +11,12 @@ public sealed class DevelopmentEmailSender(ILogger<DevelopmentEmailSender> logge
         return Task.CompletedTask;
     }
 
+    public Task SendOrganizationInvitationAsync(string email, string language, string organizationName, string invitationLink, CancellationToken cancellationToken)
+    {
+        logger.LogInformation("Development organization-invitation email suppressed for {EmailDomain} in language {Language}. Link was not logged.", EmailDomain(email), language);
+        return Task.CompletedTask;
+    }
+
     private static string EmailDomain(string email)
     {
         var separator = email.LastIndexOf('@');

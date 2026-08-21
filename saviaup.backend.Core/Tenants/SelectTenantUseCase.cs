@@ -23,7 +23,7 @@ public sealed class SelectTenantUseCase(
         var user = await userRepository.GetByIdAsync(userId, cancellationToken);
         if (user is null || !user.IsActive) return Result<TenantSessionResponse>.Failure(Errors.AccountDisabled);
         var membership = await tenantRepository.GetMembershipAsync(userId, tenantId, cancellationToken);
-        if (membership is null || !membership.IsActive || !membership.Tenant.IsActive || !membership.Role.IsActive)
+        if (membership is null || !membership.IsEnabledAt(dateTimeProvider.UtcNow) || !membership.Tenant.IsActive || !membership.Role.IsActive)
             return Result<TenantSessionResponse>.Failure(Errors.TenantAccessDenied);
 
         return await unitOfWork.ExecuteInTransactionAsync(async transactionToken =>

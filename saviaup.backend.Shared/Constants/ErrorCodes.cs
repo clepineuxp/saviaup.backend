@@ -31,6 +31,18 @@ public static class ErrorCodes
     public const string RestaurantTableAlreadyExists = "RESTAURANT_TABLE_ALREADY_EXISTS";
     public const string RestaurantTableOccupied = "RESTAURANT_TABLE_OCCUPIED";
     public const string CashRegisterClosed = "CASH_REGISTER_CLOSED";
+    public const string OrganizationDocumentOwnerOnly = "ORGANIZATION_DOCUMENT_OWNER_ONLY";
+    public const string OrganizationLogoInvalid = "ORGANIZATION_LOGO_INVALID";
+    public const string PaymentMethodNotFound = "PAYMENT_METHOD_NOT_FOUND";
+    public const string PaymentMethodAlreadyExists = "PAYMENT_METHOD_ALREADY_EXISTS";
+    public const string SettingsRoleNotFound = "SETTINGS_ROLE_NOT_FOUND";
+    public const string SettingsRoleAlreadyExists = "SETTINGS_ROLE_ALREADY_EXISTS";
+    public const string SettingsRoleProtected = "SETTINGS_ROLE_PROTECTED";
+    public const string SettingsRoleInUse = "SETTINGS_ROLE_IN_USE";
+    public const string OrganizationUserNotFound = "ORGANIZATION_USER_NOT_FOUND";
+    public const string OrganizationOwnerRequired = "ORGANIZATION_OWNER_REQUIRED";
+    public const string OrganizationInvitationExists = "ORGANIZATION_INVITATION_EXISTS";
+    public const string PermissionNotEnabled = "PERMISSION_NOT_ENABLED";
     public const string Validation = "VALIDATION_ERROR";
     public const string Internal = "INTERNAL_ERROR";
 }

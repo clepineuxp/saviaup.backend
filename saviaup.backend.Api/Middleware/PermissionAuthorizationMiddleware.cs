@@ -54,7 +54,7 @@ public sealed class PermissionAuthorizationMiddleware(RequestDelegate next)
                 currentUser.TenantId!.Value,
                 context.RequestAborted);
             if (membership is null
-                || !membership.IsActive
+                || !membership.IsEnabledAt(dateTimeProvider.UtcNow)
                 || !membership.Tenant.IsActive
                 || !membership.Role.IsActive
                 || membership.RoleId != currentUser.RoleId)

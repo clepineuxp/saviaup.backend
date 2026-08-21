@@ -7,7 +7,8 @@ namespace SaviaUp.Backend.Core.Users;
 
 public sealed class GetUserInfoUseCase(
     IUserRepository userRepository,
-    ITenantRepository tenantRepository) : IGetUserInfoUseCase
+    ITenantRepository tenantRepository,
+    IDateTimeProvider clock) : IGetUserInfoUseCase
 {
     public async Task<Result<UserInfoDto>> ExecuteAsync(
         Guid userId,
@@ -20,7 +21,7 @@ public sealed class GetUserInfoUseCase(
 
         var membership = await tenantRepository.GetMembershipAsync(userId, tenantId, cancellationToken);
         if (membership is null
-            || !membership.IsActive
+            || !membership.IsEnabledAt(clock.UtcNow)
             || !membership.Tenant.IsActive
             || !membership.Role.IsActive
             || membership.RoleId != roleId)
