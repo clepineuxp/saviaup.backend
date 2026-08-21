@@ -36,6 +36,7 @@ public sealed class BusinessSettingsUseCase(ISettingsRepository repository, IDat
             [SettingsDefaults.UsesTables] = (request.UsesTables.ToString().ToLowerInvariant(), "boolean"),
             [SettingsDefaults.DeliveryEnabled] = (request.DeliveryEnabled.ToString().ToLowerInvariant(), "boolean"),
             [SettingsDefaults.RequiresOpenCashRegister] = (requiresOpenCashRegister.ToString().ToLowerInvariant(), "boolean"),
+            [SettingsDefaults.EnableCustomSales] = (request.EnableCustomSales.ToString().ToLowerInvariant(), "boolean"),
             [SettingsDefaults.ShowVoluntaryTip] = (request.ShowVoluntaryTip.ToString().ToLowerInvariant(), "boolean"),
             [SettingsDefaults.TipMessage] = (request.TipMessage.Trim(), "string"),
             [SettingsDefaults.SuggestedTipPercentage] = (request.SuggestedTipPercentage.ToString(CultureInfo.InvariantCulture), "integer")
@@ -51,7 +52,7 @@ public sealed class BusinessSettingsUseCase(ISettingsRepository repository, IDat
         tenant.UpdatedAt = now;
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<BusinessSettingsDto>.Success(new BusinessSettingsDto(request.UsesTables, request.DeliveryEnabled, requiresOpenCashRegister,
-            request.ShowVoluntaryTip, request.TipMessage.Trim(), request.SuggestedTipPercentage));
+            request.EnableCustomSales, request.ShowVoluntaryTip, request.TipMessage.Trim(), request.SuggestedTipPercentage));
     }
 
     private static bool HasCashRegistersModule(IReadOnlyCollection<string>? permissions)
@@ -65,8 +66,9 @@ public sealed class BusinessSettingsUseCase(ISettingsRepository repository, IDat
         var values = SettingsDefaults.CreateBusinessParameters(Guid.Empty, DateTimeOffset.MinValue).ToDictionary(item => item.Key, item => item.Value);
         foreach (var parameter in parameters) values[parameter.Key] = parameter.Value;
         return new BusinessSettingsDto(Bool(values[SettingsDefaults.UsesTables]), Bool(values[SettingsDefaults.DeliveryEnabled]),
-            Bool(values[SettingsDefaults.RequiresOpenCashRegister]), Bool(values[SettingsDefaults.ShowVoluntaryTip]),
-            values[SettingsDefaults.TipMessage], int.TryParse(values[SettingsDefaults.SuggestedTipPercentage], out var percent) ? percent : 10);
+            Bool(values[SettingsDefaults.RequiresOpenCashRegister]), Bool(values[SettingsDefaults.EnableCustomSales]),
+            Bool(values[SettingsDefaults.ShowVoluntaryTip]), values[SettingsDefaults.TipMessage],
+            int.TryParse(values[SettingsDefaults.SuggestedTipPercentage], out var percent) ? percent : 10);
     }
 
     private static bool Bool(string value) => bool.TryParse(value, out var parsed) && parsed;

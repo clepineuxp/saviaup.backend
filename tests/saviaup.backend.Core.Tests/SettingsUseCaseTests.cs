@@ -60,10 +60,11 @@ public sealed class SettingsUseCaseTests
             .ReturnsAsync([PermissionCodes.CashRegistersManage]);
         var useCase = new BusinessSettingsUseCase(repository.Object, new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
 
-        var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, true, "Propina voluntaria", 12), default);
+        var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, true, true, "Propina voluntaria", 12), default);
 
         Assert.True(result.IsSuccess);
         Assert.True(tenant.RequiresOpenCashRegister);
+        Assert.True(result.Value!.EnableCustomSales);
         Assert.Equal("12", parameters.Single(item => item.Key == SettingsDefaults.SuggestedTipPercentage).Value);
     }
 
@@ -79,11 +80,12 @@ public sealed class SettingsUseCaseTests
             .ReturnsAsync([PermissionCodes.TablesRead]);
         var useCase = new BusinessSettingsUseCase(repository.Object, new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
 
-        var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, true, "Propina voluntaria", 10), default);
+        var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, false, true, "Propina voluntaria", 10), default);
 
         Assert.True(result.IsSuccess);
         Assert.False(tenant.RequiresOpenCashRegister);
         Assert.False(result.Value!.RequiresOpenCashRegister);
+        Assert.False(result.Value!.EnableCustomSales);
     }
 
     [Fact]
