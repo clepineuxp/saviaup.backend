@@ -257,6 +257,53 @@ public interface IUpdateTableOrderUseCase
     Task<Result<RestaurantTableDto>> ExecuteAsync(Guid tenantId, Guid tableId, UpdateTableOrderRequest request, CancellationToken cancellationToken);
 }
 
+public interface IGetActiveTableOrderUseCase
+{
+    Task<Result<OrderDto>> ExecuteAsync(Guid tenantId, Guid tableId, CancellationToken cancellationToken);
+}
+
+public interface IAddTableOrderItemsUseCase
+{
+    Task<Result<OrderDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid tableId,
+        Guid userId,
+        string userName,
+        AddOrderItemsRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IMoveTableOrderUseCase
+{
+    Task<Result<RestaurantTableDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid tableId,
+        MoveTableOrderRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface ICancelOrderItemUseCase
+{
+    Task<Result<OrderDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid itemId,
+        Guid userId,
+        string userName,
+        CancelOrderItemRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IPayAndCloseTableOrderUseCase
+{
+    Task<Result<OrderDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid tableId,
+        Guid userId,
+        string userName,
+        CheckoutOrderRequest request,
+        CancellationToken cancellationToken);
+}
+
 public interface IListCashRegistersUseCase
 {
     Task<Result<IReadOnlyCollection<CashRegisterDto>>> ExecuteAsync(
