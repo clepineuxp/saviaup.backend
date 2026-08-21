@@ -22,6 +22,296 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.CashRegisterShift", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("OpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OpenedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OpenedByUserId");
+
+                    b.HasIndex("TenantId", "ClosedAt");
+
+                    b.ToTable("cash_register_shifts", (string)null);
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Category", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsInventoryTracked")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "NormalizedName")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "IsActive", "Name");
+
+                    b.ToTable("categories", (string)null);
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.DiningArea", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "IsActive");
+
+                    b.HasIndex("TenantId", "NormalizedName")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "Order")
+                        .IsUnique();
+
+                    b.ToTable("dining_areas", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_dining_areas_Order_Positive", "\"Order\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Ingredient", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("CurrentStock")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("MeasurementUnitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("MinimumStock")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("MeasurementUnitId");
+
+                    b.HasIndex("TenantId", "CategoryId");
+
+                    b.HasIndex("TenantId", "MeasurementUnitId");
+
+                    b.HasIndex("TenantId", "IsActive", "NormalizedName");
+
+                    b.ToTable("ingredients", (string)null);
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.InventoryMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Direction")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("IngredientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<decimal>("StockAfter")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<decimal>("StockBefore")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("IngredientId", "CreatedAt");
+
+                    b.HasIndex("TenantId", "CreatedAt");
+
+                    b.ToTable("inventory_movements", (string)null);
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.MeasurementUnit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NormalizedCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "NormalizedCode")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "NormalizedName")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "IsActive", "Name");
+
+                    b.ToTable("measurement_units", (string)null);
+                });
+
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Module", b =>
                 {
                     b.Property<Guid>("Id")
@@ -282,6 +572,138 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
                             Code = "categories.manage",
                             Description = "categories.manage",
                             ModuleId = new Guid("10000000-0000-0000-0000-000000000009")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000016"),
+                            Code = "inventory.stock.read",
+                            Description = "inventory.stock.read",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000003")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000017"),
+                            Code = "inventory.ingredients.read",
+                            Description = "inventory.ingredients.read",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000003")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000018"),
+                            Code = "inventory.ingredients.manage",
+                            Description = "inventory.ingredients.manage",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000003")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000019"),
+                            Code = "inventory.movements.read",
+                            Description = "inventory.movements.read",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000003")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000020"),
+                            Code = "inventory.movements.manage",
+                            Description = "inventory.movements.manage",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000003")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000021"),
+                            Code = "inventory.complements.read",
+                            Description = "inventory.complements.read",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000003")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000022"),
+                            Code = "inventory.complements.manage",
+                            Description = "inventory.complements.manage",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000003")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000023"),
+                            Code = "tables.operate",
+                            Description = "tables.operate",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000002")
+                        });
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Product", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsInventoryTracked")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int?>("PreparationTimeMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("SalePrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("NORMAL");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("TenantId", "CategoryId");
+
+                    b.HasIndex("TenantId", "Type");
+
+                    b.HasIndex("TenantId", "IsActive", "NormalizedName");
+
+                    b.ToTable("products", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_products_PreparationTime_NonNegative", "\"PreparationTimeMinutes\" IS NULL OR \"PreparationTimeMinutes\" >= 0");
+
+                            t.HasCheckConstraint("CK_products_SalePrice_Positive", "\"SalePrice\" > 0");
+
+                            t.HasCheckConstraint("CK_products_Type", "\"Type\" IN ('NORMAL', 'COMBO')");
                         });
                 });
 
@@ -338,6 +760,96 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("refresh_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.RestaurantTable", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ActiveOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ActiveOrderTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DiningAreaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsCashRegister")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDelivery")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset?>("OccupiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("PositionX")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("PositionY")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Shape")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("SQUARE");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DiningAreaId");
+
+                    b.HasIndex("TenantId", "Status");
+
+                    b.HasIndex("TenantId", "DiningAreaId", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("restaurant_tables", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_restaurant_tables_ActiveOrderTotal", "\"ActiveOrderTotal\" >= 0");
+
+                            t.HasCheckConstraint("CK_restaurant_tables_Capacity", "\"Capacity\" BETWEEN 1 AND 100");
+
+                            t.HasCheckConstraint("CK_restaurant_tables_PositionX", "\"PositionX\" BETWEEN -100000 AND 100000");
+
+                            t.HasCheckConstraint("CK_restaurant_tables_PositionY", "\"PositionY\" BETWEEN -100000 AND 100000");
+
+                            t.HasCheckConstraint("CK_restaurant_tables_Shape", "\"Shape\" IN ('SQUARE', 'ROUND', 'RECTANGLEHORIZONTAL', 'RECTANGLEVERTICAL')");
+                        });
                 });
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Role", b =>
@@ -413,6 +925,11 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
+
+                    b.Property<bool>("RequiresOpenCashRegister")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -517,6 +1034,112 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.CashRegisterShift", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.User", "OpenedByUser")
+                        .WithMany()
+                        .HasForeignKey("OpenedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Tenant", "Tenant")
+                        .WithMany("CashRegisterShifts")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OpenedByUser");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Category", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Tenant", "Tenant")
+                        .WithMany("Categories")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.DiningArea", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Tenant", "Tenant")
+                        .WithMany("DiningAreas")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Ingredient", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Category", "Category")
+                        .WithMany("Ingredients")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.MeasurementUnit", "MeasurementUnit")
+                        .WithMany("Ingredients")
+                        .HasForeignKey("MeasurementUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Tenant", "Tenant")
+                        .WithMany("Ingredients")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("MeasurementUnit");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.InventoryMovement", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.User", "CreatedByUser")
+                        .WithMany("InventoryMovements")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Ingredient", "Ingredient")
+                        .WithMany("Movements")
+                        .HasForeignKey("IngredientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Tenant", "Tenant")
+                        .WithMany("InventoryMovements")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Ingredient");
+
+                    b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.MeasurementUnit", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Tenant", "Tenant")
+                        .WithMany("MeasurementUnits")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PasswordResetToken", b =>
                 {
                     b.HasOne("SaviaUp.Backend.Domain.Entities.User", "User")
@@ -539,6 +1162,25 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
                     b.Navigation("Module");
                 });
 
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Product", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Category", "Category")
+                        .WithMany("Products")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Tenant", "Tenant")
+                        .WithMany("Products")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Tenant");
+                });
+
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("SaviaUp.Backend.Domain.Entities.RefreshToken", "ReplacedByToken")
@@ -555,6 +1197,25 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
                     b.Navigation("ReplacedByToken");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.RestaurantTable", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.DiningArea", "DiningArea")
+                        .WithMany("Tables")
+                        .HasForeignKey("DiningAreaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Tenant", "Tenant")
+                        .WithMany("RestaurantTables")
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DiningArea");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Role", b =>
@@ -614,6 +1275,28 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Category", b =>
+                {
+                    b.Navigation("Ingredients");
+
+                    b.Navigation("Products");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.DiningArea", b =>
+                {
+                    b.Navigation("Tables");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Ingredient", b =>
+                {
+                    b.Navigation("Movements");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.MeasurementUnit", b =>
+                {
+                    b.Navigation("Ingredients");
+                });
+
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Module", b =>
                 {
                     b.Navigation("Permissions");
@@ -631,13 +1314,31 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Tenant", b =>
                 {
+                    b.Navigation("CashRegisterShifts");
+
+                    b.Navigation("Categories");
+
+                    b.Navigation("DiningAreas");
+
+                    b.Navigation("Ingredients");
+
+                    b.Navigation("InventoryMovements");
+
+                    b.Navigation("MeasurementUnits");
+
                     b.Navigation("Memberships");
+
+                    b.Navigation("Products");
+
+                    b.Navigation("RestaurantTables");
 
                     b.Navigation("Roles");
                 });
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.User", b =>
                 {
+                    b.Navigation("InventoryMovements");
+
                     b.Navigation("Memberships");
                 });
 #pragma warning restore 612, 618

@@ -1,3 +1,4 @@
+using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 
 namespace SaviaUp.Backend.Domain.Ports;
@@ -38,4 +39,10 @@ public interface ICurrentUserContext
     Guid? SessionId { get; }
     Guid? TenantId { get; }
     Guid? RoleId { get; }
+}
+
+public interface ITableRealtimeNotifier
+{
+    Task StatusChangedAsync(Guid tenantId, TableStatusChangedEvent notification, CancellationToken cancellationToken);
+    Task OrderUpdatedAsync(Guid tenantId, TableOrderUpdatedEvent notification, CancellationToken cancellationToken);
 }

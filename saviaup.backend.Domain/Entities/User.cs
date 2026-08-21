@@ -14,4 +14,5 @@ public sealed class User
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public ICollection<TenantMembership> Memberships { get; set; } = [];
+    public ICollection<InventoryMovement> InventoryMovements { get; set; } = [];
 }

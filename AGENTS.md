@@ -2,7 +2,7 @@
 
 ## Propósito
 
-Este repositorio contiene el backend inicial de **Savia Up**, una plataforma SaaS multi-tenant para restaurantes y gastrobares. La solución cubre identidad, autenticación, sesiones, recuperación de contraseña, tenants, roles, permisos, internacionalización, persistencia PostgreSQL, documentación HTTP, health checks y pruebas.
+Este repositorio contiene el backend inicial de **Savia Up**, una plataforma SaaS multi-tenant para restaurantes y gastrobares. La solución cubre identidad, autenticación, sesiones, recuperación de contraseña, tenants, roles, permisos, navegación, categorías, productos, inventario, ingredientes, movimientos, complementos, salas, mesas, operación en tiempo real, internacionalización, persistencia PostgreSQL, documentación HTTP, health checks y pruebas.
 
 Lee este archivo completo antes de modificar el repositorio. Las decisiones descritas aquí son invariantes del proyecto, no sugerencias opcionales.
 
@@ -99,6 +99,14 @@ Entidades actuales:
 - `Module`: módulo global funcional.
 - `Permission`: permiso global identificado por `Code`.
 - `RolePermission`: relación compuesta rol/permiso.
+- `Category`: categoría funcional perteneciente a un tenant, con nombre normalizado, descripción/imagen opcionales, clasificación inventariable, estado y timestamps.
+- `Product`: producto tenant-aware de tipo `NORMAL` o `COMBO`, con categoría obligatoria, precio de venta, descripción/imagen/tiempo de preparación opcionales, clasificación inventariable, estado y timestamps.
+- `DiningArea`: sala tenant-aware con nombre normalizado único, orden único y estado activo.
+- `RestaurantTable`: mesa tenant-aware asignada a una sala, con capacidad, coordenadas 2D, forma, flags de domicilio/caja, estado y referencia opcional a la orden activa.
+- `CashRegisterShift`: hook persistente mínimo para conocer si existe un turno de caja abierto cuando el tenant lo exige.
+- `MeasurementUnit`: unidad perteneciente a un tenant, con código/nombre normalizados, estado y timestamps.
+- `Ingredient`: ingrediente tenant-aware con categoría y unidad obligatorias, stock mínimo/actual, estado y timestamps.
+- `InventoryMovement`: registro inmutable de entrada/salida, motivo, cantidad, stock anterior/posterior, usuario creador y fecha.
 - `RefreshToken`: hash, sesión, contexto, expiración, revocación y reemplazo.
 - `PasswordResetToken`: hash, expiración y consumo único.
 
@@ -107,12 +115,16 @@ Contratos HTTP/aplicación:
 - Autenticación: login, registro, refresh, logout, forgot/reset password.
 - Usuario: `UserDto` para sesión y `UserInfoDto` para nombre, apellido, organización y rol actuales.
 - Navegación: `AvailableModulesResponse`, secciones, módulos/opciones ordenados y copy de estado vacío.
+- Categorías: listado y contratos de creación, actualización y cambio de estado.
+- Productos: listado paginado y contratos de creación, actualización y cambio de estado.
+- Inventario: listados paginados de existencias, ingredientes, movimientos y unidades; contratos de creación/edición/estado para ingredientes y unidades, y creación de movimientos.
+- Mesas: CRUD de salas/mesas, reordenamiento, snapshot operativo, apertura/liberación, actualización de total y eventos SignalR.
 - Tenants: listado, creación y respuesta de sesión contextualizada.
 - Todos los contratos públicos son DTO; nunca se exponen entidades directamente.
 
 Puertos:
 
-- Repositorios específicos por agregado/uso: usuarios, tenants, roles, permisos, módulos y tokens.
+- Repositorios específicos por agregado/uso: usuarios, tenants, roles, permisos, módulos, categorías, ingredientes, movimientos, unidades y tokens.
 - Servicios externos: `IPasswordHasher`, `IJwtTokenService`, `ITokenGenerator`, `IEmailSender`, `IDateTimeProvider`.
 - Contexto: `ICurrentUserContext`.
 - Casos de uso segregados por operación.
@@ -136,6 +148,17 @@ Casos de uso actuales:
 - `GetCurrentUserUseCase`.
 - `GetUserInfoUseCase`.
 - `GetAvailableModulesUseCase`.
+- `ListCategoriesUseCase`.
+- `CreateCategoryUseCase`.
+- `UpdateCategoryUseCase`.
+- `SetCategoryStatusUseCase`.
+- `DeleteCategoryUseCase`.
+- `ListProductsUseCase`, `CreateProductUseCase`, `UpdateProductUseCase`, `SetProductStatusUseCase`, `DeleteProductUseCase`.
+- casos de uso de salas, mesas y operación agrupados bajo `Core/Tables`, incluido el bloqueo por turno de caja.
+- `ListInventoryUseCase`.
+- `ListIngredientsUseCase`, `CreateIngredientUseCase`, `UpdateIngredientUseCase`, `SetIngredientStatusUseCase`, `DeleteIngredientUseCase`.
+- `ListInventoryMovementsUseCase`, `CreateInventoryMovementUseCase`.
+- `ListMeasurementUnitsUseCase`, `CreateMeasurementUnitUseCase`, `UpdateMeasurementUnitUseCase`, `SetMeasurementUnitStatusUseCase`, `DeleteMeasurementUnitUseCase`.
 - `PermissionService`.
 
 `SessionIssuer` centraliza la creación coordinada de access token, refresh token y DTO de sesión. `PasswordPolicy` centraliza todas las reglas de contraseña.
@@ -153,7 +176,7 @@ Reglas de Core:
 
 Persistencia:
 
-- `SaviaUpDbContext` contiene los nueve `DbSet` actuales.
+- `SaviaUpDbContext` contiene los diecisiete `DbSet` actuales.
 - Cada entidad tiene `IEntityTypeConfiguration<T>` independiente.
 - Los repositorios usan consultas específicas, `AsNoTracking` para lectura y tracking solo cuando hay escritura.
 - `ModuleRepository` devuelve un módulo activo cuando el rol activo posee al menos un permiso de ese módulo dentro del tenant solicitado.
@@ -188,6 +211,11 @@ Restricciones importantes:
 
 `SeedData` contiene únicamente módulos y permisos globales. No agregar usuarios o tenants reales al seed.
 `AddCategoriesModule` agrega el módulo `categories`, los permisos `categories.read`/`categories.manage` y los asigna a los roles `TENANT_OWNER` existentes.
+`AddTenantCategories` crea la tabla tenant-aware `categories`, su FK restrictiva e índices de unicidad/listado.
+`AddInventoryManagement` crea `measurement_units`, `ingredients` e `inventory_movements`, agrega los siete permisos granulares de inventario, los asigna a `TENANT_OWNER` existentes y crea `gr`, `kg` y `und` para tenants existentes.
+`AddTenantProducts` crea `products`, sus FKs restrictivas hacia tenant/categoría, restricciones de tipo/precio/tiempo e índices tenant-aware para los filtros del listado.
+`AddProductTypeDefault` fija `NORMAL` como valor por defecto de `products.Type` también a nivel PostgreSQL.
+`AddTableManagement` crea salas, mesas y turnos de caja, agrega `tables.operate`, lo asigna a propietarios existentes y añade `RequiresOpenCashRegister` al tenant.
 
 Adapters de seguridad:
 
@@ -221,6 +249,45 @@ POST /api/tenants/{tenantId}/select
 GET  /api/users/me
 GET  /api/users/me/info
 GET  /api/modules/available
+
+GET    /api/categories?includeInactive=false
+POST   /api/categories
+PUT    /api/categories/{categoryId}
+PATCH  /api/categories/{categoryId}/status
+DELETE /api/categories/{categoryId}
+
+GET    /api/products?page=1&pageSize=20&search=&categoryId=&type=&includeInactive=false
+POST   /api/products
+PUT    /api/products/{productId}
+PATCH  /api/products/{productId}/status
+DELETE /api/products/{productId}
+
+GET/POST   /api/table-areas
+PUT/DELETE /api/table-areas/{areaId}
+PUT        /api/table-areas/reorder
+GET/POST   /api/tables
+PUT/DELETE /api/tables/{tableId}
+GET        /api/tables/operation
+PATCH      /api/tables/{tableId}/operation
+PATCH      /api/tables/{tableId}/order
+SIGNALR    /hubs/tables
+
+GET    /api/inventory?page=1&pageSize=20&search=&belowMinimum=
+GET    /api/inventory/ingredients?page=1&pageSize=20&search=&categoryId=&includeInactive=false
+POST   /api/inventory/ingredients
+PUT    /api/inventory/ingredients/{ingredientId}
+PATCH  /api/inventory/ingredients/{ingredientId}/status
+DELETE /api/inventory/ingredients/{ingredientId}
+
+GET  /api/inventory/movements?page=1&pageSize=20&ingredientId=&direction=
+POST /api/inventory/movements
+
+GET    /api/inventory/complements/units?page=1&pageSize=20&search=&includeInactive=false
+POST   /api/inventory/complements/units
+PUT    /api/inventory/complements/units/{unitId}
+PATCH  /api/inventory/complements/units/{unitId}/status
+DELETE /api/inventory/complements/units/{unitId}
+
 GET  /api/i18n/{language}
 GET  /health
 ```
@@ -304,10 +371,11 @@ No registrar access tokens, refresh tokens, reset tokens, claves JWT o credencia
 - El rol pertenece al tenant y puede variar para el mismo usuario entre tenants.
 - Login usa `LastTenantId` solo si tenant, membership y rol siguen activos.
 - Sin tenant válido se emite una sesión autenticada sin `tenant_id`/`role_id` y `requiresTenantSelection = true`.
-- Crear tenant es atómico: tenant + `TENANT_OWNER` + membership + todos los permisos actuales + `LastTenantId` + tokens contextualizados.
+- Crear tenant es atómico: tenant + `TENANT_OWNER` + membership + todos los permisos actuales + unidades `gr`/`kg`/`und` + `LastTenantId` + tokens contextualizados.
 - Seleccionar tenant valida membership, actualiza `LastTenantId`, revoca tokens previos de la sesión y entrega un par nuevo.
 - El header `X-Tenant-Id`, si existe, debe coincidir con el claim; nunca sustituye al contexto firmado.
 - La autorización depende de `(TenantId, RoleId, PermissionCode)`, nunca del nombre visible del rol.
+- Todo endpoint con `[RequireTenant]` vuelve a comprobar membership, tenant y rol activos antes de continuar; un claim firmado no sustituye esa validación actual.
 - La navegación se resuelve para el rol del token contextual; nunca acepta `tenantId` o `roleId` enviados por el cliente.
 - Antes de resolver módulos se vuelve a validar que membership, tenant y rol continúen activos y que el rol coincida con el claim.
 - Un módulo se habilita si el rol tiene al menos un permiso perteneciente a ese módulo. No se requieren todos sus permisos.
@@ -334,6 +402,7 @@ Configuración actual de navegación:
   4 kitchen
 4 configuration / Configuración
   1 settings
+  2 tables.manage (opción administrativa)
 ```
 
 Al crear un módulo nuevo es obligatorio, dentro del mismo cambio:
@@ -345,6 +414,61 @@ Al crear un módulo nuevo es obligatorio, dentro del mismo cambio:
 5. Actualizar pruebas unitarias, integradas y documentación.
 
 El catálogo falla explícitamente si la base de datos devuelve un módulo sin configuración de navegación. Los órdenes duplicados dentro de una sección tampoco son válidos.
+
+## Invariantes de categorías
+
+- Toda categoría pertenece exactamente a un tenant y todas las consultas reciben `TenantId` desde el claim, nunca desde body/query.
+- `categories.read` autoriza el listado; `categories.manage` autoriza creación, actualización, cambio de estado y eliminación.
+- El nombre visible se recorta y colapsa espacios internos. `NormalizedName` usa mayúsculas y soporta unicidad case-insensitive dentro del tenant.
+- El índice único `(TenantId, NormalizedName)` permite repetir un nombre en tenants diferentes, pero no dentro de la misma organización, incluso si cambia mayúsculas o espacios.
+- `Description` es opcional y tiene máximo 1000 caracteres.
+- `ImageUrl` es opcional, admite únicamente URL absoluta HTTP/HTTPS y máximo 2048 caracteres. La API no recibe ni almacena binarios en esta fase.
+- `IsInventoryTracked` indica si los productos de esa categoría participan en inventario.
+- `IsActive` es reversible mediante `PATCH /status`. El listado normal omite categorías inactivas; administración usa `includeInactive=true`.
+- `DELETE` realiza eliminación física solo cuando no hay ingredientes ni productos asociados; en caso contrario devuelve `CATEGORY_IN_USE`. Las FK usan `Restrict` y debe preferirse desactivar.
+- Crear/actualizar valida duplicados en Core y la base de datos conserva la restricción como última barrera.
+
+## Invariantes de productos
+
+- Todo producto pertenece exactamente a un tenant y a una categoría de ese mismo tenant. `TenantId` se obtiene siempre del claim autenticado y nunca del body/query.
+- `products.read` autoriza el listado; `products.manage` autoriza creación, actualización, cambio de estado y eliminación.
+- `Type` solo admite `NORMAL` o `COMBO`, sin distinguir mayúsculas/minúsculas en la entrada. Si se omite al crear o actualizar, el valor efectivo es `NORMAL`.
+- El nombre es obligatorio, se recorta y colapsa espacios internos, y tiene máximo 120 caracteres. No existe una restricción de unicidad de nombre para productos.
+- `SalePrice` es obligatorio, positivo y usa precisión `numeric(18,2)`. `PreparationTimeMinutes` es opcional y no negativo.
+- `Description` es opcional y tiene máximo 1000 caracteres. `ImageUrl` es opcional, admite solo URL absoluta HTTP/HTTPS y tiene máximo 2048 caracteres; no se reciben binarios ni multipart en esta fase.
+- La categoría debe estar activa. `IsInventoryTracked` solo puede ser `true` cuando la categoría elegida es inventariable; Core lo fuerza a `false` si la categoría no lo permite, tanto al crear como al actualizar. Si una categoría deja de ser inventariable, todos sus productos se actualizan a `false` en la misma persistencia.
+- Todos los listados son paginados y aceptan búsqueda por nombre, filtro por categoría, filtro por tipo e `includeInactive`. Toda consulta filtra explícitamente por tenant.
+- `IsActive` cambia de forma reversible mediante `PATCH /status`. El listado normal omite productos inactivos.
+- `DELETE` elimina físicamente el producto actual mientras no existan restricciones de uso futuras. Las relaciones con tenant y categoría usan `Restrict`.
+
+## Invariantes de inventario
+
+- Todos los endpoints toman `TenantId` del contexto autenticado. Ningún body/query puede elegir tenant y todo acceso a ingrediente, categoría, unidad o movimiento filtra explícitamente por tenant.
+- Los cuatro apartados son capacidades dentro del módulo global `inventory`; no agregan módulos de navegación independientes.
+- Permisos: `inventory.stock.read`; `inventory.ingredients.read/manage`; `inventory.movements.read/manage`; `inventory.complements.read/manage`. Lectura y mutación nunca comparten implícitamente permiso.
+- Todos los listados usan `{ items, page, pageSize, totalCount, totalPages }`; `page >= 1` y `pageSize` está entre 1 y 100.
+- Un ingrediente exige categoría activa del mismo tenant, unidad activa del mismo tenant y nombre. Descripción es opcional; `MinimumStock` es no negativo y por defecto `0`.
+- `InitialStock` solo existe al crear el ingrediente. Si es mayor que cero, se genera atómicamente un movimiento interno `increase/initial`; las ediciones posteriores nunca modifican stock directamente.
+- `CurrentStock` solo cambia mediante `CreateInventoryMovementUseCase`. Los movimientos son inmutables: no existen endpoints de edición o eliminación.
+- Entradas públicas válidas: `purchase`, `production`, `acquisition`. Salidas válidas: `expiration`, `loss`, `waste`. Cada motivo solo acepta su dirección correspondiente.
+- Toda cantidad es positiva y usa precisión `numeric(18,3)`. Una salida que supera el stock actual devuelve `INVENTORY_INSUFFICIENT_STOCK` con HTTP 422 y nunca deja stock negativo.
+- La actualización de stock se ejecuta en transacción y bloquea la fila en proveedores relacionales antes de calcular `StockBefore`/`StockAfter`.
+- El inventario actual lista únicamente ingredientes activos cuya categoría activa tiene `IsInventoryTracked = true`. `IsBelowMinimum` significa estrictamente `CurrentStock < MinimumStock`.
+- Las unidades son el primer tipo de complemento; las rutas se anidan bajo `/api/inventory/complements/units` para poder añadir otros complementos sin romper el contrato.
+- Cada tenant nuevo recibe `gr`/`gramos`, `kg`/`kilogramos` y `und`/`unidades`; la migración hace backfill a tenants existentes. Código y nombre son únicos, normalizados y case-insensitive dentro de cada tenant.
+- No se elimina físicamente un ingrediente con movimientos, una unidad usada o una categoría usada. Se devuelve conflicto estable y se ofrece desactivación reversible.
+
+## Invariantes de salas y mesas
+
+- Toda sala, mesa, turno de caja y consulta operativa se filtra por el `TenantId` firmado; ningún body puede escoger tenant.
+- `tables.read` permite consultar el snapshot y conectarse al hub; `tables.operate` permite abrir, actualizar y liberar mesas; `tables.manage` autoriza el CRUD de configuración.
+- Nombre de sala es único por tenant; nombre de mesa es único dentro de la sala. Ambos se normalizan en Core y tienen índices únicos.
+- Las coordenadas admiten `-100000..100000`, la capacidad `1..100` y los totales nunca son negativos.
+- `Shape` solo admite `SQUARE`, `ROUND`, `RECTANGLE_HORIZONTAL` o `RECTANGLE_VERTICAL`; las mesas existentes usan `SQUARE` por defecto y el DTO conserva esos valores estables.
+- Una mesa `DISABLED` no se opera. Una mesa ocupada no se elimina. El estado `AVAILABLE` siempre limpia orden, total y tiempo de ocupación.
+- Una mesa `IsCashRegister` procesa pedidos inmediatos sin conservar ocupación persistente.
+- Si `Tenant.RequiresOpenCashRegister` es verdadero, toda mutación operativa exige un `CashRegisterShift` sin `ClosedAt`.
+- `TablesHub` publica `OnTableStatusChanged` y `OnTableOrderUpdated` únicamente al grupo derivado del tenant autenticado.
 
 ## Contrato con el frontend
 
@@ -364,6 +488,10 @@ El frontend local está en `../saviaup.frontend` y consume `http://localhost:500
 - El frontend debe persistir los nuevos tokens antes de navegar a `/app`.
 - `expiresAt` representa la expiración del access token por compatibilidad con el frontend.
 - Los nombres JSON usan camelCase.
+- Las cuatro vistas de inventario consumen exclusivamente los endpoints paginados y habilitan acciones según los permisos granulares, no según el nombre del rol.
+- La vista `/app/products` consume exclusivamente el listado paginado, carga categorías activas desde `/api/categories` y habilita mutaciones con `products.manage`; el selector requiere además `categories.read`.
+- El formulario de producto inicia `type` en `NORMAL` y deshabilita/fuerza `isInventoryTracked=false` cuando la categoría elegida no es inventariable. El backend repite siempre esta validación.
+- El prompt de adaptación del frontend se entrega únicamente en conversación; no se versiona un archivo `.md` de prompt.
 - Si cambia un DTO o endpoint, actualizar pruebas de integración y el adaptador correspondiente del frontend en la misma tarea cuando esté en alcance.
 
 ## Configuración y secretos
@@ -467,8 +595,8 @@ dotnet format saviaup.backend.sln --verify-no-changes --no-restore
 
 Cobertura actual:
 
-- Core: login correcto/inexistente/password erróneo/desactivado; registro correcto/duplicado; refresh correcto/expirado/revocado/reutilizado; reset correcto/inválido/expirado/usado; forgot neutral; selección de tenant; permisos; navegación localizada, agrupada y ordenada/estado vacío; información de usuario y validación del rol contextual.
-- Integración: registro, login, refresh, listado/creación/selección de tenant, secciones/módulos disponibles incluido `categories`, información contextual de usuario, traducciones y middleware 401/403/request continúa.
+- Core: login correcto/inexistente/password erróneo/desactivado; registro correcto/duplicado; refresh correcto/expirado/revocado/reutilizado; reset correcto/inválido/expirado/usado; forgot neutral; selección de tenant; permisos; navegación; información de usuario; CRUD, normalización, duplicados, validación y estado de categorías; reglas, filtros, estado y CRUD de productos.
+- Integración: registro, login, refresh, tenants, navegación, información de usuario, flujos completos de categorías y productos, traducciones y middleware 401/403/membership revocada/request continúa.
 - IntegrationTests reemplaza Npgsql por EF InMemory solo dentro del host de pruebas.
 
 Al agregar o cambiar comportamiento:
@@ -491,6 +619,7 @@ Al agregar o cambiar comportamiento:
 - Conservar respuestas y códigos compatibles salvo que exista una migración explícita del contrato.
 - No modificar archivos ajenos a la tarea ni descartar cambios del usuario.
 - No crear commit o push salvo solicitud expresa del usuario.
+- Los prompts solicitados para otros agentes se entregan en la conversación y no se guardan en el repositorio salvo petición explícita de crear un archivo.
 
 ## Checklist de cambio
 

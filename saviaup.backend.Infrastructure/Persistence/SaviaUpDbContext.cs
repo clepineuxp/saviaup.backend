@@ -15,6 +15,14 @@ public sealed class SaviaUpDbContext(DbContextOptions<SaviaUpDbContext> options)
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<Category> Categories => Set<Category>();
+    public DbSet<MeasurementUnit> MeasurementUnits => Set<MeasurementUnit>();
+    public DbSet<Ingredient> Ingredients => Set<Ingredient>();
+    public DbSet<InventoryMovement> InventoryMovements => Set<InventoryMovement>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<DiningArea> DiningAreas => Set<DiningArea>();
+    public DbSet<RestaurantTable> RestaurantTables => Set<RestaurantTable>();
+    public DbSet<CashRegisterShift> CashRegisterShifts => Set<CashRegisterShift>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
         => modelBuilder.ApplyConfigurationsFromAssembly(typeof(SaviaUpDbContext).Assembly);

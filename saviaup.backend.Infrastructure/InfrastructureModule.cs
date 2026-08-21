@@ -27,6 +27,14 @@ public static class InfrastructureModule
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<IModuleRepository, ModuleRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<IIngredientRepository, IngredientRepository>();
+        services.AddScoped<IInventoryMovementRepository, InventoryMovementRepository>();
+        services.AddScoped<IMeasurementUnitRepository, MeasurementUnitRepository>();
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IDiningAreaRepository, DiningAreaRepository>();
+        services.AddScoped<IRestaurantTableRepository, RestaurantTableRepository>();
+        services.AddScoped<ICashRegisterShiftRepository, CashRegisterShiftRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

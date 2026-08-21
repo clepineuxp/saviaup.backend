@@ -39,7 +39,15 @@ internal static class SeedData
         Permission("20000000-0000-0000-0000-000000000012", 6, PermissionCodes.BillingManage),
         Permission("20000000-0000-0000-0000-000000000013", 7, PermissionCodes.SettingsManage),
         Permission("20000000-0000-0000-0000-000000000014", 8, PermissionCodes.CategoriesRead),
-        Permission("20000000-0000-0000-0000-000000000015", 8, PermissionCodes.CategoriesManage)
+        Permission("20000000-0000-0000-0000-000000000015", 8, PermissionCodes.CategoriesManage),
+        Permission("20000000-0000-0000-0000-000000000016", 2, PermissionCodes.InventoryStockRead),
+        Permission("20000000-0000-0000-0000-000000000017", 2, PermissionCodes.InventoryIngredientsRead),
+        Permission("20000000-0000-0000-0000-000000000018", 2, PermissionCodes.InventoryIngredientsManage),
+        Permission("20000000-0000-0000-0000-000000000019", 2, PermissionCodes.InventoryMovementsRead),
+        Permission("20000000-0000-0000-0000-000000000020", 2, PermissionCodes.InventoryMovementsManage),
+        Permission("20000000-0000-0000-0000-000000000021", 2, PermissionCodes.InventoryComplementsRead),
+        Permission("20000000-0000-0000-0000-000000000022", 2, PermissionCodes.InventoryComplementsManage),
+        Permission("20000000-0000-0000-0000-000000000023", 1, PermissionCodes.TablesOperate)
     ];
 
     private static Permission Permission(string id, int moduleIndex, string code) => new()

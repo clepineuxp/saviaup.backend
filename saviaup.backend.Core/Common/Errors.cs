@@ -15,4 +15,22 @@ internal static class Errors
     public static readonly Error Validation = new(ErrorCodes.Validation, LocalizationKeys.Validation, ErrorType.Validation);
     public static readonly Error TenantNotFound = new(ErrorCodes.TenantNotFound, LocalizationKeys.TenantNotFound, ErrorType.NotFound);
     public static readonly Error TenantAccessDenied = new(ErrorCodes.TenantAccessDenied, LocalizationKeys.TenantAccessDenied, ErrorType.Forbidden);
+    public static readonly Error CategoryNotFound = new(ErrorCodes.CategoryNotFound, LocalizationKeys.CategoryNotFound, ErrorType.NotFound);
+    public static readonly Error CategoryNameAlreadyExists = new(ErrorCodes.CategoryNameAlreadyExists, LocalizationKeys.CategoryNameAlreadyExists, ErrorType.Conflict);
+    public static readonly Error CategoryInUse = new(ErrorCodes.CategoryInUse, LocalizationKeys.CategoryInUse, ErrorType.Conflict);
+    public static readonly Error IngredientNotFound = new(ErrorCodes.IngredientNotFound, LocalizationKeys.IngredientNotFound, ErrorType.NotFound);
+    public static readonly Error IngredientInUse = new(ErrorCodes.IngredientInUse, LocalizationKeys.IngredientInUse, ErrorType.Conflict);
+    public static readonly Error MeasurementUnitNotFound = new(ErrorCodes.MeasurementUnitNotFound, LocalizationKeys.MeasurementUnitNotFound, ErrorType.NotFound);
+    public static readonly Error MeasurementUnitAlreadyExists = new(ErrorCodes.MeasurementUnitAlreadyExists, LocalizationKeys.MeasurementUnitAlreadyExists, ErrorType.Conflict);
+    public static readonly Error MeasurementUnitInUse = new(ErrorCodes.MeasurementUnitInUse, LocalizationKeys.MeasurementUnitInUse, ErrorType.Conflict);
+    public static readonly Error InventoryMovementInvalid = new(ErrorCodes.InventoryMovementInvalid, LocalizationKeys.InventoryMovementInvalid, ErrorType.Validation);
+    public static readonly Error InventoryInsufficientStock = new(ErrorCodes.InventoryInsufficientStock, LocalizationKeys.InventoryInsufficientStock, ErrorType.Business);
+    public static readonly Error ProductNotFound = new(ErrorCodes.ProductNotFound, LocalizationKeys.ProductNotFound, ErrorType.NotFound);
+    public static readonly Error DiningAreaNotFound = new(ErrorCodes.DiningAreaNotFound, LocalizationKeys.DiningAreaNotFound, ErrorType.NotFound);
+    public static readonly Error DiningAreaAlreadyExists = new(ErrorCodes.DiningAreaAlreadyExists, LocalizationKeys.DiningAreaAlreadyExists, ErrorType.Conflict);
+    public static readonly Error DiningAreaInUse = new(ErrorCodes.DiningAreaInUse, LocalizationKeys.DiningAreaInUse, ErrorType.Conflict);
+    public static readonly Error RestaurantTableNotFound = new(ErrorCodes.RestaurantTableNotFound, LocalizationKeys.RestaurantTableNotFound, ErrorType.NotFound);
+    public static readonly Error RestaurantTableAlreadyExists = new(ErrorCodes.RestaurantTableAlreadyExists, LocalizationKeys.RestaurantTableAlreadyExists, ErrorType.Conflict);
+    public static readonly Error RestaurantTableOccupied = new(ErrorCodes.RestaurantTableOccupied, LocalizationKeys.RestaurantTableOccupied, ErrorType.Conflict);
+    public static readonly Error CashRegisterClosed = new(ErrorCodes.CashRegisterClosed, LocalizationKeys.CashRegisterClosed, ErrorType.Business);
 }
