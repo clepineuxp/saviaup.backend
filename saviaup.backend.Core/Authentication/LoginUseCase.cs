@@ -8,6 +8,7 @@ namespace SaviaUp.Backend.Core.Authentication;
 public sealed class LoginUseCase(
     IUserRepository userRepository,
     ITenantRepository tenantRepository,
+    IRoleRepository roleRepository,
     IPasswordHasher passwordHasher,
     SessionIssuer sessionIssuer,
     IDateTimeProvider dateTimeProvider,
@@ -23,7 +24,8 @@ public sealed class LoginUseCase(
         var membership = user.LastTenantId.HasValue
             ? await tenantRepository.GetMembershipAsync(user.Id, user.LastTenantId.Value, cancellationToken)
             : null;
-        if (membership is not null && (!membership.IsEnabledAt(dateTimeProvider.UtcNow) || !membership.Tenant.IsActive || !membership.Role.IsActive))
+        var role = membership is not null ? await roleRepository.GetByIdAsync(membership.RoleId, cancellationToken) : null;
+        if (membership is not null && (!membership.IsEnabledAt(dateTimeProvider.UtcNow) || !membership.Tenant.IsActive || role is null || !role.IsActive))
             membership = null;
         if (membership is null && user.LastTenantId.HasValue)
         {

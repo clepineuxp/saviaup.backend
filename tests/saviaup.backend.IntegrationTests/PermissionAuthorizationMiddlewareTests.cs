@@ -22,6 +22,7 @@ public sealed class PermissionAuthorizationMiddlewareTests
             Mock.Of<ICurrentUserContext>(),
             Mock.Of<IRefreshTokenRepository>(),
             Mock.Of<ITenantRepository>(),
+            Mock.Of<IRoleRepository>(),
             Mock.Of<IPermissionService>(),
             Mock.Of<IDateTimeProvider>());
 
@@ -40,7 +41,8 @@ public sealed class PermissionAuthorizationMiddlewareTests
         var context = Context(new AuthorizeAttribute(), new RequireTenantAttribute(), new RequirePermissionAttribute("orders.create"));
         var middleware = new PermissionAuthorizationMiddleware(_ => Task.CompletedTask);
 
-        await middleware.InvokeAsync(context, user.Object, sessions.Object, ActiveTenant(user), permissions.Object, Clock());
+        var (tenants, roles) = ActiveTenant(user);
+        await middleware.InvokeAsync(context, user.Object, sessions.Object, tenants, roles, permissions.Object, Clock());
 
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
         Assert.Equal("AUTH_FORBIDDEN", await ErrorCode(context));
@@ -58,7 +60,8 @@ public sealed class PermissionAuthorizationMiddlewareTests
         var context = Context(new AuthorizeAttribute(), new RequireTenantAttribute(), new RequirePermissionAttribute("orders.create"));
         var middleware = new PermissionAuthorizationMiddleware(_ => { continued = true; return Task.CompletedTask; });
 
-        await middleware.InvokeAsync(context, user.Object, sessions.Object, ActiveTenant(user), permissions.Object, Clock());
+        var (tenants, roles) = ActiveTenant(user);
+        await middleware.InvokeAsync(context, user.Object, sessions.Object, tenants, roles, permissions.Object, Clock());
 
         Assert.True(continued);
     }
@@ -74,7 +77,7 @@ public sealed class PermissionAuthorizationMiddlewareTests
                 It.IsAny<DateTimeOffset>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        var tenants = ActiveTenant(user, isMembershipActive: false);
+        var (tenants, roles) = ActiveTenant(user, isMembershipActive: false);
         var context = Context(new AuthorizeAttribute(), new RequireTenantAttribute());
         var middleware = new PermissionAuthorizationMiddleware(_ => Task.CompletedTask);
 
@@ -83,6 +86,7 @@ public sealed class PermissionAuthorizationMiddlewareTests
             user.Object,
             sessions.Object,
             tenants,
+            roles,
             Mock.Of<IPermissionService>(),
             Clock());
 
@@ -109,7 +113,7 @@ public sealed class PermissionAuthorizationMiddlewareTests
         return user;
     }
 
-    private static ITenantRepository ActiveTenant(
+    private static (ITenantRepository Tenants, IRoleRepository Roles) ActiveTenant(
         Mock<ICurrentUserContext> user,
         bool isMembershipActive = true)
     {
@@ -118,7 +122,6 @@ public sealed class PermissionAuthorizationMiddlewareTests
         {
             Id = user.Object.RoleId!.Value,
             TenantId = tenant.Id,
-            Tenant = tenant,
             IsActive = true
         };
         var membership = new TenantMembership
@@ -127,16 +130,19 @@ public sealed class PermissionAuthorizationMiddlewareTests
             TenantId = tenant.Id,
             Tenant = tenant,
             RoleId = role.Id,
-            Role = role,
             IsActive = isMembershipActive
         };
-        var repository = new Mock<ITenantRepository>();
-        repository.Setup(value => value.GetMembershipAsync(
+        var tenantRepo = new Mock<ITenantRepository>();
+        tenantRepo.Setup(value => value.GetMembershipAsync(
                 user.Object.UserId.Value,
                 tenant.Id,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(membership);
-        return repository.Object;
+
+        var roleRepo = new Mock<IRoleRepository>();
+        roleRepo.Setup(value => value.GetByIdAsync(role.Id, It.IsAny<CancellationToken>())).ReturnsAsync(role);
+
+        return (tenantRepo.Object, roleRepo.Object);
     }
 
     private static IDateTimeProvider Clock()

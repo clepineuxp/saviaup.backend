@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
+using SaviaUp.Backend.Infrastructure.Persistence.Platform;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
-public sealed class RefreshTokenRepository(SaviaUpDbContext context) : IRefreshTokenRepository
+public sealed class RefreshTokenRepository(PlatformDbContext context) : IRefreshTokenRepository
 {
     public Task<RefreshToken?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken)
         => context.RefreshTokens.AsNoTracking().SingleOrDefaultAsync(token => token.TokenHash == tokenHash, cancellationToken);

@@ -3,10 +3,11 @@ using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Domain.Results;
+using SaviaUp.Backend.Infrastructure.Persistence.Application;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
-public sealed class ProductRepository(SaviaUpDbContext context) : IProductRepository
+public sealed class ProductRepository(ApplicationDbContext context) : IProductRepository
 {
     public async Task<PageData<Product>> GetPageAsync(
         Guid tenantId,

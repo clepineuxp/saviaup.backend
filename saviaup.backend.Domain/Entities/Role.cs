@@ -10,7 +10,5 @@ public sealed class Role
     public bool IsSystem { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
-    public Tenant Tenant { get; set; } = null!;
     public ICollection<RolePermission> RolePermissions { get; set; } = [];
-    public ICollection<TenantInvitation> Invitations { get; set; } = [];
 }

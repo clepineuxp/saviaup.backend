@@ -3,10 +3,11 @@ using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Domain.Results;
+using SaviaUp.Backend.Infrastructure.Persistence.Application;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
-public sealed class MeasurementUnitRepository(SaviaUpDbContext context) : IMeasurementUnitRepository
+public sealed class MeasurementUnitRepository(ApplicationDbContext context) : IMeasurementUnitRepository
 {
     public async Task<PageData<MeasurementUnit>> GetPageAsync(
         Guid tenantId, MeasurementUnitQueryRequest request, CancellationToken cancellationToken)

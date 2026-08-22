@@ -14,7 +14,6 @@ public sealed class Ingredient
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
-    public Tenant Tenant { get; set; } = null!;
     public Category Category { get; set; } = null!;
     public MeasurementUnit MeasurementUnit { get; set; } = null!;
     public ICollection<InventoryMovement> Movements { get; set; } = [];

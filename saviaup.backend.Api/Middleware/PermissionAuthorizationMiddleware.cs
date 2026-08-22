@@ -13,6 +13,7 @@ public sealed class PermissionAuthorizationMiddleware(RequestDelegate next)
         ICurrentUserContext currentUser,
         IRefreshTokenRepository refreshTokenRepository,
         ITenantRepository tenantRepository,
+        IRoleRepository roleRepository,
         IPermissionService permissionService,
         IDateTimeProvider dateTimeProvider)
     {
@@ -53,10 +54,12 @@ public sealed class PermissionAuthorizationMiddleware(RequestDelegate next)
                 currentUser.UserId.Value,
                 currentUser.TenantId!.Value,
                 context.RequestAborted);
+            var role = membership is not null ? await roleRepository.GetByIdAsync(membership.RoleId, context.RequestAborted) : null;
             if (membership is null
                 || !membership.IsEnabledAt(dateTimeProvider.UtcNow)
                 || !membership.Tenant.IsActive
-                || !membership.Role.IsActive
+                || role is null
+                || !role.IsActive
                 || membership.RoleId != currentUser.RoleId)
             {
                 await WriteAsync(context, StatusCodes.Status403Forbidden, ErrorCodes.TenantAccessDenied, LocalizationKeys.TenantAccessDenied);

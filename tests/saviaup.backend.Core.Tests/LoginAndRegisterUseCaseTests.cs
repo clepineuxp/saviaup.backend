@@ -18,7 +18,7 @@ public sealed class LoginAndRegisterUseCaseTests
         var hasher = new Mock<IPasswordHasher>();
         hasher.Setup(service => service.Verify(user.PasswordHash, "Secure123!*")).Returns(true);
         var unitOfWork = new Mock<IUnitOfWork>();
-        var useCase = new LoginUseCase(users.Object, Mock.Of<ITenantRepository>(), hasher.Object, TestSupport.SessionIssuer(), new FixedClock(TestSupport.Now), unitOfWork.Object);
+        var useCase = new LoginUseCase(users.Object, Mock.Of<ITenantRepository>(), Mock.Of<IRoleRepository>(), hasher.Object, TestSupport.SessionIssuer(), new FixedClock(TestSupport.Now), unitOfWork.Object);
 
         var result = await useCase.ExecuteAsync(new LoginRequest("ana@test.com", "Secure123!*"), default);
 
@@ -92,7 +92,7 @@ public sealed class LoginAndRegisterUseCaseTests
         users.Setup(repository => repository.GetByNormalizedEmailAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(user);
         var hasher = new Mock<IPasswordHasher>();
         hasher.Setup(service => service.Verify(It.IsAny<string>(), It.IsAny<string>())).Returns(passwordValid);
-        return new LoginUseCase(users.Object, Mock.Of<ITenantRepository>(), hasher.Object, TestSupport.SessionIssuer(), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
+        return new LoginUseCase(users.Object, Mock.Of<ITenantRepository>(), Mock.Of<IRoleRepository>(), hasher.Object, TestSupport.SessionIssuer(), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
     }
 
     private static User User() => new()

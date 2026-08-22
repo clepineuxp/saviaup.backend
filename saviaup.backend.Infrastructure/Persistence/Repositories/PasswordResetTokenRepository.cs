@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
+using SaviaUp.Backend.Infrastructure.Persistence.Platform;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
-public sealed class PasswordResetTokenRepository(SaviaUpDbContext context) : IPasswordResetTokenRepository
+public sealed class PasswordResetTokenRepository(PlatformDbContext context) : IPasswordResetTokenRepository
 {
     public Task<PasswordResetToken?> GetByHashAsync(string tokenHash, CancellationToken cancellationToken)
         => context.PasswordResetTokens.AsNoTracking().SingleOrDefaultAsync(token => token.TokenHash == tokenHash, cancellationToken);

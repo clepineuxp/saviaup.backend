@@ -9,5 +9,4 @@ public sealed class OrganizationParameter
     public string ValueType { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
-    public Tenant Tenant { get; set; } = null!;
 }

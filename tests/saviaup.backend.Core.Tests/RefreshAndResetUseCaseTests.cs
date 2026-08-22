@@ -25,7 +25,7 @@ public sealed class RefreshAndResetUseCaseTests
         users.Setup(repository => repository.GetByIdAsync(token.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(User(token.UserId));
         var unitOfWork = new Mock<IUnitOfWork>();
         TestSupport.RunTransaction<Result<TokenResponse>>(unitOfWork);
-        var useCase = new RefreshTokenUseCase(generator.Object, tokens.Object, users.Object, Mock.Of<ITenantRepository>(), TestSupport.SessionIssuer(tokens, generator), new FixedClock(TestSupport.Now), unitOfWork.Object);
+        var useCase = new RefreshTokenUseCase(generator.Object, tokens.Object, users.Object, Mock.Of<ITenantRepository>(), Mock.Of<IRoleRepository>(), TestSupport.SessionIssuer(tokens, generator), new FixedClock(TestSupport.Now), unitOfWork.Object);
 
         var result = await useCase.ExecuteAsync(new RefreshTokenRequest("raw-input"), default);
 
@@ -119,7 +119,7 @@ public sealed class RefreshAndResetUseCaseTests
         users.Setup(repository => repository.GetByIdAsync(token.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(User(token.UserId));
         var unitOfWork = new Mock<IUnitOfWork>();
         TestSupport.RunTransaction<Result<TokenResponse>>(unitOfWork);
-        return new RefreshTokenUseCase(generator.Object, tokens.Object, users.Object, Mock.Of<ITenantRepository>(), TestSupport.SessionIssuer(tokens, generator), new FixedClock(TestSupport.Now), unitOfWork.Object);
+        return new RefreshTokenUseCase(generator.Object, tokens.Object, users.Object, Mock.Of<ITenantRepository>(), Mock.Of<IRoleRepository>(), TestSupport.SessionIssuer(tokens, generator), new FixedClock(TestSupport.Now), unitOfWork.Object);
     }
 
     private static User User(Guid id) => new() { Id = id, Email = "ana@test.com", FirstName = "Ana", LastName = "Test", IsActive = true };

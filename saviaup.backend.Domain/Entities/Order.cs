@@ -27,7 +27,6 @@ public sealed class Order
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
 
-    public Tenant? Tenant { get; set; }
     public RestaurantTable? Table { get; set; }
     public CashRegisterShift? CashRegisterShift { get; set; }
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();

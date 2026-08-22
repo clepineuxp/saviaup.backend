@@ -108,7 +108,7 @@ public sealed class SettingsUseCaseTests
         var repository = new Mock<ISettingsRepository>();
         repository.Setup(value => value.RoleCodeOrNameExistsAsync(tenantId, It.IsAny<string>(), It.IsAny<string>(), null, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         repository.Setup(value => value.GetEnabledPermissionCodesAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync([PermissionCodes.ProductsRead]);
-        var useCase = new AccessSettingsUseCase(repository.Object, Mock.Of<IUserRepository>(), Mock.Of<ITenantRepository>(), Mock.Of<IEmailSender>(),
+        var useCase = new AccessSettingsUseCase(repository.Object, Mock.Of<IRoleRepository>(), Mock.Of<IPermissionRepository>(), Mock.Of<IUserRepository>(), Mock.Of<ITenantRepository>(), Mock.Of<IEmailSender>(),
             Options.Create(new FrontendOptions()), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
 
         var result = await useCase.CreateRoleAsync(tenantId, new SaveSettingsRoleRequest("Mesero", null, [PermissionCodes.SettingsManage]), default);

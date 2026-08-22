@@ -24,10 +24,12 @@ internal static class TestSupport
     public static SessionIssuer SessionIssuer(
         Mock<IRefreshTokenRepository>? refreshTokens = null,
         Mock<ITokenGenerator>? tokenGenerator = null,
+        Mock<IRoleRepository>? roles = null,
         Mock<IPermissionRepository>? permissions = null)
     {
         refreshTokens ??= new Mock<IRefreshTokenRepository>();
         tokenGenerator ??= new Mock<ITokenGenerator>();
+        roles ??= new Mock<IRoleRepository>();
         permissions ??= new Mock<IPermissionRepository>();
         tokenGenerator.Setup(generator => generator.Generate()).Returns("raw-refresh-token");
         permissions.Setup(repository => repository.GetForRoleAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -39,6 +41,7 @@ internal static class TestSupport
             jwt.Object,
             tokenGenerator.Object,
             refreshTokens.Object,
+            roles.Object,
             permissions.Object,
             new FixedClock(Now),
             Options.Create(new JwtOptions { RefreshTokenExpirationDays = 30 }));

@@ -21,8 +21,5 @@ public sealed class CashRegisterShift
     public decimal? TotalCollectedAmount { get; set; }
     public decimal? TotalExpensesAmount { get; set; }
 
-    public Tenant Tenant { get; set; } = null!;
     public CashRegister CashRegister { get; set; } = null!;
-    public User OpenedByUser { get; set; } = null!;
-    public User? ClosedByUser { get; set; }
 }
