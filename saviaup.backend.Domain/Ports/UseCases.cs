@@ -179,12 +179,12 @@ public interface IListProductsUseCase
 
 public interface ICreateProductUseCase
 {
-    Task<Result<ProductDto>> ExecuteAsync(Guid tenantId, CreateProductRequest request, CancellationToken cancellationToken);
+    Task<Result<ProductDto>> ExecuteAsync(Guid tenantId, Guid userId, string userName, CreateProductRequest request, CancellationToken cancellationToken);
 }
 
 public interface IUpdateProductUseCase
 {
-    Task<Result<ProductDto>> ExecuteAsync(Guid tenantId, Guid productId, UpdateProductRequest request, CancellationToken cancellationToken);
+    Task<Result<ProductDto>> ExecuteAsync(Guid tenantId, Guid productId, Guid userId, string userName, UpdateProductRequest request, CancellationToken cancellationToken);
 }
 
 public interface ISetProductStatusUseCase
@@ -350,7 +350,47 @@ public interface ISetCashRegisterStatusUseCase
 
 public interface IDeleteCashRegisterUseCase
 {
-    Task<Result> ExecuteAsync(Guid tenantId, Guid cashRegisterId, CancellationToken cancellationToken);
+    Task<Result> ExecuteAsync(
+        Guid tenantId,
+        Guid cashRegisterId,
+        CancellationToken cancellationToken);
+}
+
+public interface IOpenCashRegisterShiftUseCase
+{
+    Task<Result<CashRegisterShiftDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid userId,
+        string userName,
+        OpenCashRegisterShiftRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface ICloseCashRegisterShiftUseCase
+{
+    Task<Result<CashRegisterShiftDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid shiftId,
+        Guid userId,
+        string userName,
+        CloseCashRegisterShiftRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IGetCashRegisterShiftSummaryUseCase
+{
+    Task<Result<CashRegisterShiftSummaryDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid shiftId,
+        CancellationToken cancellationToken);
+}
+
+public interface IListCashRegisterShiftsUseCase
+{
+    Task<Result<PagedResponse<CashRegisterShiftDto>>> ExecuteAsync(
+        Guid tenantId,
+        CashRegisterShiftQueryRequest request,
+        CancellationToken cancellationToken);
 }
 
 public interface IPermissionService

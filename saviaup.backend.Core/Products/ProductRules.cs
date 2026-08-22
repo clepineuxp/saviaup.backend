@@ -75,6 +75,8 @@ internal static class ProductRules
         product.PreparationTimeMinutes,
         product.IsInventoryTracked,
         product.IsActive,
+        product.CreatedByUserName,
+        product.LastModifiedByUserName,
         product.CreatedAt,
         product.UpdatedAt);
 

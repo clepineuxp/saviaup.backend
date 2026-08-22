@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaviaUp.Backend.Api.Attributes;
@@ -18,6 +19,10 @@ public sealed class CashRegistersController(
     IUpdateCashRegisterUseCase updateUseCase,
     ISetCashRegisterStatusUseCase setStatusUseCase,
     IDeleteCashRegisterUseCase deleteUseCase,
+    IOpenCashRegisterShiftUseCase openShiftUseCase,
+    ICloseCashRegisterShiftUseCase closeShiftUseCase,
+    IGetCashRegisterShiftSummaryUseCase getShiftSummaryUseCase,
+    IListCashRegisterShiftsUseCase listShiftsUseCase,
     ICurrentUserContext currentUser) : ControllerBase
 {
     [HttpGet]
@@ -71,4 +76,64 @@ public sealed class CashRegistersController(
             currentUser.TenantId!.Value,
             cashRegisterId,
             cancellationToken));
+
+    [HttpPost("shifts/open")]
+    [RequirePermission(PermissionCodes.CashRegistersOperate)]
+    public async Task<ActionResult<CashRegisterShiftDto>> OpenShift(
+        OpenCashRegisterShiftRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = currentUser.UserId!.Value;
+        var userName = User.FindFirstValue(ClaimTypes.Email) ?? userId.ToString();
+        return this.FromResult(await openShiftUseCase.ExecuteAsync(
+            currentUser.TenantId!.Value,
+            userId,
+            userName,
+            request,
+            cancellationToken));
+    }
+
+    [HttpPost("shifts/{shiftId:guid}/close")]
+    [RequirePermission(PermissionCodes.CashRegistersOperate)]
+    public async Task<ActionResult<CashRegisterShiftDto>> CloseShift(
+        Guid shiftId,
+        CloseCashRegisterShiftRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = currentUser.UserId!.Value;
+        var userName = User.FindFirstValue(ClaimTypes.Email) ?? userId.ToString();
+        return this.FromResult(await closeShiftUseCase.ExecuteAsync(
+            currentUser.TenantId!.Value,
+            shiftId,
+            userId,
+            userName,
+            request,
+            cancellationToken));
+    }
+
+    [HttpGet("shifts/{shiftId:guid}/summary")]
+    [RequirePermission(PermissionCodes.CashRegistersRead)]
+    public async Task<ActionResult<CashRegisterShiftSummaryDto>> GetShiftSummary(
+        Guid shiftId,
+        CancellationToken cancellationToken)
+        => this.FromResult(await getShiftSummaryUseCase.ExecuteAsync(
+            currentUser.TenantId!.Value,
+            shiftId,
+            cancellationToken));
+
+    [HttpGet("shifts")]
+    [RequirePermission(PermissionCodes.CashRegistersRead)]
+    public async Task<ActionResult<PagedResponse<CashRegisterShiftDto>>> ListShifts(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] Guid? cashRegisterId = null,
+        [FromQuery] string? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        var req = new CashRegisterShiftQueryRequest(page, pageSize, cashRegisterId, status);
+        return this.FromResult(await listShiftsUseCase.ExecuteAsync(
+            currentUser.TenantId!.Value,
+            req,
+            cancellationToken));
+    }
 }

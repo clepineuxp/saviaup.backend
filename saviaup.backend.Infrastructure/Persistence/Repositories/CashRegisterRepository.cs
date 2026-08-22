@@ -45,12 +45,9 @@ public sealed class CashRegisterRepository(SaviaUpDbContext context) : ICashRegi
     public async Task AddAsync(CashRegister cashRegister, CancellationToken cancellationToken)
         => await context.CashRegisters.AddAsync(cashRegister, cancellationToken);
 
-    public async Task<bool> IsInUseAsync(Guid tenantId, Guid id, CancellationToken cancellationToken)
-    {
-        // Currently cash registers do not have historical shifts/transactions linked yet, so returns false.
-        await Task.CompletedTask;
-        return false;
-    }
+    public Task<bool> IsInUseAsync(Guid tenantId, Guid id, CancellationToken cancellationToken)
+        => context.CashRegisterShifts.AsNoTracking()
+            .AnyAsync(shift => shift.TenantId == tenantId && shift.CashRegisterId == id, cancellationToken);
 
     public void Remove(CashRegister cashRegister) => context.CashRegisters.Remove(cashRegister);
 }

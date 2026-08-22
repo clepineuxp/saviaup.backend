@@ -31,7 +31,7 @@ public sealed class CreateProductUseCase(
     IUnitOfWork unitOfWork) : ICreateProductUseCase
 {
     public async Task<Result<ProductDto>> ExecuteAsync(
-        Guid tenantId, CreateProductRequest request, CancellationToken cancellationToken)
+        Guid tenantId, Guid userId, string userName, CreateProductRequest request, CancellationToken cancellationToken)
     {
         if (request.CategoryId == Guid.Empty
             || !ProductRules.TryPrepare(
@@ -64,6 +64,10 @@ public sealed class CreateProductUseCase(
             PreparationTimeMinutes = values.PreparationTimeMinutes,
             IsInventoryTracked = category.IsInventoryTracked && request.IsInventoryTracked,
             IsActive = true,
+            CreatedByUserId = userId,
+            CreatedByUserName = userName,
+            LastModifiedByUserId = userId,
+            LastModifiedByUserName = userName,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -80,7 +84,7 @@ public sealed class UpdateProductUseCase(
     IUnitOfWork unitOfWork) : IUpdateProductUseCase
 {
     public async Task<Result<ProductDto>> ExecuteAsync(
-        Guid tenantId, Guid productId, UpdateProductRequest request, CancellationToken cancellationToken)
+        Guid tenantId, Guid productId, Guid userId, string userName, UpdateProductRequest request, CancellationToken cancellationToken)
     {
         if (request.CategoryId == Guid.Empty
             || !ProductRules.TryPrepare(
@@ -109,6 +113,8 @@ public sealed class UpdateProductUseCase(
         product.SalePrice = values.SalePrice;
         product.PreparationTimeMinutes = values.PreparationTimeMinutes;
         product.IsInventoryTracked = category.IsInventoryTracked && request.IsInventoryTracked;
+        product.LastModifiedByUserId = userId;
+        product.LastModifiedByUserName = userName;
         product.UpdatedAt = clock.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<ProductDto>.Success(ProductRules.ToDto(product));

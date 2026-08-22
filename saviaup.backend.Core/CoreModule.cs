@@ -78,6 +78,10 @@ public static class CoreModule
         services.AddScoped<IUpdateCashRegisterUseCase, UpdateCashRegisterUseCase>();
         services.AddScoped<ISetCashRegisterStatusUseCase, SetCashRegisterStatusUseCase>();
         services.AddScoped<IDeleteCashRegisterUseCase, DeleteCashRegisterUseCase>();
+        services.AddScoped<IOpenCashRegisterShiftUseCase, OpenCashRegisterShiftUseCase>();
+        services.AddScoped<ICloseCashRegisterShiftUseCase, CloseCashRegisterShiftUseCase>();
+        services.AddScoped<IGetCashRegisterShiftSummaryUseCase, GetCashRegisterShiftSummaryUseCase>();
+        services.AddScoped<IListCashRegisterShiftsUseCase, ListCashRegisterShiftsUseCase>();
         services.AddScoped<IOrganizationSettingsUseCase, OrganizationSettingsUseCase>();
         services.AddScoped<IBusinessSettingsUseCase, BusinessSettingsUseCase>();
         services.AddScoped<IPaymentMethodsSettingsUseCase, PaymentMethodsSettingsUseCase>();

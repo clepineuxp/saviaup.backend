@@ -80,9 +80,25 @@ public static class ApiModule
             });
         services.AddAuthorization();
 
+        var isDev = string.Equals(configuration["ASPNETCORE_ENVIRONMENT"], "Development", StringComparison.OrdinalIgnoreCase);
         var origins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:4200"];
         services.AddCors(options => options.AddPolicy(CorsPolicy, policy =>
-            policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
+        {
+            if (isDev)
+            {
+                policy.SetIsOriginAllowed(_ => true)
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            }
+            else
+            {
+                policy.WithOrigins(origins)
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            }
+        }));
         services.AddSignalR();
         services.AddScoped<ITableRealtimeNotifier, TableRealtimeNotifier>();
         services.AddRateLimiter(options =>

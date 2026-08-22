@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaviaUp.Backend.Api.Attributes;
@@ -37,6 +38,8 @@ public sealed class ProductsController(
         CancellationToken cancellationToken)
         => this.FromResult(await createUseCase.ExecuteAsync(
             currentUser.TenantId!.Value,
+            currentUser.UserId!.Value,
+            User.FindFirstValue(ClaimTypes.Email) ?? currentUser.UserId?.ToString() ?? "Sistema",
             request,
             cancellationToken));
 
@@ -49,6 +52,8 @@ public sealed class ProductsController(
         => this.FromResult(await updateUseCase.ExecuteAsync(
             currentUser.TenantId!.Value,
             productId,
+            currentUser.UserId!.Value,
+            User.FindFirstValue(ClaimTypes.Email) ?? currentUser.UserId?.ToString() ?? "Sistema",
             request,
             cancellationToken));
 

@@ -6,39 +6,41 @@ using SaviaUp.Backend.Domain.Results;
 
 namespace SaviaUp.Backend.Core.CashRegisters;
 
-public sealed class ListCashRegistersUseCase : IListCashRegistersUseCase
+public sealed class ListCashRegistersUseCase(
+    ICashRegisterRepository repository,
+    ICashRegisterShiftRepository shiftRepository) : IListCashRegistersUseCase
 {
-    private readonly ICashRegisterRepository _repository;
-
-    public ListCashRegistersUseCase(ICashRegisterRepository repository)
-    {
-        _repository = repository;
-    }
-
     public async Task<Result<IReadOnlyCollection<CashRegisterDto>>> ExecuteAsync(
         Guid tenantId,
         bool includeInactive,
         CancellationToken cancellationToken)
     {
-        var cashRegisters = await _repository.GetForTenantAsync(tenantId, includeInactive, cancellationToken);
-        var dtos = cashRegisters
-            .Select(cr => new CashRegisterDto(cr.Id, cr.Name, cr.Location, cr.IsActive, cr.CreatedAt, cr.UpdatedAt))
-            .ToArray();
+        var cashRegisters = await repository.GetForTenantAsync(tenantId, includeInactive, cancellationToken);
+        var dtos = new List<CashRegisterDto>();
+
+        foreach (var cr in cashRegisters)
+        {
+            var openShift = await shiftRepository.GetOpenShiftAsync(tenantId, cr.Id, cancellationToken);
+            dtos.Add(new CashRegisterDto(
+                cr.Id,
+                cr.Name,
+                cr.Location,
+                cr.IsActive,
+                openShift is not null,
+                openShift?.Id,
+                cr.CreatedAt,
+                cr.UpdatedAt));
+        }
+
         return Result<IReadOnlyCollection<CashRegisterDto>>.Success(dtos);
     }
 }
 
-public sealed class CreateCashRegisterUseCase : ICreateCashRegisterUseCase
+public sealed class CreateCashRegisterUseCase(
+    ICashRegisterRepository repository,
+    ICashRegisterShiftRepository shiftRepository,
+    IUnitOfWork unitOfWork) : ICreateCashRegisterUseCase
 {
-    private readonly ICashRegisterRepository _repository;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public CreateCashRegisterUseCase(ICashRegisterRepository repository, IUnitOfWork unitOfWork)
-    {
-        _repository = repository;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result<CashRegisterDto>> ExecuteAsync(
         Guid tenantId,
         CreateCashRegisterRequest request,
@@ -57,12 +59,12 @@ public sealed class CreateCashRegisterUseCase : ICreateCashRegisterUseCase
         }
 
         var normalizedName = name.ToUpperInvariant();
-        if (await _repository.NameExistsAsync(tenantId, normalizedName, null, cancellationToken))
+        if (await repository.NameExistsAsync(tenantId, normalizedName, null, cancellationToken))
         {
             return Result<CashRegisterDto>.Failure(Errors.CashRegisterNameAlreadyExists);
         }
 
-        if (request.IsActive && await _repository.HasOtherActiveAsync(tenantId, null, cancellationToken))
+        if (request.IsActive && await repository.HasOtherActiveAsync(tenantId, null, cancellationToken))
         {
             return Result<CashRegisterDto>.Failure(Errors.CashRegisterSingleActiveExceeded);
         }
@@ -80,37 +82,34 @@ public sealed class CreateCashRegisterUseCase : ICreateCashRegisterUseCase
             UpdatedAt = now
         };
 
-        await _repository.AddAsync(cashRegister, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await repository.AddAsync(cashRegister, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var openShift = await shiftRepository.GetOpenShiftAsync(tenantId, cashRegister.Id, cancellationToken);
         return Result<CashRegisterDto>.Success(new CashRegisterDto(
             cashRegister.Id,
             cashRegister.Name,
             cashRegister.Location,
             cashRegister.IsActive,
+            openShift is not null,
+            openShift?.Id,
             cashRegister.CreatedAt,
             cashRegister.UpdatedAt));
     }
 }
 
-public sealed class UpdateCashRegisterUseCase : IUpdateCashRegisterUseCase
+public sealed class UpdateCashRegisterUseCase(
+    ICashRegisterRepository repository,
+    ICashRegisterShiftRepository shiftRepository,
+    IUnitOfWork unitOfWork) : IUpdateCashRegisterUseCase
 {
-    private readonly ICashRegisterRepository _repository;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public UpdateCashRegisterUseCase(ICashRegisterRepository repository, IUnitOfWork unitOfWork)
-    {
-        _repository = repository;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result<CashRegisterDto>> ExecuteAsync(
         Guid tenantId,
         Guid cashRegisterId,
         UpdateCashRegisterRequest request,
         CancellationToken cancellationToken)
     {
-        var cashRegister = await _repository.GetByIdAsync(tenantId, cashRegisterId, cancellationToken);
+        var cashRegister = await repository.GetByIdAsync(tenantId, cashRegisterId, cancellationToken);
         if (cashRegister is null)
         {
             return Result<CashRegisterDto>.Failure(Errors.CashRegisterNotFound);
@@ -129,12 +128,12 @@ public sealed class UpdateCashRegisterUseCase : IUpdateCashRegisterUseCase
         }
 
         var normalizedName = name.ToUpperInvariant();
-        if (await _repository.NameExistsAsync(tenantId, normalizedName, cashRegisterId, cancellationToken))
+        if (await repository.NameExistsAsync(tenantId, normalizedName, cashRegisterId, cancellationToken))
         {
             return Result<CashRegisterDto>.Failure(Errors.CashRegisterNameAlreadyExists);
         }
 
-        if (request.IsActive && await _repository.HasOtherActiveAsync(tenantId, cashRegisterId, cancellationToken))
+        if (request.IsActive && await repository.HasOtherActiveAsync(tenantId, cashRegisterId, cancellationToken))
         {
             return Result<CashRegisterDto>.Failure(Errors.CashRegisterSingleActiveExceeded);
         }
@@ -145,42 +144,39 @@ public sealed class UpdateCashRegisterUseCase : IUpdateCashRegisterUseCase
         cashRegister.IsActive = request.IsActive;
         cashRegister.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var openShift = await shiftRepository.GetOpenShiftAsync(tenantId, cashRegister.Id, cancellationToken);
         return Result<CashRegisterDto>.Success(new CashRegisterDto(
             cashRegister.Id,
             cashRegister.Name,
             cashRegister.Location,
             cashRegister.IsActive,
+            openShift is not null,
+            openShift?.Id,
             cashRegister.CreatedAt,
             cashRegister.UpdatedAt));
     }
 }
 
-public sealed class SetCashRegisterStatusUseCase : ISetCashRegisterStatusUseCase
+public sealed class SetCashRegisterStatusUseCase(
+    ICashRegisterRepository repository,
+    ICashRegisterShiftRepository shiftRepository,
+    IUnitOfWork unitOfWork) : ISetCashRegisterStatusUseCase
 {
-    private readonly ICashRegisterRepository _repository;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public SetCashRegisterStatusUseCase(ICashRegisterRepository repository, IUnitOfWork unitOfWork)
-    {
-        _repository = repository;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result<CashRegisterDto>> ExecuteAsync(
         Guid tenantId,
         Guid cashRegisterId,
         SetCashRegisterStatusRequest request,
         CancellationToken cancellationToken)
     {
-        var cashRegister = await _repository.GetByIdAsync(tenantId, cashRegisterId, cancellationToken);
+        var cashRegister = await repository.GetByIdAsync(tenantId, cashRegisterId, cancellationToken);
         if (cashRegister is null)
         {
             return Result<CashRegisterDto>.Failure(Errors.CashRegisterNotFound);
         }
 
-        if (request.IsActive && await _repository.HasOtherActiveAsync(tenantId, cashRegisterId, cancellationToken))
+        if (request.IsActive && await repository.HasOtherActiveAsync(tenantId, cashRegisterId, cancellationToken))
         {
             return Result<CashRegisterDto>.Failure(Errors.CashRegisterSingleActiveExceeded);
         }
@@ -188,44 +184,38 @@ public sealed class SetCashRegisterStatusUseCase : ISetCashRegisterStatusUseCase
         cashRegister.IsActive = request.IsActive;
         cashRegister.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var openShift = await shiftRepository.GetOpenShiftAsync(tenantId, cashRegister.Id, cancellationToken);
         return Result<CashRegisterDto>.Success(new CashRegisterDto(
             cashRegister.Id,
             cashRegister.Name,
             cashRegister.Location,
             cashRegister.IsActive,
+            openShift is not null,
+            openShift?.Id,
             cashRegister.CreatedAt,
             cashRegister.UpdatedAt));
     }
 }
 
-public sealed class DeleteCashRegisterUseCase : IDeleteCashRegisterUseCase
+public sealed class DeleteCashRegisterUseCase(ICashRegisterRepository repository, IUnitOfWork unitOfWork) : IDeleteCashRegisterUseCase
 {
-    private readonly ICashRegisterRepository _repository;
-    private readonly IUnitOfWork _unitOfWork;
-
-    public DeleteCashRegisterUseCase(ICashRegisterRepository repository, IUnitOfWork unitOfWork)
-    {
-        _repository = repository;
-        _unitOfWork = unitOfWork;
-    }
-
     public async Task<Result> ExecuteAsync(Guid tenantId, Guid cashRegisterId, CancellationToken cancellationToken)
     {
-        var cashRegister = await _repository.GetByIdAsync(tenantId, cashRegisterId, cancellationToken);
+        var cashRegister = await repository.GetByIdAsync(tenantId, cashRegisterId, cancellationToken);
         if (cashRegister is null)
         {
             return Result.Failure(Errors.CashRegisterNotFound);
         }
 
-        if (await _repository.IsInUseAsync(tenantId, cashRegisterId, cancellationToken))
+        if (await repository.IsInUseAsync(tenantId, cashRegisterId, cancellationToken))
         {
             return Result.Failure(Errors.CashRegisterInUse);
         }
 
-        _repository.Remove(cashRegister);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        repository.Remove(cashRegister);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }

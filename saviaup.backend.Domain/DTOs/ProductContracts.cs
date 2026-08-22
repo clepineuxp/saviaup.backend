@@ -23,6 +23,8 @@ public sealed record ProductDto(
     int? PreparationTimeMinutes,
     bool IsInventoryTracked,
     bool IsActive,
+    string? CreatedByUserName,
+    string? LastModifiedByUserName,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 

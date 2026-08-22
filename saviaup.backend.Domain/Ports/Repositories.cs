@@ -170,6 +170,11 @@ public interface ICashRegisterRepository
 public interface ICashRegisterShiftRepository
 {
     Task<bool> HasOpenShiftAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<CashRegisterShift?> GetOpenShiftAsync(Guid tenantId, Guid? cashRegisterId, CancellationToken cancellationToken);
+    Task<CashRegisterShift?> GetByIdAsync(Guid tenantId, Guid shiftId, CancellationToken cancellationToken);
+    Task<PageData<CashRegisterShiftDto>> GetShiftsPageAsync(Guid tenantId, CashRegisterShiftQueryRequest request, CancellationToken cancellationToken);
+    Task<bool> HasOccupiedTablesOrPendingOrdersAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task AddAsync(CashRegisterShift shift, CancellationToken cancellationToken);
 }
 
 public interface IRefreshTokenRepository
