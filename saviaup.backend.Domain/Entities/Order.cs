@@ -30,4 +30,5 @@ public sealed class Order
     public RestaurantTable? Table { get; set; }
     public CashRegisterShift? CashRegisterShift { get; set; }
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
+    public ICollection<OrderReceipt> Receipts { get; set; } = new List<OrderReceipt>();
 }

@@ -73,6 +73,8 @@ public static class CoreModule
         services.AddScoped<IMoveTableOrderUseCase, MoveTableOrderUseCase>();
         services.AddScoped<ICancelOrderItemUseCase, CancelOrderItemUseCase>();
         services.AddScoped<IPayAndCloseTableOrderUseCase, PayAndCloseTableOrderUseCase>();
+        services.AddScoped<IGenerateSummaryReceiptUseCase, GenerateSummaryReceiptUseCase>();
+        services.AddScoped<IGetOrderReceiptsUseCase, GetOrderReceiptsUseCase>();
         services.AddScoped<IListCashRegistersUseCase, ListCashRegistersUseCase>();
         services.AddScoped<ICreateCashRegisterUseCase, CreateCashRegisterUseCase>();
         services.AddScoped<IUpdateCashRegisterUseCase, UpdateCashRegisterUseCase>();

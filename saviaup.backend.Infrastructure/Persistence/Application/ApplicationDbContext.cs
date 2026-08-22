@@ -23,6 +23,7 @@ public sealed class ApplicationDbContext(
     public DbSet<CashRegisterShift> CashRegisterShifts => Set<CashRegisterShift>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<OrderReceipt> OrderReceipts => Set<OrderReceipt>();
     public DbSet<OrganizationParameter> OrganizationParameters => Set<OrganizationParameter>();
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
 
@@ -44,6 +45,7 @@ public sealed class ApplicationDbContext(
         modelBuilder.Entity<CashRegister>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<CashRegisterShift>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<Order>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<OrderReceipt>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<OrganizationParameter>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<PaymentMethod>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<RolePermission>().HasQueryFilter(x => x.Role.TenantId == TenantId);

@@ -314,6 +314,24 @@ public interface IPayAndCloseTableOrderUseCase
         CancellationToken cancellationToken);
 }
 
+public interface IGenerateSummaryReceiptUseCase
+{
+    Task<Result<OrderReceiptDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid orderId,
+        Guid userId,
+        string userName,
+        CancellationToken cancellationToken);
+}
+
+public interface IGetOrderReceiptsUseCase
+{
+    Task<Result<IReadOnlyCollection<OrderReceiptDto>>> ExecuteAsync(
+        Guid tenantId,
+        Guid orderId,
+        CancellationToken cancellationToken);
+}
+
 public interface IListCashRegistersUseCase
 {
     Task<Result<IReadOnlyCollection<CashRegisterDto>>> ExecuteAsync(

@@ -111,3 +111,27 @@ public sealed record CheckoutOrderRequest(
     IReadOnlyCollection<PaymentSplitDto>? Splits = null,
     [Range(typeof(decimal), "0", "9999999999999999.99")] decimal TipAmount = 0,
     IReadOnlyCollection<PartialItemPayDto>? ItemsToPay = null);
+
+public sealed record OrderReceiptItemDto(
+    string ProductName,
+    int Quantity,
+    decimal UnitPrice,
+    decimal Subtotal);
+
+public sealed record OrderReceiptDto(
+    Guid Id,
+    Guid TenantId,
+    Guid OrderId,
+    int ReceiptNumber,
+    string ReceiptType,
+    string Title,
+    decimal SubtotalAmount,
+    decimal TaxAmount,
+    decimal TipAmount,
+    decimal TotalAmount,
+    string? PaymentMethod,
+    IReadOnlyCollection<PaymentSplitDto>? PaymentDetails,
+    IReadOnlyCollection<OrderReceiptItemDto> Items,
+    Guid IssuedByUserId,
+    string IssuedByUserName,
+    DateTimeOffset CreatedAt);
