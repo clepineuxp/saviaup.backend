@@ -83,6 +83,20 @@ public sealed class GetOrdersPageUseCase(IOrderRepository orderRepository) : IGe
     }
 }
 
+public sealed class GetOrderItemsPageUseCase(IOrderRepository orderRepository) : IGetOrderItemsPageUseCase
+{
+    public async Task<Result<PagedResponse<OrderItemReportDto>>> ExecuteAsync(
+        Guid tenantId,
+        OrderQueryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var page = await orderRepository.GetOrderItemsPageAsync(tenantId, request, cancellationToken);
+        var totalPages = (int)Math.Ceiling(page.TotalCount / (double)request.PageSize);
+        var response = new PagedResponse<OrderItemReportDto>(page.Items, request.Page, request.PageSize, page.TotalCount, totalPages);
+        return Result<PagedResponse<OrderItemReportDto>>.Success(response);
+    }
+}
+
 public sealed class GetActiveTableOrderUseCase(IOrderRepository orderRepository) : IGetActiveTableOrderUseCase
 {
     public async Task<Result<OrderDto>> ExecuteAsync(Guid tenantId, Guid tableId, CancellationToken cancellationToken)

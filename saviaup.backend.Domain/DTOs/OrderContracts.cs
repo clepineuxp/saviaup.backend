@@ -24,6 +24,28 @@ public sealed record OrderItemDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
+public sealed record OrderItemReportDto(
+    Guid ItemId,
+    Guid OrderId,
+    int OrderNumber,
+    string? TableName,
+    Guid? ProductId,
+    string ProductName,
+    decimal UnitPrice,
+    int Quantity,
+    decimal Subtotal,
+    string Status,
+    string? Notes,
+    bool IsCustomSale,
+    string? CancellationReason,
+    DateTimeOffset? CancelledAt,
+    Guid? CancelledByUserId,
+    string? CancelledByUserName,
+    Guid CreatedByUserId,
+    string CreatedByUserName,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
 public sealed record OrderDto(
     Guid Id,
     Guid TenantId,

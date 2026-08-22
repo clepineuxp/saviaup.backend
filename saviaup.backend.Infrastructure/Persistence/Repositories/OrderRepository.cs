@@ -109,6 +109,84 @@ public sealed class OrderRepository(SaviaUpDbContext dbContext) : IOrderReposito
         return new PageData<OrderDto>(dtos, totalCount);
     }
 
+    public async Task<PageData<OrderItemReportDto>> GetOrderItemsPageAsync(
+        Guid tenantId,
+        OrderQueryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var query = dbContext.OrderItems
+            .Include(i => i.Order)
+                .ThenInclude(o => o!.Table)
+            .Where(i => i.Order != null && i.Order.TenantId == tenantId);
+
+        if (request.TableId.HasValue)
+        {
+            query = query.Where(i => i.Order!.TableId == request.TableId.Value);
+        }
+
+        if (request.Statuses is not null && request.Statuses.Count > 0)
+        {
+            query = query.Where(i => request.Statuses.Contains(i.Status));
+        }
+
+        if (request.FromDate.HasValue)
+        {
+            query = query.Where(i => i.CreatedAt >= request.FromDate.Value);
+        }
+
+        if (request.ToDate.HasValue)
+        {
+            query = query.Where(i => i.CreatedAt <= request.ToDate.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var s = request.Search.Trim().ToLower();
+            query = query.Where(i =>
+                i.ProductName.ToLower().Contains(s) ||
+                (i.Notes != null && i.Notes.ToLower().Contains(s)) ||
+                i.Order!.OrderNumber.ToString().Contains(s) ||
+                (i.Order.Table != null && i.Order.Table.Name.ToLower().Contains(s)) ||
+                i.CreatedByUserName.ToLower().Contains(s));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var page = Math.Max(1, request.Page);
+        var pageSize = Math.Clamp(request.PageSize, 1, 100);
+
+        var items = await query
+            .OrderByDescending(i => i.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var dtos = items.Select(i => new OrderItemReportDto(
+            i.Id,
+            i.OrderId,
+            i.Order!.OrderNumber,
+            i.Order.Table?.Name,
+            i.ProductId,
+            i.ProductName,
+            i.UnitPrice,
+            i.Quantity,
+            i.Subtotal,
+            i.Status,
+            i.Notes,
+            i.IsCustomSale,
+            i.CancellationReason,
+            i.CancelledAt,
+            i.CancelledByUserId,
+            i.CancelledByUserName,
+            i.CreatedByUserId,
+            i.CreatedByUserName,
+            i.CreatedAt,
+            i.UpdatedAt
+        )).ToList();
+
+        return new PageData<OrderItemReportDto>(dtos, totalCount);
+    }
+
     public async Task<Order?> GetActiveByTableIdAsync(Guid tenantId, Guid tableId, CancellationToken cancellationToken)
     {
         return await dbContext.Orders

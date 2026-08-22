@@ -262,6 +262,11 @@ public interface IGetOrdersPageUseCase
     Task<Result<PagedResponse<OrderDto>>> ExecuteAsync(Guid tenantId, OrderQueryRequest request, CancellationToken cancellationToken);
 }
 
+public interface IGetOrderItemsPageUseCase
+{
+    Task<Result<PagedResponse<OrderItemReportDto>>> ExecuteAsync(Guid tenantId, OrderQueryRequest request, CancellationToken cancellationToken);
+}
+
 public interface IGetActiveTableOrderUseCase
 {
     Task<Result<OrderDto>> ExecuteAsync(Guid tenantId, Guid tableId, CancellationToken cancellationToken);

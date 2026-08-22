@@ -15,6 +15,7 @@ namespace SaviaUp.Backend.Api.Controllers;
 [RequireTenant]
 public sealed class OrdersController(
     IGetOrdersPageUseCase getOrdersPageUseCase,
+    IGetOrderItemsPageUseCase getOrderItemsPageUseCase,
     IGetActiveTableOrderUseCase getActiveUseCase,
     IAddTableOrderItemsUseCase addItemsUseCase,
     IMoveTableOrderUseCase moveUseCase,
@@ -36,6 +37,22 @@ public sealed class OrdersController(
     {
         var req = new OrderQueryRequest(page, pageSize, search, statuses, fromDate, toDate, tableId);
         return this.FromResult(await getOrdersPageUseCase.ExecuteAsync(currentUser.TenantId!.Value, req, cancellationToken));
+    }
+
+    [HttpGet("items")]
+    [RequirePermission(PermissionCodes.OrdersRead)]
+    public async Task<ActionResult<PagedResponse<OrderItemReportDto>>> GetOrderItems(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] string? search = null,
+        [FromQuery] string[]? statuses = null,
+        [FromQuery] DateTimeOffset? fromDate = null,
+        [FromQuery] DateTimeOffset? toDate = null,
+        [FromQuery] Guid? tableId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var req = new OrderQueryRequest(page, pageSize, search, statuses, fromDate, toDate, tableId);
+        return this.FromResult(await getOrderItemsPageUseCase.ExecuteAsync(currentUser.TenantId!.Value, req, cancellationToken));
     }
 
     [HttpGet("table/{tableId:guid}/active")]
