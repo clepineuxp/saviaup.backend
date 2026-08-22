@@ -434,13 +434,52 @@ public sealed class PayAndCloseTableOrderUseCase(
         }
 
         var now = clock.UtcNow;
-        order.PaymentMethod = request.PaymentMethod.Trim();
-        order.TipAmount += request.TipAmount;
+        var checkoutTip = Math.Max(0m, request.TipAmount);
+
+        // 1. Construir la lista de splits de ESTA transacción de pago
+        var newTransactionSplits = new List<PaymentSplitDto>();
         if (request.Splits is not null && request.Splits.Count > 0)
         {
-            order.PaymentDetailsJson = JsonSerializer.Serialize(request.Splits);
+            newTransactionSplits.AddRange(request.Splits.Where(s => !string.IsNullOrWhiteSpace(s.Method) && s.Amount > 0));
+        }
+        else
+        {
+            newTransactionSplits.Add(new PaymentSplitDto(request.PaymentMethod.Trim(), expectedTotal));
         }
 
+        // 2. Acumular los splits existentes (si la orden ya tenía pagos parciales previos)
+        var allSplits = new List<PaymentSplitDto>();
+        if (!string.IsNullOrWhiteSpace(order.PaymentDetailsJson))
+        {
+            try
+            {
+                var existing = JsonSerializer.Deserialize<List<PaymentSplitDto>>(order.PaymentDetailsJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (existing is not null) allSplits.AddRange(existing);
+            }
+            catch { }
+        }
+        allSplits.AddRange(newTransactionSplits);
+
+        order.PaymentDetailsJson = JsonSerializer.Serialize(allSplits);
+
+        var distinctMethods = allSplits
+            .Select(s => s.Method.Trim())
+            .Where(m => !string.IsNullOrWhiteSpace(m))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (distinctMethods.Count == 1)
+        {
+            order.PaymentMethod = distinctMethods[0];
+        }
+        else
+        {
+            order.PaymentMethod = "MIXTO";
+        }
+
+        order.TipAmount += checkoutTip;
+
+        // 3. Procesar cobros parciales por ítem y cantidad
         if (request.ItemsToPay is not null && request.ItemsToPay.Count > 0)
         {
             var newPaidItems = new List<OrderItem>();
@@ -491,6 +530,7 @@ public sealed class PayAndCloseTableOrderUseCase(
             foreach (var newItem in newPaidItems)
             {
                 order.Items.Add(newItem);
+                await orderRepository.AddItemAsync(newItem, cancellationToken);
             }
         }
         else
@@ -532,7 +572,7 @@ public sealed class PayAndCloseTableOrderUseCase(
             order.LastModifiedByUserName = userName;
             order.UpdatedAt = now;
 
-            table.ActiveOrderTotal = order.TotalAmount;
+            table.ActiveOrderTotal = order.Items.Where(i => i.Status == "PENDING").Sum(i => i.Subtotal);
             table.UpdatedAt = now;
         }
 

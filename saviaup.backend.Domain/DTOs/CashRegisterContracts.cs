@@ -44,7 +44,9 @@ public record PaymentMethodClosingSummaryDto(
     string MethodName,
     decimal InitialOpeningAmount,
     decimal SalesCollectedAmount,
+    decimal TipsCollectedAmount,
     decimal ExpensesAmount,
+    decimal TotalCollectedAmount,
     decimal ExpectedTotalAmount,
     decimal ActualAmount,
     decimal DifferenceAmount);
