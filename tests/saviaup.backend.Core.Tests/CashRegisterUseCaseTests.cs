@@ -18,7 +18,7 @@ public sealed class CashRegisterUseCaseTests
         repository.Setup(repo => repo.NameExistsAsync(tenantId, "CAJA PRINCIPAL", null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var useCase = new CreateCashRegisterUseCase(repository.Object, Mock.Of<IUnitOfWork>());
+        var useCase = new CreateCashRegisterUseCase(repository.Object, Mock.Of<ICashRegisterShiftRepository>(), Mock.Of<IUnitOfWork>());
 
         var result = await useCase.ExecuteAsync(tenantId, new CreateCashRegisterRequest("  caja Principal  ", "Mostrador"), default);
 
@@ -36,7 +36,7 @@ public sealed class CashRegisterUseCaseTests
         repository.Setup(repo => repo.HasOtherActiveAsync(tenantId, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var useCase = new CreateCashRegisterUseCase(repository.Object, Mock.Of<IUnitOfWork>());
+        var useCase = new CreateCashRegisterUseCase(repository.Object, Mock.Of<ICashRegisterShiftRepository>(), Mock.Of<IUnitOfWork>());
 
         var result = await useCase.ExecuteAsync(tenantId, new CreateCashRegisterRequest("Caja Secundaria", null, IsActive: true), default);
 
@@ -58,7 +58,7 @@ public sealed class CashRegisterUseCaseTests
             .Callback<CashRegister, CancellationToken>((cr, _) => created = cr)
             .Returns(Task.CompletedTask);
 
-        var useCase = new CreateCashRegisterUseCase(repository.Object, Mock.Of<IUnitOfWork>());
+        var useCase = new CreateCashRegisterUseCase(repository.Object, Mock.Of<ICashRegisterShiftRepository>(), Mock.Of<IUnitOfWork>());
 
         var result = await useCase.ExecuteAsync(tenantId, new CreateCashRegisterRequest("Caja 01", "Zona A", IsActive: true), default);
 
@@ -92,7 +92,7 @@ public sealed class CashRegisterUseCaseTests
         repository.Setup(repo => repo.HasOtherActiveAsync(tenantId, registerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
 
-        var useCase = new UpdateCashRegisterUseCase(repository.Object, Mock.Of<IUnitOfWork>());
+        var useCase = new UpdateCashRegisterUseCase(repository.Object, Mock.Of<ICashRegisterShiftRepository>(), Mock.Of<IUnitOfWork>());
 
         var result = await useCase.ExecuteAsync(tenantId, registerId, new UpdateCashRegisterRequest("Caja 02", null, IsActive: true), default);
 
@@ -118,7 +118,7 @@ public sealed class CashRegisterUseCaseTests
         repository.Setup(repo => repo.GetByIdAsync(tenantId, registerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existing);
 
-        var useCase = new SetCashRegisterStatusUseCase(repository.Object, Mock.Of<IUnitOfWork>());
+        var useCase = new SetCashRegisterStatusUseCase(repository.Object, Mock.Of<ICashRegisterShiftRepository>(), Mock.Of<IUnitOfWork>());
 
         var result = await useCase.ExecuteAsync(tenantId, registerId, new SetCashRegisterStatusRequest(IsActive: false), default);
 

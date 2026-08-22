@@ -5,6 +5,7 @@ public sealed class Order
     public Guid Id { get; set; }
     public Guid TenantId { get; set; }
     public Guid? TableId { get; set; }
+    public Guid? CashRegisterShiftId { get; set; }
     public int OrderNumber { get; set; }
     public string Status { get; set; } = "PENDING"; // PENDING, PAID, CANCELLED
     public decimal SubtotalAmount { get; set; }
@@ -28,5 +29,6 @@ public sealed class Order
 
     public Tenant? Tenant { get; set; }
     public RestaurantTable? Table { get; set; }
+    public CashRegisterShift? CashRegisterShift { get; set; }
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
 }

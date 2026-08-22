@@ -49,4 +49,8 @@ internal static class Errors
     public static readonly Error CashRegisterNameAlreadyExists = new(ErrorCodes.CashRegisterNameAlreadyExists, LocalizationKeys.CashRegisterNameAlreadyExists, ErrorType.Conflict);
     public static readonly Error CashRegisterSingleActiveExceeded = new(ErrorCodes.CashRegisterSingleActiveExceeded, LocalizationKeys.CashRegisterSingleActiveExceeded, ErrorType.Conflict);
     public static readonly Error CashRegisterInUse = new(ErrorCodes.CashRegisterInUse, LocalizationKeys.CashRegisterInUse, ErrorType.Conflict);
+    public static readonly Error CashRegisterAlreadyHasOpenShift = new(ErrorCodes.CashRegisterAlreadyHasOpenShift, LocalizationKeys.Validation, ErrorType.Conflict);
+    public static readonly Error CashRegisterShiftNotFound = new(ErrorCodes.CashRegisterShiftNotFound, LocalizationKeys.Validation, ErrorType.NotFound);
+    public static readonly Error OccupiedTablesOrPendingOrdersPreventCashRegisterSettingChange = new(ErrorCodes.OccupiedTablesOrPendingOrdersPreventCashRegisterSettingChange, LocalizationKeys.Validation, ErrorType.Business);
+    public static readonly Error OccupiedTablesOrPendingOrdersPreventCashRegisterClose = new(ErrorCodes.OccupiedTablesOrPendingOrdersPreventCashRegisterClose, LocalizationKeys.Validation, ErrorType.Business);
 }

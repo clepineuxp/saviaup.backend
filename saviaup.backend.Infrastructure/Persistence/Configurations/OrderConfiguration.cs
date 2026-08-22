@@ -35,5 +35,10 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             .WithMany()
             .HasForeignKey(o => o.TableId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(o => o.CashRegisterShift)
+            .WithMany()
+            .HasForeignKey(o => o.CashRegisterShiftId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

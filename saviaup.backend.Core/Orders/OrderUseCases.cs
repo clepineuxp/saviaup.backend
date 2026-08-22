@@ -140,11 +140,13 @@ public sealed class AddTableOrderItemsUseCase(
         if (order is null)
         {
             var nextNumber = await orderRepository.GetNextOrderNumberAsync(tenantId, cancellationToken);
+            var openShift = await shiftRepository.GetOpenShiftAsync(tenantId, null, cancellationToken);
             order = new Order
             {
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
                 TableId = tableId,
+                CashRegisterShiftId = openShift?.Id,
                 OrderNumber = nextNumber,
                 Status = "PENDING",
                 Observations = request.Observations?.Trim(),

@@ -46,6 +46,10 @@ public static class ErrorCodes
     public const string CashRegisterNameAlreadyExists = "CASH_REGISTER_NAME_ALREADY_EXISTS";
     public const string CashRegisterSingleActiveExceeded = "CASH_REGISTER_SINGLE_ACTIVE_EXCEEDED";
     public const string CashRegisterInUse = "CASH_REGISTER_IN_USE";
+    public const string CashRegisterAlreadyHasOpenShift = "CASH_REGISTER_ALREADY_HAS_OPEN_SHIFT";
+    public const string CashRegisterShiftNotFound = "CASH_REGISTER_SHIFT_NOT_FOUND";
+    public const string OccupiedTablesOrPendingOrdersPreventCashRegisterSettingChange = "OCCUPIED_TABLES_PREVENT_CASH_SETTING_CHANGE";
+    public const string OccupiedTablesOrPendingOrdersPreventCashRegisterClose = "OCCUPIED_TABLES_PREVENT_CASH_CLOSE";
     public const string PermissionNotEnabled = "PERMISSION_NOT_ENABLED";
     public const string Validation = "VALIDATION_ERROR";
     public const string Internal = "INTERNAL_ERROR";

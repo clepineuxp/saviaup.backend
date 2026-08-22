@@ -58,7 +58,7 @@ public sealed class SettingsUseCaseTests
         repository.Setup(value => value.GetParametersAsync(tenant.Id, It.IsAny<CancellationToken>())).ReturnsAsync(parameters);
         repository.Setup(value => value.GetEnabledPermissionCodesAsync(tenant.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync([PermissionCodes.CashRegistersManage]);
-        var useCase = new BusinessSettingsUseCase(repository.Object, new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
+        var useCase = new BusinessSettingsUseCase(repository.Object, Mock.Of<ICashRegisterShiftRepository>(), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
 
         var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, true, true, "Propina voluntaria", 12), default);
 
@@ -78,7 +78,7 @@ public sealed class SettingsUseCaseTests
         repository.Setup(value => value.GetParametersAsync(tenant.Id, It.IsAny<CancellationToken>())).ReturnsAsync(parameters);
         repository.Setup(value => value.GetEnabledPermissionCodesAsync(tenant.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync([PermissionCodes.TablesRead]);
-        var useCase = new BusinessSettingsUseCase(repository.Object, new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
+        var useCase = new BusinessSettingsUseCase(repository.Object, Mock.Of<ICashRegisterShiftRepository>(), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
 
         var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, false, true, "Propina voluntaria", 10), default);
 

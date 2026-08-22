@@ -14,6 +14,12 @@ public sealed class Product
     public int? PreparationTimeMinutes { get; set; }
     public bool IsInventoryTracked { get; set; }
     public bool IsActive { get; set; } = true;
+
+    public Guid? CreatedByUserId { get; set; }
+    public string? CreatedByUserName { get; set; }
+    public Guid? LastModifiedByUserId { get; set; }
+    public string? LastModifiedByUserName { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public Tenant Tenant { get; set; } = null!;

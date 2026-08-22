@@ -7,7 +7,11 @@ using SaviaUp.Backend.Domain.Results;
 
 namespace SaviaUp.Backend.Core.Settings;
 
-public sealed class BusinessSettingsUseCase(ISettingsRepository repository, IDateTimeProvider clock, IUnitOfWork unitOfWork) : IBusinessSettingsUseCase
+public sealed class BusinessSettingsUseCase(
+    ISettingsRepository repository,
+    ICashRegisterShiftRepository shiftRepository,
+    IDateTimeProvider clock,
+    IUnitOfWork unitOfWork) : IBusinessSettingsUseCase
 {
     public async Task<Result<BusinessSettingsDto>> GetAsync(Guid tenantId, CancellationToken cancellationToken)
     {
@@ -29,6 +33,14 @@ public sealed class BusinessSettingsUseCase(ISettingsRepository repository, IDat
         if (tenant is null) return Result<BusinessSettingsDto>.Failure(Errors.TenantNotFound);
         var enabledPermissions = await repository.GetEnabledPermissionCodesAsync(tenantId, cancellationToken);
         var requiresOpenCashRegister = HasCashRegistersModule(enabledPermissions) && request.RequiresOpenCashRegister;
+
+        if (requiresOpenCashRegister != tenant.RequiresOpenCashRegister)
+        {
+            if (await shiftRepository.HasOccupiedTablesOrPendingOrdersAsync(tenantId, cancellationToken))
+            {
+                return Result<BusinessSettingsDto>.Failure(Errors.OccupiedTablesOrPendingOrdersPreventCashRegisterSettingChange);
+            }
+        }
         var parameters = (await repository.GetParametersAsync(tenantId, cancellationToken)).ToDictionary(item => item.Key);
         var now = clock.UtcNow;
         var values = new Dictionary<string, (string Value, string Type)>

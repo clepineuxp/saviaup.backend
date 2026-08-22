@@ -27,8 +27,11 @@ public sealed class ProductUseCaseTests
         var useCase = new CreateProductUseCase(
             products.Object, categories.Object, new FixedClock(TestSupport.Now), unitOfWork.Object);
 
+        var userId = Guid.NewGuid();
         var result = await useCase.ExecuteAsync(
             tenantId,
+            userId,
+            "admin@saviaup.test",
             new CreateProductRequest(
                 string.Empty, "  Hamburguesa   clásica ", category.Id, 25900m,
                 " Preparada al momento ", " https://cdn.saviaup.test/products/burger.webp ", 15, true),
@@ -61,6 +64,8 @@ public sealed class ProductUseCaseTests
 
         var result = await useCase.ExecuteAsync(
             tenantId,
+            Guid.NewGuid(),
+            "admin@saviaup.test",
             new CreateProductRequest("COMBO", "Combo familiar", category.Id, 50000m, null, null, null, true),
             default);
 
@@ -82,6 +87,8 @@ public sealed class ProductUseCaseTests
 
         var result = await useCase.ExecuteAsync(
             Guid.NewGuid(),
+            Guid.NewGuid(),
+            "admin@saviaup.test",
             new CreateProductRequest(type, "Producto", Guid.NewGuid(), price, null, null, null, false),
             default);
 
@@ -108,6 +115,8 @@ public sealed class ProductUseCaseTests
         var result = await useCase.ExecuteAsync(
             tenantId,
             product.Id,
+            Guid.NewGuid(),
+            "admin@saviaup.test",
             new UpdateProductRequest("NORMAL", "Producto", Guid.NewGuid(), 100m, null, null, null, false),
             default);
 
