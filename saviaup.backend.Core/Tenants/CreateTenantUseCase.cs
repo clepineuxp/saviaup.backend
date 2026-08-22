@@ -44,7 +44,6 @@ public sealed class CreateTenantUseCase(
             {
                 Id = Guid.NewGuid(),
                 TenantId = tenant.Id,
-                Tenant = tenant,
                 Code = "TENANT_OWNER",
                 Name = "Owner",
                 Description = "Tenant owner with all enabled permissions.",
@@ -60,7 +59,6 @@ public sealed class CreateTenantUseCase(
                 TenantId = tenant.Id,
                 Tenant = tenant,
                 RoleId = role.Id,
-                Role = role,
                 IsActive = true,
                 CreatedAt = now
             };

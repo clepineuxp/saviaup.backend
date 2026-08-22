@@ -3,10 +3,11 @@ using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Domain.Results;
+using SaviaUp.Backend.Infrastructure.Persistence.Application;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
-public sealed class InventoryMovementRepository(SaviaUpDbContext context) : IInventoryMovementRepository
+public sealed class InventoryMovementRepository(ApplicationDbContext context) : IInventoryMovementRepository
 {
     public async Task<PageData<InventoryMovement>> GetPageAsync(
         Guid tenantId, InventoryMovementQueryRequest request, CancellationToken cancellationToken)

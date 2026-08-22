@@ -13,7 +13,5 @@ public sealed class InventoryMovement
     public decimal StockAfter { get; set; }
     public string? Note { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
-    public Tenant Tenant { get; set; } = null!;
     public Ingredient Ingredient { get; set; } = null!;
-    public User CreatedByUser { get; set; } = null!;
 }

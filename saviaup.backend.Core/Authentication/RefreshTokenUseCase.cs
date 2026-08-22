@@ -11,6 +11,7 @@ public sealed class RefreshTokenUseCase(
     IRefreshTokenRepository refreshTokenRepository,
     IUserRepository userRepository,
     ITenantRepository tenantRepository,
+    IRoleRepository roleRepository,
     SessionIssuer sessionIssuer,
     IDateTimeProvider dateTimeProvider,
     IUnitOfWork unitOfWork) : IRefreshTokenUseCase
@@ -29,7 +30,8 @@ public sealed class RefreshTokenUseCase(
         if (existing.TenantId.HasValue)
         {
             membership = await tenantRepository.GetMembershipAsync(user.Id, existing.TenantId.Value, cancellationToken);
-            if (membership is null || !membership.IsEnabledAt(now) || !membership.Tenant.IsActive || !membership.Role.IsActive || membership.RoleId != existing.RoleId)
+            var role = membership is not null ? await roleRepository.GetByIdAsync(membership.RoleId, cancellationToken) : null;
+            if (membership is null || !membership.IsEnabledAt(now) || !membership.Tenant.IsActive || role is null || !role.IsActive || membership.RoleId != existing.RoleId)
                 return Result<TokenResponse>.Failure(Errors.RefreshInvalid);
         }
 

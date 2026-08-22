@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
+using SaviaUp.Backend.Infrastructure.Persistence.Application;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
-public sealed class CategoryRepository(SaviaUpDbContext context) : ICategoryRepository
+public sealed class CategoryRepository(ApplicationDbContext context) : ICategoryRepository
 {
     public async Task<IReadOnlyCollection<Category>> GetForTenantAsync(
         Guid tenantId,

@@ -39,15 +39,17 @@ public sealed class TenantPermissionAndRecoveryTests
     public async Task SelectTenant_WithMembership_IssuesContextualTokens()
     {
         var user = new User { Id = Guid.NewGuid(), Email = "owner@test.com", FirstName = "Owner", LastName = "Test", IsActive = true };
-        var membership = Membership(user);
+        var (membership, role) = Membership(user);
         var users = new Mock<IUserRepository>();
         users.Setup(repository => repository.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         var tenants = new Mock<ITenantRepository>();
         tenants.Setup(repository => repository.GetMembershipAsync(user.Id, membership.TenantId, It.IsAny<CancellationToken>())).ReturnsAsync(membership);
+        var roles = new Mock<IRoleRepository>();
+        roles.Setup(repository => repository.GetByIdAsync(membership.RoleId, It.IsAny<CancellationToken>())).ReturnsAsync(role);
         var refreshTokens = new Mock<IRefreshTokenRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
         TestSupport.RunTransaction<Result<TenantSessionResponse>>(unitOfWork);
-        var useCase = new SelectTenantUseCase(users.Object, tenants.Object, refreshTokens.Object, TestSupport.SessionIssuer(refreshTokens), new FixedClock(TestSupport.Now), unitOfWork.Object);
+        var useCase = new SelectTenantUseCase(users.Object, tenants.Object, roles.Object, refreshTokens.Object, TestSupport.SessionIssuer(refreshTokens), new FixedClock(TestSupport.Now), unitOfWork.Object);
 
         var result = await useCase.ExecuteAsync(user.Id, Guid.NewGuid(), membership.TenantId, default);
 
@@ -64,7 +66,7 @@ public sealed class TenantPermissionAndRecoveryTests
         users.Setup(repository => repository.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         var tenants = new Mock<ITenantRepository>();
         tenants.Setup(repository => repository.GetMembershipAsync(user.Id, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((TenantMembership?)null);
-        var useCase = new SelectTenantUseCase(users.Object, tenants.Object, Mock.Of<IRefreshTokenRepository>(), TestSupport.SessionIssuer(), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
+        var useCase = new SelectTenantUseCase(users.Object, tenants.Object, Mock.Of<IRoleRepository>(), Mock.Of<IRefreshTokenRepository>(), TestSupport.SessionIssuer(), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
 
         var result = await useCase.ExecuteAsync(user.Id, Guid.NewGuid(), Guid.NewGuid(), default);
 
@@ -83,11 +85,11 @@ public sealed class TenantPermissionAndRecoveryTests
         Assert.Equal(allowed, await service.IsAllowedAsync(Guid.NewGuid(), Guid.NewGuid(), PermissionCodes.OrdersRead, default));
     }
 
-    private static TenantMembership Membership(User user)
+    private static (TenantMembership Membership, Role Role) Membership(User user)
     {
         var tenant = new Tenant { Id = Guid.NewGuid(), Name = "Secret Garden", IsActive = true };
-        var role = new Role { Id = Guid.NewGuid(), TenantId = tenant.Id, Code = "TENANT_OWNER", Name = "Owner", IsActive = true, Tenant = tenant };
-        return new TenantMembership
+        var role = new Role { Id = Guid.NewGuid(), TenantId = tenant.Id, Code = "TENANT_OWNER", Name = "Owner", IsActive = true };
+        var membership = new TenantMembership
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
@@ -95,8 +97,8 @@ public sealed class TenantPermissionAndRecoveryTests
             TenantId = tenant.Id,
             Tenant = tenant,
             RoleId = role.Id,
-            Role = role,
             IsActive = true
         };
+        return (membership, role);
     }
 }

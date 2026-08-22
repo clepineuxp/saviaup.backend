@@ -51,7 +51,6 @@ public sealed class RegisterUseCase(
                 TenantId = invitation.TenantId,
                 Tenant = invitation.Tenant,
                 RoleId = invitation.RoleId,
-                Role = invitation.Role,
                 IsActive = true,
                 CreatedAt = now
             }, cancellationToken);

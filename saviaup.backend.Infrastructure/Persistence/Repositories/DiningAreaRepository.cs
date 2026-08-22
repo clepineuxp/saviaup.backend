@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
+using SaviaUp.Backend.Infrastructure.Persistence.Application;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
-public sealed class DiningAreaRepository(SaviaUpDbContext context) : IDiningAreaRepository
+public sealed class DiningAreaRepository(ApplicationDbContext context) : IDiningAreaRepository
 {
     public async Task<IReadOnlyCollection<DiningArea>> GetForTenantAsync(
         Guid tenantId,

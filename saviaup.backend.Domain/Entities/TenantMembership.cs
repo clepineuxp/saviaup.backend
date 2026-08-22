@@ -11,7 +11,6 @@ public sealed class TenantMembership
     public DateTimeOffset CreatedAt { get; set; }
     public User User { get; set; } = null!;
     public Tenant Tenant { get; set; } = null!;
-    public Role Role { get; set; } = null!;
 
-    public bool IsEnabledAt(DateTimeOffset now) => IsActive || DisabledUntil.HasValue && DisabledUntil.Value <= now;
+    public bool IsEnabledAt(DateTimeOffset now) => IsActive || (DisabledUntil.HasValue && DisabledUntil.Value <= now);
 }

@@ -29,7 +29,7 @@ public sealed class NavigationAndUserInfoTests
                 new AvailableModuleReference(Guid.NewGuid(), "orders"),
                 new AvailableModuleReference(Guid.NewGuid(), "inventory")
             ]);
-        var (useCase, membership) = AvailableModulesUseCase(repository);
+        var (useCase, membership, _) = AvailableModulesUseCase(repository);
 
         var result = await useCase.ExecuteAsync(
             membership.UserId,
@@ -83,7 +83,7 @@ public sealed class NavigationAndUserInfoTests
                 It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([new AvailableModuleReference(Guid.NewGuid(), "orders")]);
-        var (useCase, membership) = AvailableModulesUseCase(repository);
+        var (useCase, membership, _) = AvailableModulesUseCase(repository);
 
         var result = await useCase.ExecuteAsync(
             membership.UserId,
@@ -107,7 +107,7 @@ public sealed class NavigationAndUserInfoTests
                 It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([new AvailableModuleReference(Guid.NewGuid(), "future-module")]);
-        var (useCase, membership) = AvailableModulesUseCase(repository);
+        var (useCase, membership, _) = AvailableModulesUseCase(repository);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => useCase.ExecuteAsync(
             membership.UserId,
@@ -132,7 +132,7 @@ public sealed class NavigationAndUserInfoTests
                 It.IsAny<Guid>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
-        var (useCase, membership) = AvailableModulesUseCase(repository);
+        var (useCase, membership, _) = AvailableModulesUseCase(repository);
 
         var result = await useCase.ExecuteAsync(
             membership.UserId,
@@ -156,13 +156,15 @@ public sealed class NavigationAndUserInfoTests
             LastName = "Prueba",
             IsActive = true
         };
-        var membership = Membership(user);
+        var (membership, role) = Membership(user);
         var users = new Mock<IUserRepository>();
         users.Setup(value => value.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         var tenants = new Mock<ITenantRepository>();
         tenants.Setup(value => value.GetMembershipAsync(user.Id, membership.TenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(membership);
-        var useCase = new GetUserInfoUseCase(users.Object, tenants.Object, new FixedClock(TestSupport.Now));
+        var roles = new Mock<IRoleRepository>();
+        roles.Setup(value => value.GetByIdAsync(membership.RoleId, It.IsAny<CancellationToken>())).ReturnsAsync(role);
+        var useCase = new GetUserInfoUseCase(users.Object, tenants.Object, roles.Object, new FixedClock(TestSupport.Now));
 
         var result = await useCase.ExecuteAsync(user.Id, membership.TenantId, membership.RoleId, default);
 
@@ -176,13 +178,15 @@ public sealed class NavigationAndUserInfoTests
     public async Task UserInfo_WhenTokenRoleDoesNotMatchMembership_IsForbidden()
     {
         var user = new User { Id = Guid.NewGuid(), IsActive = true };
-        var membership = Membership(user);
+        var (membership, role) = Membership(user);
         var users = new Mock<IUserRepository>();
         users.Setup(value => value.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
         var tenants = new Mock<ITenantRepository>();
         tenants.Setup(value => value.GetMembershipAsync(user.Id, membership.TenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(membership);
-        var useCase = new GetUserInfoUseCase(users.Object, tenants.Object, new FixedClock(TestSupport.Now));
+        var roles = new Mock<IRoleRepository>();
+        roles.Setup(value => value.GetByIdAsync(membership.RoleId, It.IsAny<CancellationToken>())).ReturnsAsync(role);
+        var useCase = new GetUserInfoUseCase(users.Object, tenants.Object, roles.Object, new FixedClock(TestSupport.Now));
 
         var result = await useCase.ExecuteAsync(user.Id, membership.TenantId, Guid.NewGuid(), default);
 
@@ -190,26 +194,31 @@ public sealed class NavigationAndUserInfoTests
         Assert.Equal(ErrorCodes.TenantAccessDenied, result.Error!.Code);
     }
 
-    private static (GetAvailableModulesUseCase UseCase, TenantMembership Membership) AvailableModulesUseCase(
+    private static (GetAvailableModulesUseCase UseCase, TenantMembership Membership, Role Role) AvailableModulesUseCase(
         Mock<IModuleRepository> modules)
     {
-        var membership = Membership(new User { Id = Guid.NewGuid(), IsActive = true });
+        var (membership, role) = Membership(new User { Id = Guid.NewGuid(), IsActive = true });
         var tenants = new Mock<ITenantRepository>();
         tenants.Setup(value => value.GetMembershipAsync(
                 membership.UserId,
                 membership.TenantId,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(membership);
+        var roles = new Mock<IRoleRepository>();
+        roles.Setup(value => value.GetByIdAsync(
+                membership.RoleId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(role);
         var permissions = new Mock<IPermissionRepository>();
         permissions.Setup(value => value.GetForRoleAsync(
                 membership.TenantId,
                 membership.RoleId,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
-        return (new GetAvailableModulesUseCase(modules.Object, tenants.Object, permissions.Object, new FixedClock(TestSupport.Now)), membership);
+        return (new GetAvailableModulesUseCase(modules.Object, tenants.Object, roles.Object, permissions.Object, new FixedClock(TestSupport.Now)), membership, role);
     }
 
-    private static TenantMembership Membership(User user)
+    private static (TenantMembership Membership, Role Role) Membership(User user)
     {
         var tenant = new Tenant { Id = Guid.NewGuid(), Name = "Secret Garden", IsActive = true };
         var role = new Role
@@ -218,10 +227,9 @@ public sealed class NavigationAndUserInfoTests
             TenantId = tenant.Id,
             Code = "TENANT_OWNER",
             Name = "Owner",
-            IsActive = true,
-            Tenant = tenant
+            IsActive = true
         };
-        return new TenantMembership
+        var membership = new TenantMembership
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
@@ -229,8 +237,8 @@ public sealed class NavigationAndUserInfoTests
             TenantId = tenant.Id,
             Tenant = tenant,
             RoleId = role.Id,
-            Role = role,
             IsActive = true
         };
+        return (membership, role);
     }
 }

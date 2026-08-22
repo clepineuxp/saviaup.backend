@@ -12,6 +12,5 @@ public sealed class TenantInvitation
     public DateTimeOffset? AcceptedAt { get; set; }
     public DateTimeOffset? RevokedAt { get; set; }
     public Tenant Tenant { get; set; } = null!;
-    public Role Role { get; set; } = null!;
     public User InvitedByUser { get; set; } = null!;
 }

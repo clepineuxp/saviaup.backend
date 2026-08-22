@@ -12,6 +12,7 @@ public sealed class SessionIssuer(
     IJwtTokenService jwtTokenService,
     ITokenGenerator tokenGenerator,
     IRefreshTokenRepository refreshTokenRepository,
+    IRoleRepository roleRepository,
     IPermissionRepository permissionRepository,
     IDateTimeProvider dateTimeProvider,
     IOptions<JwtOptions> jwtOptions)
@@ -46,7 +47,11 @@ public sealed class SessionIssuer(
         if (membership is not null)
         {
             permissions = await permissionRepository.GetForRoleAsync(membership.TenantId, membership.RoleId, cancellationToken);
-            role = new RoleDto(membership.RoleId, membership.Role.Code, membership.Role.Name);
+            var roleEntity = await roleRepository.GetByIdAsync(membership.RoleId, cancellationToken);
+            if (roleEntity is not null)
+            {
+                role = new RoleDto(membership.RoleId, roleEntity.Code, roleEntity.Name);
+            }
             tenant = new ActiveTenantDto(membership.TenantId, membership.Tenant.Name);
         }
 

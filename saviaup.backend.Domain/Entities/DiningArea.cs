@@ -10,6 +10,5 @@ public sealed class DiningArea
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
-    public Tenant Tenant { get; set; } = null!;
     public ICollection<RestaurantTable> Tables { get; set; } = [];
 }

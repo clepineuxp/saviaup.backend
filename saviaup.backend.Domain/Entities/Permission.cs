@@ -7,6 +7,5 @@ public sealed class Permission
     public string Code { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public Module Module { get; set; } = null!;
-    public ICollection<RolePermission> RolePermissions { get; set; } = [];
     public ICollection<TenantPermission> TenantPermissions { get; set; } = [];
 }

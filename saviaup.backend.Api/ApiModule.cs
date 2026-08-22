@@ -3,6 +3,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -13,6 +14,8 @@ using SaviaUp.Backend.Api.Middleware;
 using SaviaUp.Backend.Api.Models;
 using SaviaUp.Backend.Domain.Options;
 using SaviaUp.Backend.Domain.Ports;
+using SaviaUp.Backend.Infrastructure.Persistence.Application;
+using SaviaUp.Backend.Infrastructure.Persistence.Platform;
 using SaviaUp.Backend.Shared.Constants;
 using SaviaUp.Backend.Shared.Localization;
 

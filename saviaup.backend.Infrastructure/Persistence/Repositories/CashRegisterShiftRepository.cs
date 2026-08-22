@@ -3,10 +3,11 @@ using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Domain.Results;
+using SaviaUp.Backend.Infrastructure.Persistence.Application;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
-public sealed class CashRegisterShiftRepository(SaviaUpDbContext context) : ICashRegisterShiftRepository
+public sealed class CashRegisterShiftRepository(ApplicationDbContext context) : ICashRegisterShiftRepository
 {
     public Task<bool> HasOpenShiftAsync(Guid tenantId, CancellationToken cancellationToken)
         => context.CashRegisterShifts.AsNoTracking()

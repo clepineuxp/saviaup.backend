@@ -19,6 +19,5 @@ public sealed class RestaurantTable
     public DateTimeOffset? OccupiedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
-    public Tenant Tenant { get; set; } = null!;
     public DiningArea DiningArea { get; set; } = null!;
 }

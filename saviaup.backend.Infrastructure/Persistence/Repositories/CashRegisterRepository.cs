@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
+using SaviaUp.Backend.Infrastructure.Persistence.Application;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
-public sealed class CashRegisterRepository(SaviaUpDbContext context) : ICashRegisterRepository
+public sealed class CashRegisterRepository(ApplicationDbContext context) : ICashRegisterRepository
 {
     public async Task<IReadOnlyCollection<CashRegister>> GetForTenantAsync(
         Guid tenantId,

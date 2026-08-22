@@ -1,13 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using SaviaUp.Backend.Infrastructure.Persistence;
+using SaviaUp.Backend.Infrastructure.Persistence.Application;
+using SaviaUp.Backend.Infrastructure.Persistence.Platform;
 
 namespace SaviaUp.Backend.Api.Health;
 
-public sealed class PostgresHealthCheck(SaviaUpDbContext dbContext) : IHealthCheck
+public sealed class PostgresHealthCheck(
+    PlatformDbContext platformContext,
+    ApplicationDbContext appContext) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
-        => await dbContext.Database.CanConnectAsync(cancellationToken)
-            ? HealthCheckResult.Healthy("PostgreSQL is reachable.")
-            : HealthCheckResult.Unhealthy("PostgreSQL is not reachable.");
+    {
+        var platformCanConnect = await platformContext.Database.CanConnectAsync(cancellationToken);
+        var appCanConnect = await appContext.Database.CanConnectAsync(cancellationToken);
+
+        if (platformCanConnect && appCanConnect)
+            return HealthCheckResult.Healthy("PostgreSQL databases (saviaup_platform and saviaup_app) are reachable.");
+
+        return HealthCheckResult.Unhealthy($"PostgreSQL connection state: Platform={platformCanConnect}, App={appCanConnect}");
+    }
 }

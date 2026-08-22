@@ -11,6 +11,5 @@ public sealed class MeasurementUnit
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
-    public Tenant Tenant { get; set; } = null!;
     public ICollection<Ingredient> Ingredients { get; set; } = [];
 }
