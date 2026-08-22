@@ -21,7 +21,7 @@ public sealed class CategoriesController(
     ICurrentUserContext currentUser) : ControllerBase
 {
     [HttpGet]
-    [RequirePermission(PermissionCodes.CategoriesRead)]
+    [RequirePermission(PermissionCodes.CategoriesRead, PermissionCodes.OrdersCreate, PermissionCodes.OrdersRead, PermissionCodes.TablesOperate, PermissionCodes.TablesRead)]
     public async Task<ActionResult<IReadOnlyCollection<CategoryDto>>> List(
         [FromQuery] bool includeInactive = false,
         CancellationToken cancellationToken = default)

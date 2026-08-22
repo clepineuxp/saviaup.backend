@@ -23,7 +23,7 @@ public sealed class ProductsController(
     ICurrentUserContext currentUser) : ControllerBase
 {
     [HttpGet]
-    [RequirePermission(PermissionCodes.ProductsRead)]
+    [RequirePermission(PermissionCodes.ProductsRead, PermissionCodes.OrdersCreate, PermissionCodes.OrdersRead, PermissionCodes.TablesOperate, PermissionCodes.TablesRead)]
     public async Task<ActionResult<PagedResponse<ProductDto>>> List(
         [FromQuery] ProductQueryRequest request,
         CancellationToken cancellationToken)

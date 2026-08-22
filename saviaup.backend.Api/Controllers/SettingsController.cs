@@ -57,7 +57,7 @@ public sealed class SettingsController(
         => this.FromResult(await organization.DeleteLogoAsync(TenantId, cancellationToken));
 
     [HttpGet("business")]
-    [RequirePermission(PermissionCodes.SettingsBusinessRead)]
+    [RequirePermission(PermissionCodes.SettingsBusinessRead, PermissionCodes.OrdersCreate, PermissionCodes.OrdersRead, PermissionCodes.TablesOperate, PermissionCodes.TablesRead)]
     public async Task<ActionResult<BusinessSettingsDto>> GetBusiness(CancellationToken cancellationToken)
         => this.FromResult(await business.GetAsync(TenantId, cancellationToken));
 
@@ -67,7 +67,7 @@ public sealed class SettingsController(
         => this.FromResult(await business.UpdateAsync(TenantId, request, cancellationToken));
 
     [HttpGet("payment-methods")]
-    [RequirePermission(PermissionCodes.SettingsPaymentMethodsRead)]
+    [RequirePermission(PermissionCodes.SettingsPaymentMethodsRead, PermissionCodes.OrdersCreate, PermissionCodes.OrdersRead, PermissionCodes.TablesOperate, PermissionCodes.TablesRead, PermissionCodes.CashRegistersOperate, PermissionCodes.CashRegistersRead)]
     public async Task<ActionResult<IReadOnlyCollection<PaymentMethodDto>>> ListPaymentMethods([FromQuery] bool includeInactive = false, CancellationToken cancellationToken = default)
         => this.FromResult(await payments.ListAsync(TenantId, includeInactive, cancellationToken));
 
