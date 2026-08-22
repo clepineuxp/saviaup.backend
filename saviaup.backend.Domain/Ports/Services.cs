@@ -37,6 +37,7 @@ public interface ICurrentUserContext
 {
     bool IsAuthenticated { get; }
     Guid? UserId { get; }
+    string? UserEmail { get; }
     Guid? SessionId { get; }
     Guid? TenantId { get; }
     Guid? RoleId { get; }

@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -114,7 +115,9 @@ public sealed class OrdersController(
 
     private string GetUserName()
     {
-        var emailClaim = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
+        if (!string.IsNullOrWhiteSpace(currentUser.UserEmail)) return currentUser.UserEmail;
+
+        var emailClaim = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue(JwtRegisteredClaimNames.Email) ?? User.FindFirstValue("email");
         if (!string.IsNullOrWhiteSpace(emailClaim)) return emailClaim;
 
         var nameClaim = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("name");
