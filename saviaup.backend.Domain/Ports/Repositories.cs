@@ -145,6 +145,7 @@ public interface IRestaurantTableRepository
 
 public interface IOrderRepository
 {
+    Task<PageData<OrderDto>> GetOrdersPageAsync(Guid tenantId, OrderQueryRequest request, CancellationToken cancellationToken);
     Task<Order?> GetActiveByTableIdAsync(Guid tenantId, Guid tableId, CancellationToken cancellationToken);
     Task<Order?> GetByIdAsync(Guid tenantId, Guid orderId, CancellationToken cancellationToken);
     Task<OrderItem?> GetItemByIdAsync(Guid tenantId, Guid itemId, CancellationToken cancellationToken);

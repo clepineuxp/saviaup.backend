@@ -14,6 +14,7 @@ public static class OrderRules
         order.Id,
         order.TenantId,
         order.TableId,
+        order.Table?.Name,
         order.OrderNumber,
         order.Status,
         order.SubtotalAmount,
@@ -61,6 +62,24 @@ public static class OrderRules
         var activeItems = order.Items.Where(item => item.Status != "CANCELLED").ToList();
         order.SubtotalAmount = activeItems.Sum(item => item.Subtotal);
         order.TotalAmount = order.SubtotalAmount + order.TipAmount;
+    }
+
+    public static PagedResponse<OrderDto> ToPage(PageData<OrderDto> page, int pageNumber, int pageSize)
+    {
+        var totalPages = (int)Math.Ceiling(page.TotalCount / (double)pageSize);
+        return new PagedResponse<OrderDto>(page.Items, pageNumber, pageSize, page.TotalCount, totalPages);
+    }
+}
+
+public sealed class GetOrdersPageUseCase(IOrderRepository orderRepository) : IGetOrdersPageUseCase
+{
+    public async Task<Result<PagedResponse<OrderDto>>> ExecuteAsync(
+        Guid tenantId,
+        OrderQueryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var page = await orderRepository.GetOrdersPageAsync(tenantId, request, cancellationToken);
+        return Result<PagedResponse<OrderDto>>.Success(OrderRules.ToPage(page, request.Page, request.PageSize));
     }
 }
 

@@ -28,6 +28,7 @@ public sealed record OrderDto(
     Guid Id,
     Guid TenantId,
     Guid? TableId,
+    string? TableName,
     int OrderNumber,
     string Status,
     decimal SubtotalAmount,
@@ -47,6 +48,15 @@ public sealed record OrderDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     IReadOnlyCollection<OrderItemDto> Items);
+
+public sealed record OrderQueryRequest(
+    int Page = 1,
+    int PageSize = 25,
+    string? Search = null,
+    IReadOnlyCollection<string>? Statuses = null,
+    DateTimeOffset? FromDate = null,
+    DateTimeOffset? ToDate = null,
+    Guid? TableId = null);
 
 public sealed record CreateOrderItemRequest(
     Guid? ProductId,

@@ -67,6 +67,7 @@ public static class CoreModule
         services.AddScoped<ISetTableOperationUseCase, SetTableOperationUseCase>();
         services.AddScoped<IUpdateTableOrderUseCase, UpdateTableOrderUseCase>();
         services.AddScoped<IGetActiveTableOrderUseCase, GetActiveTableOrderUseCase>();
+        services.AddScoped<IGetOrdersPageUseCase, GetOrdersPageUseCase>();
         services.AddScoped<IAddTableOrderItemsUseCase, AddTableOrderItemsUseCase>();
         services.AddScoped<IMoveTableOrderUseCase, MoveTableOrderUseCase>();
         services.AddScoped<ICancelOrderItemUseCase, CancelOrderItemUseCase>();

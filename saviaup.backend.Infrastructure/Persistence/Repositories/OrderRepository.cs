@@ -1,14 +1,118 @@
 using Microsoft.EntityFrameworkCore;
+using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
+using SaviaUp.Backend.Domain.Results;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
 public sealed class OrderRepository(SaviaUpDbContext dbContext) : IOrderRepository
 {
+    public async Task<PageData<OrderDto>> GetOrdersPageAsync(
+        Guid tenantId,
+        OrderQueryRequest request,
+        CancellationToken cancellationToken)
+    {
+        var query = dbContext.Orders
+            .Include(o => o.Table)
+            .Include(o => o.Items)
+            .Where(o => o.TenantId == tenantId);
+
+        if (request.TableId.HasValue)
+        {
+            query = query.Where(o => o.TableId == request.TableId.Value);
+        }
+
+        if (request.Statuses is not null && request.Statuses.Count > 0)
+        {
+            query = query.Where(o => request.Statuses.Contains(o.Status));
+        }
+
+        if (request.FromDate.HasValue)
+        {
+            query = query.Where(o => o.CreatedAt >= request.FromDate.Value);
+        }
+
+        if (request.ToDate.HasValue)
+        {
+            query = query.Where(o => o.CreatedAt <= request.ToDate.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var s = request.Search.Trim().ToLower();
+            query = query.Where(o =>
+                o.OrderNumber.ToString().Contains(s) ||
+                (o.Table != null && o.Table.Name.ToLower().Contains(s)) ||
+                o.CreatedByUserName.ToLower().Contains(s) ||
+                (o.PaidByUserName != null && o.PaidByUserName.ToLower().Contains(s)) ||
+                o.Items.Any(i => i.ProductName.ToLower().Contains(s)));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var page = Math.Max(1, request.Page);
+        var pageSize = Math.Clamp(request.PageSize, 1, 100);
+
+        var items = await query
+            .OrderByDescending(o => o.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var dtos = items.Select(o => new OrderDto(
+            o.Id,
+            o.TenantId,
+            o.TableId,
+            o.Table?.Name,
+            o.OrderNumber,
+            o.Status,
+            o.SubtotalAmount,
+            o.TaxAmount,
+            o.TipAmount,
+            o.TotalAmount,
+            o.PaymentMethod,
+            o.PaymentDetailsJson,
+            o.Observations,
+            o.CreatedByUserId,
+            o.CreatedByUserName,
+            o.LastModifiedByUserId,
+            o.LastModifiedByUserName,
+            o.PaidByUserId,
+            o.PaidByUserName,
+            o.PaidAt,
+            o.CreatedAt,
+            o.UpdatedAt,
+            o.Items.OrderBy(i => i.CreatedAt).Select(i => new OrderItemDto(
+                i.Id,
+                i.OrderId,
+                i.ProductId,
+                i.ProductName,
+                i.UnitPrice,
+                i.Quantity,
+                i.Subtotal,
+                i.Status,
+                i.Notes,
+                i.IsCustomSale,
+                i.CancellationReason,
+                i.CancelledAt,
+                i.CancelledByUserId,
+                i.CancelledByUserName,
+                i.CreatedByUserId,
+                i.CreatedByUserName,
+                i.LastModifiedByUserId,
+                i.LastModifiedByUserName,
+                i.CreatedAt,
+                i.UpdatedAt)).ToList()
+        )).ToList();
+
+        return new PageData<OrderDto>(dtos, totalCount);
+    }
+
     public async Task<Order?> GetActiveByTableIdAsync(Guid tenantId, Guid tableId, CancellationToken cancellationToken)
     {
         return await dbContext.Orders
+            .Include(o => o.Table)
             .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.TenantId == tenantId && o.TableId == tableId && o.Status == "PENDING", cancellationToken);
     }
@@ -16,6 +120,7 @@ public sealed class OrderRepository(SaviaUpDbContext dbContext) : IOrderReposito
     public async Task<Order?> GetByIdAsync(Guid tenantId, Guid orderId, CancellationToken cancellationToken)
     {
         return await dbContext.Orders
+            .Include(o => o.Table)
             .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.TenantId == tenantId && o.Id == orderId, cancellationToken);
     }
