@@ -143,6 +143,19 @@ public interface IRestaurantTableRepository
     void Remove(RestaurantTable table);
 }
 
+public interface IOrderRepository
+{
+    Task<PageData<OrderDto>> GetOrdersPageAsync(Guid tenantId, OrderQueryRequest request, CancellationToken cancellationToken);
+    Task<PageData<OrderItemReportDto>> GetOrderItemsPageAsync(Guid tenantId, OrderQueryRequest request, CancellationToken cancellationToken);
+    Task<Order?> GetActiveByTableIdAsync(Guid tenantId, Guid tableId, CancellationToken cancellationToken);
+    Task<Order?> GetByIdAsync(Guid tenantId, Guid orderId, CancellationToken cancellationToken);
+    Task<OrderItem?> GetItemByIdAsync(Guid tenantId, Guid itemId, CancellationToken cancellationToken);
+    Task<int> GetNextOrderNumberAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task AddAsync(Order order, CancellationToken cancellationToken);
+    Task AddItemAsync(OrderItem item, CancellationToken cancellationToken);
+    void RemoveItem(OrderItem item);
+}
+
 public interface ICashRegisterRepository
 {
     Task<IReadOnlyCollection<CashRegister>> GetForTenantAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);
