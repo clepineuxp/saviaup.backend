@@ -595,7 +595,7 @@ public sealed class PayAndCloseTableOrderUseCase(
             OrderId = order.Id,
             ReceiptNumber = receiptNumber,
             ReceiptType = "PAYMENT",
-            Title = !hasRemainingPending ? "COMPROBANTE DE PAGO TOTAL" : "COMPROBANTE DE PAGO PARCIAL",
+            Title = "COMPROBANTE DE PAGO",
             SubtotalAmount = expectedSubtotal,
             TaxAmount = 0m,
             TipAmount = checkoutTip,
