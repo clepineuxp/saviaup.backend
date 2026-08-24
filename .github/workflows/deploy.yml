@@ -1,0 +1,63 @@
+name: Compilar Dev y Enviar API a Produccion (FTP)
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build-and-deploy-api:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 1. Descargar el código fuente
+      uses: actions/checkout@v4
+
+    - name: 2. Configurar .NET 10
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: 3. Restaurar y Compilar la API
+      run: |
+        dotnet restore
+        dotnet publish ApiTaller.api/ApiTaller.api.csproj -c Release -o ./publish-api
+
+    # --- PASO CLAVE 1: Subir el apagador ---
+    - name: 4. Apagar IIS (Subir app_offline.htm)
+      env:
+        FTP_SERVER: ${{ secrets.FTP_SERVER }}
+        FTP_USER: ${{ secrets.FTP_USERNAME }}
+        FTP_PASS: ${{ secrets.FTP_PASSWORD }}
+      run: |
+        echo '<html><body><h1>Actualizando API, vuelvo en un momento...</h1></body></html>' > app_offline.htm
+        curl -sS --ftp-pasv -T app_offline.htm -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_SERVER/api/app_offline.htm"
+        echo "app_offline.htm subido exitosamente."
+
+    # --- PASO CLAVE 2: Darle tiempo al servidor de MyASP ---
+    - name: 5. Esperar a que IIS libere las DLLs (Crucial)
+      run: |
+        echo "Esperando 60 segundos para que el servidor apague la app..."
+        sleep 60
+
+    # --- PASO CLAVE 3: Subir los archivos ---
+    - name: 6. Despliegue DIRECTO al servidor por FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        local-dir: ./publish-api/
+        server-dir: /api/
+        dangerous-clean-slate: false # No borra la carpeta entera, solo actualiza
+
+    # --- PASO CLAVE 4: Encender la API de nuevo ---
+    - name: 7. Encender IIS
+      if: always()
+      env:
+        FTP_SERVER: ${{ secrets.FTP_SERVER }}
+        FTP_USER: ${{ secrets.FTP_USERNAME }}
+        FTP_PASS: ${{ secrets.FTP_PASSWORD }}
+      run: |
+        curl -sS --ftp-pasv -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_SERVER/" -Q "DELE api/app_offline.htm" || true
+        echo "app_offline.htm borrado. La API está en línea de nuevo."
