@@ -18,41 +18,45 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
-    - name: 3. Restaurar y Compilar la API
-      run: |
-        dotnet restore
-        dotnet publish ApiTaller.api/ApiTaller.api.csproj -c Release -o ./publish-api
+    - name: 3. Restaurar dependencias
+      run: dotnet restore
 
-    # --- PASO CLAVE 1: Subir el apagador ---
-    - name: 4. Apagar IIS (Subir app_offline.htm)
+    - name: 4. Ejecutar Pruebas Unitarias
+      run: dotnet test --no-restore -c Release
+
+    - name: 5. Publicar la API de SaviaUp
+      run: dotnet publish saviaup.backend.Api/saviaup.backend.Api.csproj -c Release -o ./publish-api
+
+    # --- PASO CLAVE 1: Subir app_offline.htm para detener IIS ---
+    - name: 6. Apagar IIS (Subir app_offline.htm)
       env:
         FTP_SERVER: ${{ secrets.FTP_SERVER }}
         FTP_USER: ${{ secrets.FTP_USERNAME }}
         FTP_PASS: ${{ secrets.FTP_PASSWORD }}
       run: |
-        echo '<html><body><h1>Actualizando API, vuelvo en un momento...</h1></body></html>' > app_offline.htm
-        curl -sS --ftp-pasv -T app_offline.htm -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_SERVER/api/app_offline.htm"
+        echo '<html><head><meta charset="utf-8"></head><body style="font-family:sans-serif;text-align:center;padding:40px;"><h1>SaviaUp API en Mantenimiento</h1><p>Actualizando servicios del sistema, por favor espere unos segundos...</p></body></html>' > app_offline.htm
+        curl -sS --ftp-pasv -T app_offline.htm -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_SERVER/api/app_offline.htm" || true
         echo "app_offline.htm subido exitosamente."
 
-    # --- PASO CLAVE 2: Darle tiempo al servidor de MyASP ---
-    - name: 5. Esperar a que IIS libere las DLLs (Crucial)
+    # --- PASO CLAVE 2: Esperar a que IIS libere los archivos ---
+    - name: 7. Esperar liberación de DLLs en IIS
       run: |
-        echo "Esperando 60 segundos para que el servidor apague la app..."
-        sleep 60
+        echo "Esperando 15 segundos para que IIS libere los bloqueos de archivos..."
+        sleep 15
 
-    # --- PASO CLAVE 3: Subir los archivos ---
-    - name: 6. Despliegue DIRECTO al servidor por FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+    # --- PASO CLAVE 3: Despliegue FTP ---
+    - name: 8. Despliegue por FTP al Servidor
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
         server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         local-dir: ./publish-api/
         server-dir: /api/
-        dangerous-clean-slate: false # No borra la carpeta entera, solo actualiza
+        dangerous-clean-slate: false
 
-    # --- PASO CLAVE 4: Encender la API de nuevo ---
-    - name: 7. Encender IIS
+    # --- PASO CLAVE 4: Encender IIS (Eliminar app_offline.htm) ---
+    - name: 9. Reactivar API en IIS
       if: always()
       env:
         FTP_SERVER: ${{ secrets.FTP_SERVER }}
@@ -60,4 +64,4 @@ jobs:
         FTP_PASS: ${{ secrets.FTP_PASSWORD }}
       run: |
         curl -sS --ftp-pasv -u "$FTP_USER:$FTP_PASS" "ftp://$FTP_SERVER/" -Q "DELE api/app_offline.htm" || true
-        echo "app_offline.htm borrado. La API está en línea de nuevo."
+        echo "app_offline.htm removido. API SaviaUp operativa en producción."
