@@ -296,6 +296,18 @@ DELETE /api/inventory/complements/units/{unitId}
 
 GET  /api/i18n/{language}
 GET  /health
+GET  /healthz
+GET  /api/health
+
+GET  /api/orders?page=1&pageSize=25&search=&statuses=&fromDate=&toDate=&tableId=
+GET  /api/orders/items?page=1&pageSize=25&search=&statuses=&fromDate=&toDate=&tableId=
+GET  /api/orders/table/{tableId}/active
+POST /api/orders/table/{tableId}/items
+POST /api/orders/table/{tableId}/move
+POST /api/orders/items/{itemId}/cancel
+POST /api/orders/table/{tableId}/checkout
+POST /api/orders/{orderId}/receipts/summary
+GET  /api/orders/{orderId}/receipts
 
 GET/PUT/POST/DELETE /api/settings/organization[/logo]
 GET/PUT             /api/settings/business

@@ -159,6 +159,7 @@ public static class ApiModule
         app.MapControllers();
         app.MapHub<TablesHub>("/hubs/tables");
         app.MapHealthChecks("/health", new HealthCheckOptions { AllowCachingResponses = false });
+        app.MapHealthChecks("/healthz", new HealthCheckOptions { AllowCachingResponses = false });
         return app;
     }
 }
