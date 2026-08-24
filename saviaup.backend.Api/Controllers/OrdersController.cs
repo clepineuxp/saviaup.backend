@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,6 +22,8 @@ public sealed class OrdersController(
     IMoveTableOrderUseCase moveUseCase,
     ICancelOrderItemUseCase cancelItemUseCase,
     IPayAndCloseTableOrderUseCase checkoutUseCase,
+    IGenerateSummaryReceiptUseCase generateSummaryUseCase,
+    IGetOrderReceiptsUseCase getReceiptsUseCase,
     ICurrentUserContext currentUser) : ControllerBase
 {
     [HttpGet]
@@ -56,14 +59,14 @@ public sealed class OrdersController(
     }
 
     [HttpGet("table/{tableId:guid}/active")]
-    [RequirePermission(PermissionCodes.TablesRead)]
+    [RequirePermission(PermissionCodes.TablesRead, PermissionCodes.OrdersRead)]
     public async Task<ActionResult<OrderDto>> GetActiveTableOrder(
         Guid tableId,
         CancellationToken cancellationToken)
         => this.FromResult(await getActiveUseCase.ExecuteAsync(currentUser.TenantId!.Value, tableId, cancellationToken));
 
     [HttpPost("table/{tableId:guid}/items")]
-    [RequirePermission(PermissionCodes.TablesOperate)]
+    [RequirePermission(PermissionCodes.TablesOperate, PermissionCodes.OrdersCreate)]
     public async Task<ActionResult<OrderDto>> AddTableOrderItems(
         Guid tableId,
         [FromBody] AddOrderItemsRequest request,
@@ -85,7 +88,7 @@ public sealed class OrdersController(
         => this.FromResult(await moveUseCase.ExecuteAsync(currentUser.TenantId!.Value, tableId, request, cancellationToken));
 
     [HttpPost("items/{itemId:guid}/cancel")]
-    [RequirePermission(PermissionCodes.TablesOperate)]
+    [RequirePermission(PermissionCodes.TablesOperate, PermissionCodes.OrdersCancel)]
     public async Task<ActionResult<OrderDto>> CancelOrderItem(
         Guid itemId,
         [FromBody] CancelOrderItemRequest request,
@@ -112,9 +115,33 @@ public sealed class OrdersController(
             request,
             cancellationToken));
 
+    [HttpPost("{orderId:guid}/receipts/summary")]
+    [RequirePermission(PermissionCodes.TablesOperate, PermissionCodes.TablesRead, PermissionCodes.OrdersRead, PermissionCodes.OrdersCreate)]
+    public async Task<ActionResult<OrderReceiptDto>> GenerateSummaryReceipt(
+        Guid orderId,
+        CancellationToken cancellationToken)
+        => this.FromResult(await generateSummaryUseCase.ExecuteAsync(
+            currentUser.TenantId!.Value,
+            orderId,
+            currentUser.UserId!.Value,
+            GetUserName(),
+            cancellationToken));
+
+    [HttpGet("{orderId:guid}/receipts")]
+    [RequirePermission(PermissionCodes.TablesOperate, PermissionCodes.TablesRead, PermissionCodes.OrdersRead)]
+    public async Task<ActionResult<IReadOnlyCollection<OrderReceiptDto>>> GetOrderReceipts(
+        Guid orderId,
+        CancellationToken cancellationToken)
+        => this.FromResult(await getReceiptsUseCase.ExecuteAsync(
+            currentUser.TenantId!.Value,
+            orderId,
+            cancellationToken));
+
     private string GetUserName()
     {
-        var emailClaim = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email");
+        if (!string.IsNullOrWhiteSpace(currentUser.UserEmail)) return currentUser.UserEmail;
+
+        var emailClaim = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue(JwtRegisteredClaimNames.Email) ?? User.FindFirstValue("email");
         if (!string.IsNullOrWhiteSpace(emailClaim)) return emailClaim;
 
         var nameClaim = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("name");

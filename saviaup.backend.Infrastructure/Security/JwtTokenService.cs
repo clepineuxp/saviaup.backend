@@ -25,7 +25,8 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IDateTimeProvi
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(ClaimNames.SessionId, sessionId.ToString()),
-            new(JwtRegisteredClaimNames.Email, user.Email)
+            new(JwtRegisteredClaimNames.Email, user.Email),
+            new(ClaimTypes.Email, user.Email)
         };
         if (tenantId.HasValue) claims.Add(new Claim(ClaimNames.TenantId, tenantId.Value.ToString()));
         if (roleId.HasValue) claims.Add(new Claim(ClaimNames.RoleId, roleId.Value.ToString()));

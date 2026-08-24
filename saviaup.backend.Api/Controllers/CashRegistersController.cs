@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -84,11 +85,16 @@ public sealed class CashRegistersController(
         CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId!.Value;
-        var userName = User.FindFirstValue(ClaimTypes.Email) ?? userId.ToString();
+        var userEmail = currentUser.UserEmail
+            ?? User.FindFirstValue(ClaimTypes.Email)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Email)
+            ?? User.FindFirstValue("email")
+            ?? "usuario@saviaup.com";
+
         return this.FromResult(await openShiftUseCase.ExecuteAsync(
             currentUser.TenantId!.Value,
             userId,
-            userName,
+            userEmail,
             request,
             cancellationToken));
     }
@@ -101,12 +107,17 @@ public sealed class CashRegistersController(
         CancellationToken cancellationToken)
     {
         var userId = currentUser.UserId!.Value;
-        var userName = User.FindFirstValue(ClaimTypes.Email) ?? userId.ToString();
+        var userEmail = currentUser.UserEmail
+            ?? User.FindFirstValue(ClaimTypes.Email)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Email)
+            ?? User.FindFirstValue("email")
+            ?? "usuario@saviaup.com";
+
         return this.FromResult(await closeShiftUseCase.ExecuteAsync(
             currentUser.TenantId!.Value,
             shiftId,
             userId,
-            userName,
+            userEmail,
             request,
             cancellationToken));
     }

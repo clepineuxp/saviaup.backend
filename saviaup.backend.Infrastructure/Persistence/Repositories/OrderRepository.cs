@@ -233,4 +233,77 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
     {
         dbContext.OrderItems.Remove(item);
     }
+
+    public async Task<IReadOnlyCollection<OrderReceiptDto>> GetReceiptsByOrderIdAsync(
+        Guid tenantId,
+        Guid orderId,
+        CancellationToken cancellationToken)
+    {
+        var receipts = await dbContext.OrderReceipts
+            .Where(r => r.TenantId == tenantId && r.OrderId == orderId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return receipts.Select(r => new OrderReceiptDto(
+            r.Id,
+            r.TenantId,
+            r.OrderId,
+            r.ReceiptNumber,
+            r.ReceiptType,
+            r.Title,
+            r.SubtotalAmount,
+            r.TaxAmount,
+            r.TipAmount,
+            r.TotalAmount,
+            r.PaymentMethod,
+            ParsePaymentDetails(r.PaymentDetailsJson),
+            ParseReceiptItems(r.ItemsJson),
+            r.IssuedByUserId,
+            r.IssuedByUserName,
+            r.CreatedAt)).ToList();
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions ReceiptJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    private static IReadOnlyCollection<PaymentSplitDto>? ParsePaymentDetails(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<List<PaymentSplitDto>>(json, ReceiptJsonOptions);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static IReadOnlyCollection<OrderReceiptItemDto> ParseReceiptItems(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return Array.Empty<OrderReceiptItemDto>();
+        try
+        {
+            return System.Text.Json.JsonSerializer.Deserialize<List<OrderReceiptItemDto>>(json, ReceiptJsonOptions) ?? new List<OrderReceiptItemDto>();
+        }
+        catch
+        {
+            return Array.Empty<OrderReceiptItemDto>();
+        }
+    }
+
+    public async Task<int> GetNextReceiptNumberAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        var max = await dbContext.OrderReceipts
+            .Where(r => r.TenantId == tenantId)
+            .MaxAsync(r => (int?)r.ReceiptNumber, cancellationToken);
+        return (max ?? 0) + 1;
+    }
+
+    public async Task AddReceiptAsync(OrderReceipt receipt, CancellationToken cancellationToken)
+    {
+        await dbContext.OrderReceipts.AddAsync(receipt, cancellationToken);
+    }
 }

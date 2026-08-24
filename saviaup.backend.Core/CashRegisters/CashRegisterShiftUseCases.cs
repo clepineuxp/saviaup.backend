@@ -154,7 +154,7 @@ public sealed class CloseCashRegisterShiftUseCase(
         var ordersPage = await orderRepository.GetOrdersPageAsync(tenantId, new OrderQueryRequest
         {
             Page = 1,
-            PageSize = 1000,
+            PageSize = 10000,
             Statuses = new[] { "PAID" },
             FromDate = shift.OpenedAt,
             ToDate = shift.ClosedAt ?? DateTimeOffset.UtcNow
@@ -184,17 +184,68 @@ public sealed class CloseCashRegisterShiftUseCase(
         var actualMap = (actualBalances ?? Array.Empty<ClosingBalanceInputDto>())
             .ToDictionary(b => b.MethodName.Trim(), b => b.ActualAmount, StringComparer.OrdinalIgnoreCase);
 
+        var methodSalesMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+        var methodTipsMap = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var pm in configuredMethods)
+        {
+            methodSalesMap[pm.Name.Trim()] = 0m;
+            methodTipsMap[pm.Name.Trim()] = 0m;
+        }
+
+        var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        foreach (var order in paidOrders)
+        {
+            List<PaymentSplitDto>? splits = null;
+            if (!string.IsNullOrWhiteSpace(order.PaymentDetailsJson))
+            {
+                try
+                {
+                    splits = JsonSerializer.Deserialize<List<PaymentSplitDto>>(order.PaymentDetailsJson, jsonOptions);
+                }
+                catch { }
+            }
+
+            if (splits is not null && splits.Count > 0)
+            {
+                var orderTotal = order.TotalAmount > 0 ? order.TotalAmount : splits.Sum(s => s.Amount);
+                var tipRatio = orderTotal > 0 ? (order.TipAmount / orderTotal) : 0m;
+
+                foreach (var split in splits)
+                {
+                    if (string.IsNullOrWhiteSpace(split.Method) || split.Amount <= 0) continue;
+                    var methodName = split.Method.Trim();
+
+                    var splitTip = Math.Round(split.Amount * tipRatio, 2, MidpointRounding.AwayFromZero);
+                    var splitSales = split.Amount - splitTip;
+
+                    methodSalesMap[methodName] = methodSalesMap.GetValueOrDefault(methodName) + splitSales;
+                    methodTipsMap[methodName] = methodTipsMap.GetValueOrDefault(methodName) + splitTip;
+                }
+            }
+            else
+            {
+                var methodName = (order.PaymentMethod ?? string.Empty).Trim();
+                if (!string.IsNullOrWhiteSpace(methodName))
+                {
+                    methodSalesMap[methodName] = methodSalesMap.GetValueOrDefault(methodName) + order.SubtotalAmount;
+                    methodTipsMap[methodName] = methodTipsMap.GetValueOrDefault(methodName) + order.TipAmount;
+                }
+            }
+        }
+
         var methodSummaries = new List<PaymentMethodClosingSummaryDto>();
 
         foreach (var pm in configuredMethods)
         {
-            var methodName = pm.Name;
+            var methodName = pm.Name.Trim();
             var initialAmt = initialList.FirstOrDefault(i => string.Equals(i.MethodName, methodName, StringComparison.OrdinalIgnoreCase))?.Amount ?? 0m;
-            var salesAmt = paidOrders
-                .Where(o => string.Equals(o.PaymentMethod, methodName, StringComparison.OrdinalIgnoreCase))
-                .Sum(o => o.TotalAmount);
+            var salesAmt = methodSalesMap.GetValueOrDefault(methodName);
+            var tipsAmt = methodTipsMap.GetValueOrDefault(methodName);
             var expensesAmt = 0m;
-            var expectedAmt = initialAmt + salesAmt - expensesAmt;
+            var totalCollectedForMethod = salesAmt + tipsAmt;
+            var expectedAmt = initialAmt + totalCollectedForMethod - expensesAmt;
             var actualAmt = actualMap.TryGetValue(methodName, out var aVal) ? aVal : expectedAmt;
             var diff = actualAmt - expectedAmt;
 
@@ -202,7 +253,9 @@ public sealed class CloseCashRegisterShiftUseCase(
                 methodName,
                 initialAmt,
                 salesAmt,
+                tipsAmt,
                 expensesAmt,
+                totalCollectedForMethod,
                 expectedAmt,
                 actualAmt,
                 diff));

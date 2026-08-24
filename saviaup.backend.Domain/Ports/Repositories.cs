@@ -154,6 +154,9 @@ public interface IOrderRepository
     Task AddAsync(Order order, CancellationToken cancellationToken);
     Task AddItemAsync(OrderItem item, CancellationToken cancellationToken);
     void RemoveItem(OrderItem item);
+    Task<IReadOnlyCollection<OrderReceiptDto>> GetReceiptsByOrderIdAsync(Guid tenantId, Guid orderId, CancellationToken cancellationToken);
+    Task<int> GetNextReceiptNumberAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task AddReceiptAsync(OrderReceipt receipt, CancellationToken cancellationToken);
 }
 
 public interface ICashRegisterRepository

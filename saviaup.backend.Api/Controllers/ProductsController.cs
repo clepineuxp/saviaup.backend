@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,7 +23,7 @@ public sealed class ProductsController(
     ICurrentUserContext currentUser) : ControllerBase
 {
     [HttpGet]
-    [RequirePermission(PermissionCodes.ProductsRead)]
+    [RequirePermission(PermissionCodes.ProductsRead, PermissionCodes.OrdersCreate, PermissionCodes.OrdersRead, PermissionCodes.TablesOperate, PermissionCodes.TablesRead)]
     public async Task<ActionResult<PagedResponse<ProductDto>>> List(
         [FromQuery] ProductQueryRequest request,
         CancellationToken cancellationToken)
@@ -39,7 +40,7 @@ public sealed class ProductsController(
         => this.FromResult(await createUseCase.ExecuteAsync(
             currentUser.TenantId!.Value,
             currentUser.UserId!.Value,
-            User.FindFirstValue(ClaimTypes.Email) ?? currentUser.UserId?.ToString() ?? "Sistema",
+            currentUser.UserEmail ?? User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue(JwtRegisteredClaimNames.Email) ?? currentUser.UserId?.ToString() ?? "Sistema",
             request,
             cancellationToken));
 
@@ -53,7 +54,7 @@ public sealed class ProductsController(
             currentUser.TenantId!.Value,
             productId,
             currentUser.UserId!.Value,
-            User.FindFirstValue(ClaimTypes.Email) ?? currentUser.UserId?.ToString() ?? "Sistema",
+            currentUser.UserEmail ?? User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue(JwtRegisteredClaimNames.Email) ?? currentUser.UserId?.ToString() ?? "Sistema",
             request,
             cancellationToken));
 

@@ -78,7 +78,17 @@ public sealed class PermissionAuthorizationMiddleware(RequestDelegate next)
 
         foreach (var permission in permissions)
         {
-            if (!await permissionService.IsAllowedAsync(currentUser.TenantId!.Value, currentUser.RoleId!.Value, permission.PermissionCode, context.RequestAborted))
+            var isAllowed = false;
+            foreach (var code in permission.PermissionCodes)
+            {
+                if (await permissionService.IsAllowedAsync(currentUser.TenantId!.Value, currentUser.RoleId!.Value, code, context.RequestAborted))
+                {
+                    isAllowed = true;
+                    break;
+                }
+            }
+
+            if (!isAllowed)
             {
                 await WriteAsync(context, StatusCodes.Status403Forbidden, ErrorCodes.Forbidden, LocalizationKeys.Forbidden);
                 return;
