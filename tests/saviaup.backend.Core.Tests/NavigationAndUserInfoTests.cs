@@ -53,7 +53,7 @@ public sealed class NavigationAndUserInfoTests
                 Assert.Equal(("operation", "Operación", 2, true),
                     (section.Code, section.Name, section.Order, section.IsGrouped));
                 Assert.Equal(
-                    [("orders", 1), ("reports", 2), ("billing", 3)],
+                    [("orders", 2), ("reports", 3), ("billing", 4)],
                     section.Modules.Select(module => (module.Code, module.Order)));
             },
             section =>
