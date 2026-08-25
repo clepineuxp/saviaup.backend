@@ -27,27 +27,28 @@ jobs:
     - name: 5. Publicar la API de SaviaUp
       run: dotnet publish saviaup.backend.Api/saviaup.backend.Api.csproj -c Release -o ./publish-api
 
-    - name: 6. Generar appsettings.json y appsettings.Production.json con Variables de GitHub
+    - name: 6. Generar appsettings.json base y eliminar appsettings.Development/Production
       run: |
+        rm -f ./publish-api/appsettings.Development.json ./publish-api/appsettings.Production.json
         cat << 'EOF' > ./publish-api/appsettings.json
         {
           "ConnectionStrings": {
-            "ApplicationDatabase": "${{ vars.APPLICATIONDATABASE }}",
-            "PlatformDatabase": "${{ vars.PLATFORMDATABASE }}"
+            "ApplicationDatabase": "${{ vars.CONNECTIONSTRINGS_APPLICATIONDATABASE }}",
+            "PlatformDatabase": "${{ vars.CONNECTIONSTRINGS_PLATFORMDATABASE }}"
           },
           "Jwt": {
-            "Issuer": "saviaup-api",
-            "Audience": "saviaup-web",
-            "SigningKey": "${{ vars.SIGNINGKEY }}",
-            "AccessTokenExpirationMinutes": 15,
-            "RefreshTokenExpirationDays": 30
+            "Issuer": "${{ vars.JWT_ISSUER }}",
+            "Audience": "${{ vars.JWT_AUDIENCE }}",
+            "SigningKey": "${{ vars.JWT_SIGNINGKEY }}",
+            "AccessTokenExpirationMinutes": ${{ vars.JWT_ACCESSTOKENEXPIRATIONMINUTES }},
+            "RefreshTokenExpirationDays": ${{ vars.JWT_REFRESHTOKENEXPIRATIONDAYS }}
           },
           "PasswordPolicy": {
-            "MinimumLength": 10,
-            "RequireUppercase": true,
-            "RequireLowercase": true,
-            "RequireDigit": true,
-            "RequireSpecialCharacter": true
+            "MinimumLength": ${{ vars.PASSWORDPOLICY_MINIMUMLENGTH }},
+            "RequireUppercase": ${{ vars.PASSWORDPOLICY_REQUIREUPPERCASE }},
+            "RequireLowercase": ${{ vars.PASSWORDPOLICY_REQUIRELOWERCASE }},
+            "RequireDigit": ${{ vars.PASSWORDPOLICY_REQUIREDIGIT }},
+            "RequireSpecialCharacter": ${{ vars.PASSWORDPOLICY_REQUIRESPECIALCHARACTER }}
           },
           "Frontend": {
             "BaseUrl": "${{ vars.FRONTEND_BASEURL }}"
@@ -67,10 +68,9 @@ jobs:
           "AllowedHosts": "*"
         }
         EOF
-        cp ./publish-api/appsettings.json ./publish-api/appsettings.Production.json
 
     # --- PASO CLAVE 1: Subir app_offline.htm para detener IIS ---
-    - name: 6. Apagar IIS (Subir app_offline.htm)
+    - name: 7. Apagar IIS (Subir app_offline.htm)
       env:
         FTP_SERVER: ${{ secrets.FTP_SERVER }}
         FTP_USER: ${{ secrets.FTP_USERNAME }}
@@ -81,13 +81,13 @@ jobs:
         echo "app_offline.htm subido exitosamente."
 
     # --- PASO CLAVE 2: Esperar a que IIS libere los archivos ---
-    - name: 7. Esperar liberación de DLLs en IIS
+    - name: 8. Esperar liberación de DLLs en IIS
       run: |
         echo "Esperando 15 segundos para que IIS libere los bloqueos de archivos..."
         sleep 15
 
     # --- PASO CLAVE 3: Despliegue FTP ---
-    - name: 8. Despliegue por FTP al Servidor
+    - name: 9. Despliegue por FTP al Servidor
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
         server: ${{ secrets.FTP_SERVER }}
@@ -98,7 +98,7 @@ jobs:
         dangerous-clean-slate: false
 
     # --- PASO CLAVE 4: Encender IIS (Eliminar app_offline.htm) ---
-    - name: 9. Reactivar API en IIS
+    - name: 10. Reactivar API en IIS
       if: always()
       env:
         FTP_SERVER: ${{ secrets.FTP_SERVER }}
