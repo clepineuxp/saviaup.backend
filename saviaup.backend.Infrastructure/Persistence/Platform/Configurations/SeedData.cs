@@ -13,7 +13,7 @@ internal static class SeedData
         (Guid.Parse("10000000-0000-0000-0000-000000000003"), "inventory", "Inventory"),
         (Guid.Parse("10000000-0000-0000-0000-000000000004"), "products", "Products"),
         (Guid.Parse("10000000-0000-0000-0000-000000000005"), "kitchen", "Kitchen"),
-        (Guid.Parse("10000000-0000-0000-0000-000000000006"), "reports", "Reports"),
+        (Guid.Parse("10000000-0000-0000-0000-000000000006"), "statistics", "Statistics"),
         (Guid.Parse("10000000-0000-0000-0000-000000000007"), "billing", "Billing"),
         (Guid.Parse("10000000-0000-0000-0000-000000000008"), "settings", "Settings"),
         (Guid.Parse("10000000-0000-0000-0000-000000000009"), "categories", "Categories"),

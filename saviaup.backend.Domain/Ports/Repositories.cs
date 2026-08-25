@@ -230,6 +230,16 @@ public interface ISettingsRepository
     void RemoveInvitation(TenantInvitation invitation);
 }
 
+public interface IStatisticsRepository
+{
+    Task<StatisticsDashboardDto> GetDashboardStatisticsAsync(
+        Guid tenantId,
+        string period,
+        bool includeTips,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+}
+
 public interface IUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

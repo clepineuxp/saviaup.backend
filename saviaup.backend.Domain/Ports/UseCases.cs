@@ -453,3 +453,12 @@ public interface IAccessSettingsUseCase
     Task<Result<OrganizationUserDto>> UpdateUserAsync(Guid tenantId, Guid membershipId, UpdateOrganizationUserRequest request, CancellationToken cancellationToken);
     Task<Result> DeleteUserAsync(Guid tenantId, Guid currentUserId, Guid entryId, CancellationToken cancellationToken);
 }
+
+public interface IGetStatisticsUseCase
+{
+    Task<Result<StatisticsDashboardDto>> ExecuteAsync(
+        Guid tenantId,
+        string? period,
+        bool? includeTips,
+        CancellationToken cancellationToken);
+}

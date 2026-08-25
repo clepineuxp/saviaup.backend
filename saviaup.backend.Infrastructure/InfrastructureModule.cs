@@ -50,6 +50,7 @@ public static class InfrastructureModule
         services.AddScoped<ICashRegisterRepository, CashRegisterRepository>();
         services.AddScoped<ICashRegisterShiftRepository, CashRegisterShiftRepository>();
         services.AddScoped<ISettingsRepository, SettingsRepository>();
+        services.AddScoped<IStatisticsRepository, StatisticsRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

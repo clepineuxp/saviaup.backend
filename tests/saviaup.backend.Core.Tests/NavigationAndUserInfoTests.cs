@@ -23,7 +23,7 @@ public sealed class NavigationAndUserInfoTests
                 new AvailableModuleReference(Guid.NewGuid(), "billing"),
                 new AvailableModuleReference(Guid.NewGuid(), "tables"),
                 new AvailableModuleReference(Guid.NewGuid(), "categories"),
-                new AvailableModuleReference(Guid.NewGuid(), "reports"),
+                new AvailableModuleReference(Guid.NewGuid(), "statistics"),
                 new AvailableModuleReference(Guid.NewGuid(), "settings"),
                 new AvailableModuleReference(Guid.NewGuid(), "products"),
                 new AvailableModuleReference(Guid.NewGuid(), "orders"),
@@ -53,7 +53,7 @@ public sealed class NavigationAndUserInfoTests
                 Assert.Equal(("operation", "Operación", 2, true),
                     (section.Code, section.Name, section.Order, section.IsGrouped));
                 Assert.Equal(
-                    [("orders", 2), ("reports", 3), ("billing", 4)],
+                    [("orders", 2), ("statistics", 3), ("billing", 4)],
                     section.Modules.Select(module => (module.Code, module.Order)));
             },
             section =>

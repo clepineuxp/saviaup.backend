@@ -34,7 +34,10 @@ public sealed class GetAvailableModulesUseCase(
         }
 
         var availableModules = await moduleRepository.GetAvailableForRoleAsync(tenantId, roleId, cancellationToken);
-        var modulesByCode = availableModules.ToDictionary(module => module.Code, StringComparer.OrdinalIgnoreCase);
+        var modulesByCode = availableModules.ToDictionary(
+            module => string.Equals(module.Code, "reports", StringComparison.OrdinalIgnoreCase) ? "statistics" : module.Code,
+            module => module,
+            StringComparer.OrdinalIgnoreCase);
         var unconfiguredModule = modulesByCode.Keys.FirstOrDefault(code => !NavigationCatalog.Modules.ContainsKey(code));
         if (unconfiguredModule is not null)
         {
