@@ -23,10 +23,10 @@ internal static class NavigationCatalog
             []),
         new("operation", 2,
             [
-                new("orders", 1),
-                new("reports", 2),
-                new("billing", 3),
-                new("cash_registers", 4)
+                new("cash_registers", 1),
+                new("orders", 2),
+                new("reports", 3),
+                new("billing", 4)
             ],
             []),
         new("inventory", 3,
