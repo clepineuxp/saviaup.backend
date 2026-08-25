@@ -27,6 +27,48 @@ jobs:
     - name: 5. Publicar la API de SaviaUp
       run: dotnet publish saviaup.backend.Api/saviaup.backend.Api.csproj -c Release -o ./publish-api
 
+    - name: 6. Generar appsettings.json y appsettings.Production.json con Variables de GitHub
+      run: |
+        cat << 'EOF' > ./publish-api/appsettings.json
+        {
+          "ConnectionStrings": {
+            "ApplicationDatabase": "${{ vars.APPLICATIONDATABASE }}",
+            "PlatformDatabase": "${{ vars.PLATFORMDATABASE }}"
+          },
+          "Jwt": {
+            "Issuer": "saviaup-api",
+            "Audience": "saviaup-web",
+            "SigningKey": "${{ vars.SIGNINGKEY }}",
+            "AccessTokenExpirationMinutes": 15,
+            "RefreshTokenExpirationDays": 30
+          },
+          "PasswordPolicy": {
+            "MinimumLength": 10,
+            "RequireUppercase": true,
+            "RequireLowercase": true,
+            "RequireDigit": true,
+            "RequireSpecialCharacter": true
+          },
+          "Frontend": {
+            "BaseUrl": "${{ vars.FRONTEND_BASEURL }}"
+          },
+          "Email": {
+            "Mode": "Development"
+          },
+          "Cors": {
+            "AllowedOrigins": [ ${{ vars.ALLOWEDORIGINS }} ]
+          },
+          "Logging": {
+            "LogLevel": {
+              "Default": "Information",
+              "Microsoft.AspNetCore": "Warning"
+            }
+          },
+          "AllowedHosts": "*"
+        }
+        EOF
+        cp ./publish-api/appsettings.json ./publish-api/appsettings.Production.json
+
     # --- PASO CLAVE 1: Subir app_offline.htm para detener IIS ---
     - name: 6. Apagar IIS (Subir app_offline.htm)
       env:
