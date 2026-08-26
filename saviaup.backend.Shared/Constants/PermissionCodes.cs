@@ -23,7 +23,9 @@ public static class PermissionCodes
     public const string CategoriesManage = "categories.manage";
     public const string KitchenRead = "kitchen.read";
     public const string ReportsRead = "reports.read";
+    public const string BillingRead = "billing.read";
     public const string BillingManage = "billing.manage";
+    public const string BillingCancel = "billing.cancel";
     public const string SettingsManage = "settings.manage";
     public const string SettingsOrganizationRead = "settings.organization.read";
     public const string SettingsOrganizationManage = "settings.organization.manage";
@@ -47,7 +49,7 @@ public static class PermissionCodes
         InventoryMovementsRead, InventoryMovementsManage,
         InventoryComplementsRead, InventoryComplementsManage,
         ProductsRead, ProductsManage, CategoriesRead, CategoriesManage,
-        KitchenRead, ReportsRead, BillingManage, SettingsManage,
+        KitchenRead, ReportsRead, BillingRead, BillingManage, BillingCancel, SettingsManage,
         SettingsOrganizationRead, SettingsOrganizationManage,
         SettingsBusinessRead, SettingsBusinessManage,
         SettingsPaymentMethodsRead, SettingsPaymentMethodsManage,

@@ -462,3 +462,27 @@ public interface IGetStatisticsUseCase
         bool? includeTips,
         CancellationToken cancellationToken);
 }
+
+public interface IGetBillingReceiptsUseCase
+{
+    Task<Result<PagedResponse<BillingReceiptItemDto>>> ExecuteAsync(
+        Guid tenantId,
+        BillingReceiptQueryRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IGetBillingOrdersUseCase
+{
+    Task<Result<PagedResponse<BillingOrderDto>>> ExecuteAsync(
+        Guid tenantId,
+        BillingReceiptQueryRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IGetBillingReceiptByIdUseCase
+{
+    Task<Result<OrderReceiptDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid receiptId,
+        CancellationToken cancellationToken);
+}

@@ -240,6 +240,24 @@ public interface IStatisticsRepository
         CancellationToken cancellationToken);
 }
 
+public interface IBillingRepository
+{
+    Task<PageData<BillingReceiptItemDto>> GetReceiptsPageAsync(
+        Guid tenantId,
+        BillingReceiptQueryRequest request,
+        CancellationToken cancellationToken);
+
+    Task<PageData<BillingOrderDto>> GetOrdersPageAsync(
+        Guid tenantId,
+        BillingReceiptQueryRequest request,
+        CancellationToken cancellationToken);
+
+    Task<OrderReceiptDto?> GetReceiptByIdAsync(
+        Guid tenantId,
+        Guid receiptId,
+        CancellationToken cancellationToken);
+}
+
 public interface IUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

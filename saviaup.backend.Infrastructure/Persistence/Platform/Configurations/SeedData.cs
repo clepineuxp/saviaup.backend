@@ -61,7 +61,9 @@ internal static class SeedData
         Permission("20000000-0000-0000-0000-000000000033", 7, PermissionCodes.SettingsRolesManage),
         Permission("20000000-0000-0000-0000-000000000034", 9, PermissionCodes.CashRegistersRead),
         Permission("20000000-0000-0000-0000-000000000035", 9, PermissionCodes.CashRegistersOperate),
-        Permission("20000000-0000-0000-0000-000000000036", 9, PermissionCodes.CashRegistersManage)
+        Permission("20000000-0000-0000-0000-000000000036", 9, PermissionCodes.CashRegistersManage),
+        Permission("20000000-0000-0000-0000-000000000037", 6, PermissionCodes.BillingRead),
+        Permission("20000000-0000-0000-0000-000000000038", 6, PermissionCodes.BillingCancel)
     ];
 
     private static Permission Permission(string id, int moduleIndex, string code) => new()
