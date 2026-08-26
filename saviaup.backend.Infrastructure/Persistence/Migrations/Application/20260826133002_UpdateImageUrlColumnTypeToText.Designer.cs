@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SaviaUp.Backend.Infrastructure.Persistence.Application;
@@ -11,9 +12,11 @@ using SaviaUp.Backend.Infrastructure.Persistence.Application;
 namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260826133002_UpdateImageUrlColumnTypeToText")]
+    partial class UpdateImageUrlColumnTypeToText
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -167,8 +170,8 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<Guid?>("ImageRef")
-                        .HasColumnType("uuid");
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -193,8 +196,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ImageRef");
 
                     b.HasIndex("TenantId", "NormalizedName")
                         .IsUnique();
@@ -773,8 +774,8 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<Guid?>("ImageRef")
-                        .HasColumnType("uuid");
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -822,8 +823,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
-
-                    b.HasIndex("ImageRef");
 
                     b.HasIndex("TenantId", "CategoryId");
 
@@ -1046,16 +1045,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Navigation("CashRegister");
                 });
 
-            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Category", b =>
-                {
-                    b.HasOne("SaviaUp.Backend.Domain.Entities.StoredImage", "ImageStored")
-                        .WithMany()
-                        .HasForeignKey("ImageRef")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("ImageStored");
-                });
-
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Ingredient", b =>
                 {
                     b.HasOne("SaviaUp.Backend.Domain.Entities.Category", "Category")
@@ -1140,14 +1129,7 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("SaviaUp.Backend.Domain.Entities.StoredImage", "ImageStored")
-                        .WithMany()
-                        .HasForeignKey("ImageRef")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Category");
-
-                    b.Navigation("ImageStored");
                 });
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.RestaurantTable", b =>

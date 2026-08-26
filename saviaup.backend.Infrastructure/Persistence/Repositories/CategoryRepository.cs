@@ -13,14 +13,17 @@ public sealed class CategoryRepository(ApplicationDbContext context) : ICategory
         CancellationToken cancellationToken)
         => await context.Categories
             .AsNoTracking()
+            .Include(category => category.ImageStored)
             .Where(category => category.TenantId == tenantId && (includeInactive || category.IsActive))
             .OrderBy(category => category.NormalizedName)
             .ToArrayAsync(cancellationToken);
 
     public Task<Category?> GetByIdAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken)
-        => context.Categories.SingleOrDefaultAsync(
-            category => category.TenantId == tenantId && category.Id == categoryId,
-            cancellationToken);
+        => context.Categories
+            .Include(category => category.ImageStored)
+            .SingleOrDefaultAsync(
+                category => category.TenantId == tenantId && category.Id == categoryId,
+                cancellationToken);
 
     public Task<bool> NameExistsAsync(
         Guid tenantId,

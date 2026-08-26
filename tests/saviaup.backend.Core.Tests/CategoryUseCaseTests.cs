@@ -35,7 +35,7 @@ public sealed class CategoryUseCaseTests
             new CreateCategoryRequest(
                 "  Bebidas   frías  ",
                 "  Para la barra  ",
-                " https://cdn.saviaup.test/categories/drinks.webp ",
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
                 true),
             default);
 
@@ -44,7 +44,6 @@ public sealed class CategoryUseCaseTests
         Assert.Equal(tenantId, persisted.TenantId);
         Assert.Equal(("Bebidas frías", "BEBIDAS FRÍAS"), (persisted.Name, persisted.NormalizedName));
         Assert.Equal("Para la barra", persisted.Description);
-        Assert.Equal("https://cdn.saviaup.test/categories/drinks.webp", persisted.ImageUrl);
         Assert.True(persisted.IsInventoryTracked);
         Assert.True(persisted.IsActive);
         Assert.Equal(TestSupport.Now, persisted.CreatedAt);

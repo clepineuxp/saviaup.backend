@@ -10,7 +10,7 @@ internal sealed record ProductValues(
     string Name,
     string NormalizedName,
     string? Description,
-    string? ImageUrl,
+    string? Image,
     decimal SalePrice,
     int? PreparationTimeMinutes);
 
@@ -34,16 +34,18 @@ internal static class ProductRules
         string? type,
         string? name,
         string? description,
-        string? imageUrl,
+        string? image,
         decimal salePrice,
         int? preparationTimeMinutes,
         out ProductValues values)
     {
         var cleanName = CleanWords(name);
         var cleanDescription = CleanOptional(description);
-        var cleanImageUrl = CleanOptional(imageUrl);
-        var validImageUrl = cleanImageUrl is null
-            || (Uri.TryCreate(cleanImageUrl, UriKind.Absolute, out var uri)
+        var cleanImage = CleanOptional(image);
+        var validImage = cleanImage is null
+            || cleanImage.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase)
+            || cleanImage.StartsWith("/api/images/", StringComparison.OrdinalIgnoreCase)
+            || (Uri.TryCreate(cleanImage, UriKind.Absolute, out var uri)
                 && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps));
         var validType = TryParseType(type, out var parsedType);
 
@@ -52,14 +54,13 @@ internal static class ProductRules
             cleanName,
             cleanName.ToUpperInvariant(),
             cleanDescription,
-            cleanImageUrl,
+            cleanImage,
             salePrice,
             preparationTimeMinutes);
         return validType
             && cleanName.Length is > 0 and <= 120
             && (cleanDescription?.Length ?? 0) <= 1000
-            && (cleanImageUrl?.Length ?? 0) <= 2048
-            && validImageUrl
+            && validImage
             && salePrice is > 0 and <= MaximumSalePrice
             && preparationTimeMinutes is null or >= 0;
     }
@@ -69,7 +70,7 @@ internal static class ProductRules
         product.Type.ToString().ToUpperInvariant(),
         product.Name,
         product.Description,
-        product.ImageUrl,
+        product.ImageStored?.Base64Content,
         new CategoryReferenceDto(product.Category.Id, product.Category.Name, product.Category.IsInventoryTracked),
         product.SalePrice,
         product.PreparationTimeMinutes,

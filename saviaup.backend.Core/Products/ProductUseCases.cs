@@ -1,4 +1,5 @@
 using SaviaUp.Backend.Core.Common;
+using SaviaUp.Backend.Core.Images;
 using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
@@ -28,7 +29,8 @@ public sealed class CreateProductUseCase(
     IProductRepository productRepository,
     ICategoryRepository categoryRepository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork) : ICreateProductUseCase
+    IUnitOfWork unitOfWork,
+    IStoredImageRepository? imageRepository = null) : ICreateProductUseCase
 {
     public async Task<Result<ProductDto>> ExecuteAsync(
         Guid tenantId, Guid userId, string userName, CreateProductRequest request, CancellationToken cancellationToken)
@@ -38,7 +40,7 @@ public sealed class CreateProductUseCase(
                 request.Type,
                 request.Name,
                 request.Description,
-                request.ImageUrl,
+                request.Image,
                 request.SalePrice,
                 request.PreparationTimeMinutes,
                 out var values))
@@ -49,9 +51,25 @@ public sealed class CreateProductUseCase(
             return Result<ProductDto>.Failure(Errors.CategoryNotFound);
 
         var now = clock.UtcNow;
+        var productId = Guid.NewGuid();
+        Guid? imageRef = null;
+        StoredImage? imageStored = null;
+
+        if (imageRepository != null
+            && !string.IsNullOrWhiteSpace(values.Image)
+            && values.Image.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+        {
+            imageStored = ImageHelper.CreateStoredImage(tenantId, "products", productId.ToString(), values.Image, now);
+            if (imageStored != null)
+            {
+                await imageRepository.AddAsync(imageStored, cancellationToken);
+                imageRef = imageStored.Id;
+            }
+        }
+
         var product = new Product
         {
-            Id = Guid.NewGuid(),
+            Id = productId,
             TenantId = tenantId,
             CategoryId = category.Id,
             Category = category,
@@ -59,7 +77,8 @@ public sealed class CreateProductUseCase(
             Name = values.Name,
             NormalizedName = values.NormalizedName,
             Description = values.Description,
-            ImageUrl = values.ImageUrl,
+            ImageRef = imageRef,
+            ImageStored = imageStored,
             SalePrice = values.SalePrice,
             PreparationTimeMinutes = values.PreparationTimeMinutes,
             IsInventoryTracked = category.IsInventoryTracked && request.IsInventoryTracked,
@@ -81,7 +100,8 @@ public sealed class UpdateProductUseCase(
     IProductRepository productRepository,
     ICategoryRepository categoryRepository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork) : IUpdateProductUseCase
+    IUnitOfWork unitOfWork,
+    IStoredImageRepository? imageRepository = null) : IUpdateProductUseCase
 {
     public async Task<Result<ProductDto>> ExecuteAsync(
         Guid tenantId, Guid productId, Guid userId, string userName, UpdateProductRequest request, CancellationToken cancellationToken)
@@ -91,7 +111,7 @@ public sealed class UpdateProductUseCase(
                 request.Type,
                 request.Name,
                 request.Description,
-                request.ImageUrl,
+                request.Image,
                 request.SalePrice,
                 request.PreparationTimeMinutes,
                 out var values))
@@ -103,19 +123,38 @@ public sealed class UpdateProductUseCase(
         if (category is null || !category.IsActive)
             return Result<ProductDto>.Failure(Errors.CategoryNotFound);
 
+        var now = clock.UtcNow;
+
+        if (imageRepository != null
+            && !string.IsNullOrWhiteSpace(values.Image)
+            && values.Image.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+        {
+            var storedImage = ImageHelper.CreateStoredImage(tenantId, "products", productId.ToString(), values.Image, now);
+            if (storedImage != null)
+            {
+                await imageRepository.AddAsync(storedImage, cancellationToken);
+                product.ImageRef = storedImage.Id;
+                product.ImageStored = storedImage;
+            }
+        }
+        else if (string.IsNullOrWhiteSpace(values.Image))
+        {
+            product.ImageRef = null;
+            product.ImageStored = null;
+        }
+
         product.CategoryId = category.Id;
         product.Category = category;
         product.Type = values.Type;
         product.Name = values.Name;
         product.NormalizedName = values.NormalizedName;
         product.Description = values.Description;
-        product.ImageUrl = values.ImageUrl;
         product.SalePrice = values.SalePrice;
         product.PreparationTimeMinutes = values.PreparationTimeMinutes;
         product.IsInventoryTracked = category.IsInventoryTracked && request.IsInventoryTracked;
         product.LastModifiedByUserId = userId;
         product.LastModifiedByUserName = userName;
-        product.UpdatedAt = clock.UtcNow;
+        product.UpdatedAt = now;
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<ProductDto>.Success(ProductRules.ToDto(product));
     }

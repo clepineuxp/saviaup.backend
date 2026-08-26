@@ -26,6 +26,7 @@ public sealed class ApplicationDbContext(
     public DbSet<OrderReceipt> OrderReceipts => Set<OrderReceipt>();
     public DbSet<OrganizationParameter> OrganizationParameters => Set<OrganizationParameter>();
     public DbSet<PaymentMethod> PaymentMethods => Set<PaymentMethod>();
+    public DbSet<StoredImage> StoredImages => Set<StoredImage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,6 +49,7 @@ public sealed class ApplicationDbContext(
         modelBuilder.Entity<OrderReceipt>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<OrganizationParameter>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<PaymentMethod>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<StoredImage>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<RolePermission>().HasQueryFilter(x => x.Role.TenantId == TenantId);
     }
 
