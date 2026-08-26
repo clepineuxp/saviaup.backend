@@ -3,7 +3,6 @@ using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Infrastructure.Persistence.Application;
 using SaviaUp.Backend.Infrastructure.Persistence.Platform;
-using System.Linq;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 

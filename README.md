@@ -135,6 +135,12 @@ PUT    /api/inventory/complements/units/{unitId}
 PATCH  /api/inventory/complements/units/{unitId}/status
 DELETE /api/inventory/complements/units/{unitId}
 
+GET    /api/statistics?period=current_month&includeTips=true
+
+GET    /api/billing/receipts?page=1&pageSize=25&search=&fromDate=&toDate=
+GET    /api/billing/orders?page=1&pageSize=25&search=&fromDate=&toDate=
+GET    /api/billing/receipts/{id}
+
 GET  /api/i18n/{language}
 GET  /health
 ```

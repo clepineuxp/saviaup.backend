@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using SaviaUp.Backend.Core.Authentication;
+using SaviaUp.Backend.Core.Billing;
 using SaviaUp.Backend.Core.CashRegisters;
 using SaviaUp.Backend.Core.Categories;
 using SaviaUp.Backend.Core.Inventory;
@@ -8,6 +9,7 @@ using SaviaUp.Backend.Core.Orders;
 using SaviaUp.Backend.Core.Products;
 using SaviaUp.Backend.Core.Security;
 using SaviaUp.Backend.Core.Settings;
+using SaviaUp.Backend.Core.Statistics;
 using SaviaUp.Backend.Core.Tenants;
 using SaviaUp.Backend.Core.Tables;
 using SaviaUp.Backend.Core.Users;
@@ -88,6 +90,10 @@ public static class CoreModule
         services.AddScoped<IBusinessSettingsUseCase, BusinessSettingsUseCase>();
         services.AddScoped<IPaymentMethodsSettingsUseCase, PaymentMethodsSettingsUseCase>();
         services.AddScoped<IAccessSettingsUseCase, AccessSettingsUseCase>();
+        services.AddScoped<IGetStatisticsUseCase, GetStatisticsUseCase>();
+        services.AddScoped<IGetBillingReceiptsUseCase, GetBillingReceiptsUseCase>();
+        services.AddScoped<IGetBillingOrdersUseCase, GetBillingOrdersUseCase>();
+        services.AddScoped<IGetBillingReceiptByIdUseCase, GetBillingReceiptByIdUseCase>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<SessionIssuer>();
         services.AddSingleton<PasswordPolicy>();

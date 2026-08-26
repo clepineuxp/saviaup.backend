@@ -62,7 +62,7 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         Assert.False(sections[0].GetProperty("isGrouped").GetBoolean());
         Assert.True(sections[1].GetProperty("isGrouped").GetBoolean());
         Assert.Equal(
-            ["cash_registers", "orders", "reports", "billing"],
+            ["cash_registers", "orders", "statistics", "billing"],
             sections[1].GetProperty("modules").EnumerateArray().Select(module => module.GetProperty("code").GetString()));
         Assert.Contains(
             sections[2].GetProperty("modules").EnumerateArray(),

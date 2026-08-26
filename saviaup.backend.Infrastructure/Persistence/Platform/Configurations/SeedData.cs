@@ -13,7 +13,7 @@ internal static class SeedData
         (Guid.Parse("10000000-0000-0000-0000-000000000003"), "inventory", "Inventory"),
         (Guid.Parse("10000000-0000-0000-0000-000000000004"), "products", "Products"),
         (Guid.Parse("10000000-0000-0000-0000-000000000005"), "kitchen", "Kitchen"),
-        (Guid.Parse("10000000-0000-0000-0000-000000000006"), "reports", "Reports"),
+        (Guid.Parse("10000000-0000-0000-0000-000000000006"), "statistics", "Statistics"),
         (Guid.Parse("10000000-0000-0000-0000-000000000007"), "billing", "Billing"),
         (Guid.Parse("10000000-0000-0000-0000-000000000008"), "settings", "Settings"),
         (Guid.Parse("10000000-0000-0000-0000-000000000009"), "categories", "Categories"),
@@ -61,7 +61,9 @@ internal static class SeedData
         Permission("20000000-0000-0000-0000-000000000033", 7, PermissionCodes.SettingsRolesManage),
         Permission("20000000-0000-0000-0000-000000000034", 9, PermissionCodes.CashRegistersRead),
         Permission("20000000-0000-0000-0000-000000000035", 9, PermissionCodes.CashRegistersOperate),
-        Permission("20000000-0000-0000-0000-000000000036", 9, PermissionCodes.CashRegistersManage)
+        Permission("20000000-0000-0000-0000-000000000036", 9, PermissionCodes.CashRegistersManage),
+        Permission("20000000-0000-0000-0000-000000000037", 6, PermissionCodes.BillingRead),
+        Permission("20000000-0000-0000-0000-000000000038", 6, PermissionCodes.BillingCancel)
     ];
 
     private static Permission Permission(string id, int moduleIndex, string code) => new()

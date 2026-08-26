@@ -453,3 +453,36 @@ public interface IAccessSettingsUseCase
     Task<Result<OrganizationUserDto>> UpdateUserAsync(Guid tenantId, Guid membershipId, UpdateOrganizationUserRequest request, CancellationToken cancellationToken);
     Task<Result> DeleteUserAsync(Guid tenantId, Guid currentUserId, Guid entryId, CancellationToken cancellationToken);
 }
+
+public interface IGetStatisticsUseCase
+{
+    Task<Result<StatisticsDashboardDto>> ExecuteAsync(
+        Guid tenantId,
+        string? period,
+        bool? includeTips,
+        CancellationToken cancellationToken);
+}
+
+public interface IGetBillingReceiptsUseCase
+{
+    Task<Result<PagedResponse<BillingReceiptItemDto>>> ExecuteAsync(
+        Guid tenantId,
+        BillingReceiptQueryRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IGetBillingOrdersUseCase
+{
+    Task<Result<PagedResponse<BillingOrderDto>>> ExecuteAsync(
+        Guid tenantId,
+        BillingReceiptQueryRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IGetBillingReceiptByIdUseCase
+{
+    Task<Result<OrderReceiptDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid receiptId,
+        CancellationToken cancellationToken);
+}

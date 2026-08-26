@@ -318,6 +318,12 @@ GET/POST            /api/settings/access/roles
 PUT/PATCH/DELETE    /api/settings/access/roles/{roleId}[/status]
 GET/POST            /api/settings/access/users
 PATCH/DELETE        /api/settings/access/users/{entryId}
+
+GET                 /api/statistics?period=current_month&includeTips=true
+
+GET                 /api/billing/receipts?page=1&pageSize=25&search=&fromDate=&toDate=
+GET                 /api/billing/orders?page=1&pageSize=25&search=&fromDate=&toDate=
+GET                 /api/billing/receipts/{id}
 ```
 
 `/api/i18n/{language}` es público. Los endpoints de auth sensibles usan rate limiting. Tenants y `/users/me` requieren autenticación y sesión activa, pero no exigen tenant seleccionado. `/users/me/info` y `/modules/available` exigen tenant y rol activos mediante `[RequireTenant]`.
