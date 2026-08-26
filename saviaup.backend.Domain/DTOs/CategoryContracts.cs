@@ -6,7 +6,7 @@ public sealed record CategoryDto(
     Guid Id,
     string Name,
     string? Description,
-    string? ImageUrl,
+    string? Image,
     bool IsInventoryTracked,
     bool IsActive,
     DateTimeOffset CreatedAt,
@@ -15,13 +15,13 @@ public sealed record CategoryDto(
 public sealed record CreateCategoryRequest(
     [Required, MaxLength(120)] string Name,
     [MaxLength(1000)] string? Description,
-    [Url, MaxLength(2048)] string? ImageUrl,
+    string? Image,
     bool IsInventoryTracked);
 
 public sealed record UpdateCategoryRequest(
     [Required, MaxLength(120)] string Name,
     [MaxLength(1000)] string? Description,
-    [Url, MaxLength(2048)] string? ImageUrl,
+    string? Image,
     bool IsInventoryTracked);
 
 public sealed record SetCategoryStatusRequest(bool IsActive);

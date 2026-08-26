@@ -52,6 +52,7 @@ public static class InfrastructureModule
         services.AddScoped<ISettingsRepository, SettingsRepository>();
         services.AddScoped<IStatisticsRepository, StatisticsRepository>();
         services.AddScoped<IBillingRepository, BillingRepository>();
+        services.AddScoped<IStoredImageRepository, StoredImageRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

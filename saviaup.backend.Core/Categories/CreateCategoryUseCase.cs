@@ -1,4 +1,5 @@
 using SaviaUp.Backend.Core.Common;
+using SaviaUp.Backend.Core.Images;
 using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
@@ -9,7 +10,8 @@ namespace SaviaUp.Backend.Core.Categories;
 public sealed class CreateCategoryUseCase(
     ICategoryRepository categoryRepository,
     IDateTimeProvider dateTimeProvider,
-    IUnitOfWork unitOfWork) : ICreateCategoryUseCase
+    IUnitOfWork unitOfWork,
+    IStoredImageRepository? imageRepository = null) : ICreateCategoryUseCase
 {
     public async Task<Result<CategoryDto>> ExecuteAsync(
         Guid tenantId,
@@ -19,7 +21,7 @@ public sealed class CreateCategoryUseCase(
         if (!CategoryRules.TryPrepare(
                 request.Name,
                 request.Description,
-                request.ImageUrl,
+                request.Image,
                 request.IsInventoryTracked,
                 out var values))
         {
@@ -36,14 +38,31 @@ public sealed class CreateCategoryUseCase(
         }
 
         var now = dateTimeProvider.UtcNow;
+        var categoryId = Guid.NewGuid();
+        Guid? imageRef = null;
+        StoredImage? imageStored = null;
+
+        if (imageRepository != null
+            && !string.IsNullOrWhiteSpace(values.Image)
+            && values.Image.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+        {
+            imageStored = ImageHelper.CreateStoredImage(tenantId, "categories", categoryId.ToString(), values.Image, now);
+            if (imageStored != null)
+            {
+                await imageRepository.AddAsync(imageStored, cancellationToken);
+                imageRef = imageStored.Id;
+            }
+        }
+
         var category = new Category
         {
-            Id = Guid.NewGuid(),
+            Id = categoryId,
             TenantId = tenantId,
             Name = values.Name,
             NormalizedName = values.NormalizedName,
             Description = values.Description,
-            ImageUrl = values.ImageUrl,
+            ImageRef = imageRef,
+            ImageStored = imageStored,
             IsInventoryTracked = values.IsInventoryTracked,
             IsActive = true,
             CreatedAt = now,

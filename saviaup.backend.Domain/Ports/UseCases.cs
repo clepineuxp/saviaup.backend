@@ -486,3 +486,23 @@ public interface IGetBillingReceiptByIdUseCase
         Guid receiptId,
         CancellationToken cancellationToken);
 }
+
+public interface IUploadImageUseCase
+{
+    Task<Result<StoredImageDto>> ExecuteAsync(Guid tenantId, UploadImageRequest request, CancellationToken cancellationToken);
+}
+
+public interface IGetImageByIdUseCase
+{
+    Task<Result<StoredImageDto>> ExecuteAsync(Guid tenantId, Guid imageId, CancellationToken cancellationToken);
+}
+
+public interface IGetImagesByEntityUseCase
+{
+    Task<Result<IReadOnlyCollection<StoredImageSummaryDto>>> ExecuteAsync(Guid tenantId, string module, string entityId, CancellationToken cancellationToken);
+}
+
+public interface IDeleteImageUseCase
+{
+    Task<Result> ExecuteAsync(Guid tenantId, Guid imageId, CancellationToken cancellationToken);
+}

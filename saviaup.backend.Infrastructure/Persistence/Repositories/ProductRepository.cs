@@ -17,6 +17,7 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
     {
         var query = context.Products.AsNoTracking()
             .Include(product => product.Category)
+            .Include(product => product.ImageStored)
             .Where(product => product.TenantId == tenantId
                 && (request.IncludeInactive || product.IsActive));
         if (request.CategoryId.HasValue)
@@ -40,6 +41,7 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
 
     public Task<Product?> GetByIdAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
         => context.Products.Include(product => product.Category)
+            .Include(product => product.ImageStored)
             .SingleOrDefaultAsync(
                 product => product.TenantId == tenantId && product.Id == productId,
                 cancellationToken);

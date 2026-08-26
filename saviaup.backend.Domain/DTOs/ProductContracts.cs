@@ -17,7 +17,7 @@ public sealed record ProductDto(
     string Type,
     string Name,
     string? Description,
-    string? ImageUrl,
+    string? Image,
     CategoryReferenceDto Category,
     decimal SalePrice,
     int? PreparationTimeMinutes,
@@ -34,7 +34,7 @@ public sealed record CreateProductRequest(
     Guid CategoryId,
     [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal SalePrice,
     [MaxLength(1000)] string? Description,
-    [Url, MaxLength(2048)] string? ImageUrl,
+    string? Image,
     [Range(0, int.MaxValue)] int? PreparationTimeMinutes,
     bool IsInventoryTracked);
 
@@ -44,7 +44,7 @@ public sealed record UpdateProductRequest(
     Guid CategoryId,
     [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal SalePrice,
     [MaxLength(1000)] string? Description,
-    [Url, MaxLength(2048)] string? ImageUrl,
+    string? Image,
     [Range(0, int.MaxValue)] int? PreparationTimeMinutes,
     bool IsInventoryTracked);
 

@@ -3,6 +3,7 @@ using SaviaUp.Backend.Core.Authentication;
 using SaviaUp.Backend.Core.Billing;
 using SaviaUp.Backend.Core.CashRegisters;
 using SaviaUp.Backend.Core.Categories;
+using SaviaUp.Backend.Core.Images;
 using SaviaUp.Backend.Core.Inventory;
 using SaviaUp.Backend.Core.Navigation;
 using SaviaUp.Backend.Core.Orders;
@@ -94,6 +95,10 @@ public static class CoreModule
         services.AddScoped<IGetBillingReceiptsUseCase, GetBillingReceiptsUseCase>();
         services.AddScoped<IGetBillingOrdersUseCase, GetBillingOrdersUseCase>();
         services.AddScoped<IGetBillingReceiptByIdUseCase, GetBillingReceiptByIdUseCase>();
+        services.AddScoped<IUploadImageUseCase, UploadImageUseCase>();
+        services.AddScoped<IGetImageByIdUseCase, GetImageByIdUseCase>();
+        services.AddScoped<IGetImagesByEntityUseCase, GetImagesByEntityUseCase>();
+        services.AddScoped<IDeleteImageUseCase, DeleteImageUseCase>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<SessionIssuer>();
         services.AddSingleton<PasswordPolicy>();

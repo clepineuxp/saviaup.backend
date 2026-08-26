@@ -258,6 +258,14 @@ public interface IBillingRepository
         CancellationToken cancellationToken);
 }
 
+public interface IStoredImageRepository
+{
+    Task AddAsync(StoredImage image, CancellationToken cancellationToken);
+    Task<StoredImage?> GetByIdAsync(Guid tenantId, Guid imageId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<StoredImage>> GetByEntityAsync(Guid tenantId, string module, string entityId, CancellationToken cancellationToken);
+    void Remove(StoredImage image);
+}
+
 public interface IUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

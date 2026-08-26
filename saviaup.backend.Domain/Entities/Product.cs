@@ -9,7 +9,8 @@ public sealed class Product
     public string Name { get; set; } = string.Empty;
     public string NormalizedName { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public string? ImageUrl { get; set; }
+    public Guid? ImageRef { get; set; }
+    public StoredImage? ImageStored { get; set; }
     public decimal SalePrice { get; set; }
     public int? PreparationTimeMinutes { get; set; }
     public bool IsInventoryTracked { get; set; }

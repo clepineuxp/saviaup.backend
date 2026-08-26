@@ -27,7 +27,11 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(product => product.Name).HasMaxLength(120).IsRequired();
         builder.Property(product => product.NormalizedName).HasMaxLength(120).IsRequired();
         builder.Property(product => product.Description).HasMaxLength(1000);
-        builder.Property(product => product.ImageUrl).HasMaxLength(2048);
+        builder.Property(product => product.ImageRef);
+        builder.HasOne(product => product.ImageStored)
+            .WithMany()
+            .HasForeignKey(product => product.ImageRef)
+            .OnDelete(DeleteBehavior.SetNull);
         builder.Property(product => product.SalePrice).HasPrecision(18, 2);
         builder.Property(product => product.CreatedByUserName).HasMaxLength(200);
         builder.Property(product => product.LastModifiedByUserName).HasMaxLength(200);
