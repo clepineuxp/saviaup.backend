@@ -31,12 +31,14 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
 
         if (request.FromDate.HasValue)
         {
-            query = query.Where(o => o.CreatedAt >= request.FromDate.Value);
+            var fromUtc = request.FromDate.Value.ToUniversalTime();
+            query = query.Where(o => o.CreatedAt >= fromUtc);
         }
 
         if (request.ToDate.HasValue)
         {
-            query = query.Where(o => o.CreatedAt <= request.ToDate.Value);
+            var toUtc = request.ToDate.Value.ToUniversalTime();
+            query = query.Where(o => o.CreatedAt <= toUtc);
         }
 
         if (!string.IsNullOrWhiteSpace(request.Search))

@@ -158,7 +158,10 @@ public sealed class DeleteRestaurantTableUseCase(
 public sealed class GetTableOperationUseCase(
     IRestaurantTableRepository tableRepository,
     ITenantRepository tenantRepository,
-    ICashRegisterShiftRepository shiftRepository) : IGetTableOperationUseCase
+    ICashRegisterShiftRepository shiftRepository,
+    IOrderRepository orderRepository,
+    IExpenseRepository expenseRepository,
+    IDateTimeProvider clock) : IGetTableOperationUseCase
 {
     public async Task<Result<TableOperationSnapshotDto>> ExecuteAsync(
         Guid tenantId,
@@ -167,18 +170,81 @@ public sealed class GetTableOperationUseCase(
         var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
         if (tenant is null) return Result<TableOperationSnapshotDto>.Failure(Errors.TenantNotFound);
         var areas = await tableRepository.GetOperationAreasAsync(tenantId, cancellationToken);
-        var hasOpenShift = !tenant.RequiresOpenCashRegister
-            || await shiftRepository.HasOpenShiftAsync(tenantId, cancellationToken);
+        var openShift = await shiftRepository.GetOpenShiftAsync(tenantId, null, cancellationToken);
+        var hasOpenShift = !tenant.RequiresOpenCashRegister || openShift is not null;
+
         var tableDtos = areas.SelectMany(area => area.Tables).Select(TableRules.ToDto).ToArray();
         var responseAreas = areas.Select(area => new DiningAreaTablesDto(
             TableRules.ToDto(area),
             area.Tables.OrderBy(table => table.NormalizedName).Select(TableRules.ToDto).ToArray())).ToArray();
+
+        var utcNow = clock.UtcNow.ToUniversalTime();
+        var todayStart = new DateTimeOffset(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, TimeSpan.Zero).AddDays(-1);
+        var todayEnd = new DateTimeOffset(utcNow.Year, utcNow.Month, utcNow.Day, 23, 59, 59, 999, TimeSpan.Zero).AddDays(1);
+
+        var todayOrdersPage = await orderRepository.GetOrdersPageAsync(tenantId, new OrderQueryRequest
+        {
+            Page = 1,
+            PageSize = 10000,
+            Statuses = new[] { "PAID" },
+            FromDate = todayStart,
+            ToDate = todayEnd
+        }, cancellationToken);
+        var todaySalesTotal = todayOrdersPage.Items.Sum(o => o.TotalAmount);
+
+        var todayExpensesPage = await expenseRepository.GetPageAsync(
+            tenantId,
+            fromDate: todayStart,
+            toDate: todayEnd,
+            search: null,
+            supplierId: null,
+            status: "ACTIVE",
+            paymentMethod: null,
+            isCashOut: null,
+            page: 1,
+            pageSize: 10000,
+            cancellationToken);
+        var todayExpensesTotal = todayExpensesPage.Items.Sum(e => e.Amount);
+
+        decimal openShiftExpensesTotal = 0m;
+        decimal openShiftSalesTotal = 0m;
+        if (openShift is not null)
+        {
+            var shiftExpensesPage = await expenseRepository.GetPageAsync(
+                tenantId,
+                fromDate: openShift.OpenedAt,
+                toDate: utcNow.AddDays(1),
+                search: null,
+                supplierId: null,
+                status: "ACTIVE",
+                paymentMethod: null,
+                isCashOut: true,
+                page: 1,
+                pageSize: 10000,
+                cancellationToken);
+            openShiftExpensesTotal = shiftExpensesPage.Items.Sum(e => e.Amount);
+
+            var shiftOrdersPage = await orderRepository.GetOrdersPageAsync(tenantId, new OrderQueryRequest
+            {
+                Page = 1,
+                PageSize = 10000,
+                Statuses = new[] { "PAID" },
+                FromDate = openShift.OpenedAt,
+                ToDate = utcNow.AddDays(1)
+            }, cancellationToken);
+            openShiftSalesTotal = shiftOrdersPage.Items.Sum(o => o.TotalAmount);
+        }
+
         return Result<TableOperationSnapshotDto>.Success(new TableOperationSnapshotDto(
             responseAreas,
             new TableMetricsDto(
                 tableDtos.Count(table => table.Status == "AVAILABLE"),
                 tableDtos.Count(table => table.Status == "OCCUPIED"),
-                tableDtos.Where(table => table.Status == "OCCUPIED").Sum(table => table.ActiveOrderTotal)),
+                tableDtos.Where(table => table.Status == "OCCUPIED").Sum(table => table.ActiveOrderTotal),
+                todaySalesTotal,
+                todayExpensesTotal,
+                openShiftSalesTotal,
+                openShiftExpensesTotal),
             new CashRegisterGateDto(
                 tenant.RequiresOpenCashRegister,
                 hasOpenShift,

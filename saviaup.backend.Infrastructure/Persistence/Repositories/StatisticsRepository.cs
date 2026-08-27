@@ -44,6 +44,14 @@ public sealed class StatisticsRepository(ApplicationDbContext dbContext) : IStat
                         o.CreatedAt <= endDate)
             .ToListAsync(cancellationToken);
 
+        // Fetch active expenses within period range
+        var expenses = await dbContext.Expenses
+            .Where(e => e.TenantId == tenantId &&
+                        e.Status == "ACTIVE" &&
+                        e.ExpenseDate >= startDate &&
+                        e.ExpenseDate <= endDate)
+            .ToListAsync(cancellationToken);
+
         // Daily trend data points
         var trendPoints = new List<DailySalesPointDto>();
         if (period == "current_month")
@@ -93,6 +101,7 @@ public sealed class StatisticsRepository(ApplicationDbContext dbContext) : IStat
         var grandTotalSales = includeTips ? (totalSalesBase + totalTips) : totalSalesBase;
         var totalOrdersCount = orders.Count;
         var averageTicket = totalOrdersCount > 0 ? Math.Round(grandTotalSales / totalOrdersCount, 2) : 0m;
+        var totalExpenses = expenses.Sum(e => e.Amount);
 
         // Sales By User
         var userGrouped = orders
@@ -182,7 +191,7 @@ public sealed class StatisticsRepository(ApplicationDbContext dbContext) : IStat
             ));
         }
 
-        // 6-Month Comparison Chart
+        // 6-Month Comparison Chart (Sales & Expenses)
         var monthComparisonList = new List<MonthlyComparisonPointDto>();
         var firstOfCurrentMonthUtc = new DateTimeOffset(utcNow.Year, utcNow.Month, 1, 0, 0, 0, TimeSpan.Zero);
         var sixMonthsAgoUtc = firstOfCurrentMonthUtc.AddMonths(-5);
@@ -193,6 +202,12 @@ public sealed class StatisticsRepository(ApplicationDbContext dbContext) : IStat
                         o.CreatedAt >= sixMonthsAgoUtc)
             .ToListAsync(cancellationToken);
 
+        var historicalExpenses = await dbContext.Expenses
+            .Where(e => e.TenantId == tenantId &&
+                        e.Status == "ACTIVE" &&
+                        e.ExpenseDate >= sixMonthsAgoUtc)
+            .ToListAsync(cancellationToken);
+
         for (var m = 0; m < 6; m++)
         {
             var monthDate = sixMonthsAgoUtc.AddMonths(m);
@@ -200,11 +215,16 @@ public sealed class StatisticsRepository(ApplicationDbContext dbContext) : IStat
                 .Where(o => o.CreatedAt.Year == monthDate.Year && o.CreatedAt.Month == monthDate.Month)
                 .Sum(o => includeTips ? (o.SubtotalAmount + o.TipAmount) : o.SubtotalAmount);
 
+            var mExpenses = historicalExpenses
+                .Where(e => e.ExpenseDate.Year == monthDate.Year && e.ExpenseDate.Month == monthDate.Month)
+                .Sum(e => e.Amount);
+
             monthComparisonList.Add(new MonthlyComparisonPointDto(
                 monthDate.Year,
                 monthDate.Month,
                 MonthNamesEs[monthDate.Month - 1],
-                mSales
+                mSales,
+                mExpenses
             ));
         }
 
@@ -213,6 +233,7 @@ public sealed class StatisticsRepository(ApplicationDbContext dbContext) : IStat
             totalOrdersCount,
             averageTicket,
             totalTips,
+            totalExpenses,
             topSeller
         );
 

@@ -31,7 +31,14 @@ public sealed record DiningAreaTablesDto(
     DiningAreaDto Area,
     IReadOnlyCollection<RestaurantTableDto> Tables);
 
-public sealed record TableMetricsDto(int Available, int Occupied, decimal ActiveSalesTotal);
+public sealed record TableMetricsDto(
+    int Available,
+    int Occupied,
+    decimal ActiveSalesTotal,
+    decimal TodaySalesTotal = 0,
+    decimal TodayExpensesTotal = 0,
+    decimal OpenShiftSalesTotal = 0,
+    decimal OpenShiftExpensesTotal = 0);
 
 public sealed record CashRegisterGateDto(bool RequiresOpenShift, bool HasOpenShift, bool IsInteractionBlocked);
 

@@ -28,12 +28,14 @@ internal sealed class ExpenseRepository(ApplicationDbContext dbContext) : IExpen
 
         if (fromDate.HasValue)
         {
-            query = query.Where(x => x.ExpenseDate >= fromDate.Value);
+            var fromUtc = fromDate.Value.ToUniversalTime();
+            query = query.Where(x => x.ExpenseDate >= fromUtc || x.CreatedAt >= fromUtc);
         }
 
         if (toDate.HasValue)
         {
-            query = query.Where(x => x.ExpenseDate <= toDate.Value);
+            var toUtc = toDate.Value.ToUniversalTime();
+            query = query.Where(x => x.ExpenseDate <= toUtc || x.CreatedAt <= toUtc);
         }
 
         if (supplierId.HasValue)

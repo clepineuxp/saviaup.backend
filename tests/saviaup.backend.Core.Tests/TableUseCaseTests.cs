@@ -3,6 +3,7 @@ using SaviaUp.Backend.Core.Tables;
 using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
+using SaviaUp.Backend.Domain.Results;
 using SaviaUp.Backend.Shared.Constants;
 
 namespace SaviaUp.Backend.Core.Tests;
@@ -212,8 +213,19 @@ public sealed class TableUseCaseTests
         var tenants = new Mock<ITenantRepository>();
         tenants.Setup(value => value.GetByIdAsync(tenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Tenant { Id = tenantId });
+        var orderRepo = new Mock<IOrderRepository>();
+        orderRepo.Setup(r => r.GetOrdersPageAsync(tenantId, It.IsAny<OrderQueryRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PageData<OrderDto>([], 0));
+
+        var expenseRepo = new Mock<IExpenseRepository>();
+        expenseRepo.Setup(r => r.GetPageAsync(tenantId, It.IsAny<DateTimeOffset?>(), It.IsAny<DateTimeOffset?>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PageData<Expense>([], 0));
+
+        var clock = new Mock<IDateTimeProvider>();
+        clock.Setup(c => c.UtcNow).Returns(TestSupport.Now);
+
         var useCase = new GetTableOperationUseCase(
-            tables.Object, tenants.Object, Mock.Of<ICashRegisterShiftRepository>());
+            tables.Object, tenants.Object, Mock.Of<ICashRegisterShiftRepository>(), orderRepo.Object, expenseRepo.Object, clock.Object);
 
         var result = await useCase.ExecuteAsync(tenantId, default);
 

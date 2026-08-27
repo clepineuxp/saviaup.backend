@@ -11,6 +11,7 @@ public sealed record SummaryStatisticsDto(
     int TotalOrdersCount,
     decimal AverageTicket,
     decimal TotalTips,
+    decimal TotalExpenses,
     TopSellerDto? TopSeller);
 
 public sealed record DailySalesPointDto(
@@ -36,7 +37,8 @@ public sealed record MonthlyComparisonPointDto(
     int Year,
     int Month,
     string MonthLabel,
-    decimal Sales);
+    decimal Sales,
+    decimal Expenses = 0);
 
 public sealed record UserSalesSummaryDto(
     Guid UserId,
