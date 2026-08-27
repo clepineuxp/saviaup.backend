@@ -37,7 +37,13 @@ internal static class NavigationCatalog
                 new("kitchen", 4)
             ],
             []),
-        new("configuration", 4,
+        new("expenses", 4,
+            [
+                new("expenses", 1),
+                new("suppliers", 2)
+            ],
+            []),
+        new("configuration", 5,
             [new("settings", 1)],
             [
                 new("tables.manage", "tables", "tables.manage", 2),

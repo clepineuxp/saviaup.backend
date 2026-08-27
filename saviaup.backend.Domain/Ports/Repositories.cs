@@ -120,6 +120,40 @@ public interface IProductRepository
     void Remove(Product product);
 }
 
+public interface ISupplierRepository
+{
+    Task<PageData<Supplier>> GetPageAsync(
+        Guid tenantId,
+        string? search,
+        bool? isActive,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<Supplier>> GetLookupAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Supplier?> GetByIdAsync(Guid tenantId, Guid supplierId, CancellationToken cancellationToken);
+    Task<bool> NameExistsAsync(Guid tenantId, string normalizedName, Guid? excludedSupplierId, CancellationToken cancellationToken);
+    Task AddAsync(Supplier supplier, CancellationToken cancellationToken);
+}
+
+public interface IExpenseRepository
+{
+    Task<PageData<Expense>> GetPageAsync(
+        Guid tenantId,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        string? search,
+        Guid? supplierId,
+        string? status,
+        string? paymentMethod,
+        bool? isCashOut,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+    Task<Expense?> GetByIdAsync(Guid tenantId, Guid expenseId, CancellationToken cancellationToken);
+    Task<long> GetNextConsecutiveAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task AddAsync(Expense expense, CancellationToken cancellationToken);
+}
+
 public interface IDiningAreaRepository
 {
     Task<IReadOnlyCollection<DiningArea>> GetForTenantAsync(Guid tenantId, CancellationToken cancellationToken);

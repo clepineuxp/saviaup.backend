@@ -50,6 +50,11 @@ public static class ErrorCodes
     public const string CashRegisterShiftNotFound = "CASH_REGISTER_SHIFT_NOT_FOUND";
     public const string OccupiedTablesOrPendingOrdersPreventCashRegisterSettingChange = "OCCUPIED_TABLES_PREVENT_CASH_SETTING_CHANGE";
     public const string OccupiedTablesOrPendingOrdersPreventCashRegisterClose = "OCCUPIED_TABLES_PREVENT_CASH_CLOSE";
+    public const string SupplierNotFound = "SUPPLIER_NOT_FOUND";
+    public const string SupplierNameAlreadyExists = "SUPPLIER_NAME_ALREADY_EXISTS";
+    public const string ExpenseNotFound = "EXPENSE_NOT_FOUND";
+    public const string ExpenseAlreadyAnnulled = "EXPENSE_ALREADY_ANNULLED";
+    public const string ExpenseConsecutiveCannotBeDecreased = "EXPENSE_CONSECUTIVE_CANNOT_BE_DECREASED";
     public const string PermissionNotEnabled = "PERMISSION_NOT_ENABLED";
     public const string Validation = "VALIDATION_ERROR";
     public const string Internal = "INTERNAL_ERROR";

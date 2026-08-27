@@ -67,6 +67,7 @@ public sealed class OpenCashRegisterShiftUseCase(
 public sealed class CloseCashRegisterShiftUseCase(
     ICashRegisterShiftRepository shiftRepository,
     IOrderRepository orderRepository,
+    IExpenseRepository expenseRepository,
     ISettingsRepository settingsRepository,
     IDateTimeProvider clock,
     IUnitOfWork unitOfWork) : ICloseCashRegisterShiftUseCase
@@ -108,7 +109,7 @@ public sealed class CloseCashRegisterShiftUseCase(
             return Result<CashRegisterShiftDto>.Failure(Errors.OccupiedTablesOrPendingOrdersPreventCashRegisterClose);
         }
 
-        var summaryResult = await CalculateShiftSummaryAsync(tenantId, shift, request.ClosingBalances, orderRepository, settingsRepository, cancellationToken);
+        var summaryResult = await CalculateShiftSummaryAsync(tenantId, shift, request.ClosingBalances, orderRepository, expenseRepository, settingsRepository, cancellationToken);
 
         var now = clock.UtcNow;
         shift.Status = "CLOSED";
@@ -148,6 +149,7 @@ public sealed class CloseCashRegisterShiftUseCase(
         CashRegisterShift shift,
         IReadOnlyCollection<ClosingBalanceInputDto>? actualBalances,
         IOrderRepository orderRepository,
+        IExpenseRepository expenseRepository,
         ISettingsRepository settingsRepository,
         CancellationToken cancellationToken)
     {
@@ -167,7 +169,27 @@ public sealed class CloseCashRegisterShiftUseCase(
         var totalSales = paidOrders.Sum(o => o.SubtotalAmount);
         var totalTips = paidOrders.Sum(o => o.TipAmount);
         var totalCollected = paidOrders.Sum(o => o.TotalAmount);
-        var totalExpenses = 0m;
+
+        // Fetch expenses registered during open shift timeframe
+        var expensesPage = await expenseRepository.GetPageAsync(
+            tenantId,
+            fromDate: shift.OpenedAt,
+            toDate: shift.ClosedAt ?? DateTimeOffset.UtcNow,
+            search: null,
+            supplierId: null,
+            status: "ACTIVE",
+            paymentMethod: null,
+            isCashOut: true,
+            page: 1,
+            pageSize: 10000,
+            cancellationToken);
+
+        var activeExpenses = expensesPage.Items;
+        var totalExpenses = activeExpenses.Sum(e => e.Amount);
+
+        var methodExpensesMap = activeExpenses
+            .GroupBy(e => (e.PaymentMethod ?? string.Empty).Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Sum(e => e.Amount), StringComparer.OrdinalIgnoreCase);
 
         // Parse initial opening balances
         List<OpeningBalanceInputDto> initialList = new();
@@ -243,7 +265,7 @@ public sealed class CloseCashRegisterShiftUseCase(
             var initialAmt = initialList.FirstOrDefault(i => string.Equals(i.MethodName, methodName, StringComparison.OrdinalIgnoreCase))?.Amount ?? 0m;
             var salesAmt = methodSalesMap.GetValueOrDefault(methodName);
             var tipsAmt = methodTipsMap.GetValueOrDefault(methodName);
-            var expensesAmt = 0m;
+            var expensesAmt = methodExpensesMap.GetValueOrDefault(methodName);
             var totalCollectedForMethod = salesAmt + tipsAmt;
             var expectedAmt = initialAmt + totalCollectedForMethod - expensesAmt;
             var actualAmt = actualMap.TryGetValue(methodName, out var aVal) ? aVal : expectedAmt;
@@ -279,6 +301,7 @@ public sealed class CloseCashRegisterShiftUseCase(
 public sealed class GetCashRegisterShiftSummaryUseCase(
     ICashRegisterShiftRepository shiftRepository,
     IOrderRepository orderRepository,
+    IExpenseRepository expenseRepository,
     ISettingsRepository settingsRepository) : IGetCashRegisterShiftSummaryUseCase
 {
     public async Task<Result<CashRegisterShiftSummaryDto>> ExecuteAsync(
@@ -301,7 +324,7 @@ public sealed class GetCashRegisterShiftSummaryUseCase(
         }
 
         var summary = await CloseCashRegisterShiftUseCase.CalculateShiftSummaryAsync(
-            tenantId, shift, null, orderRepository, settingsRepository, cancellationToken);
+            tenantId, shift, null, orderRepository, expenseRepository, settingsRepository, cancellationToken);
 
         return Result<CashRegisterShiftSummaryDto>.Success(summary);
     }

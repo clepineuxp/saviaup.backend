@@ -17,7 +17,9 @@ internal static class SeedData
         (Guid.Parse("10000000-0000-0000-0000-000000000007"), "billing", "Billing"),
         (Guid.Parse("10000000-0000-0000-0000-000000000008"), "settings", "Settings"),
         (Guid.Parse("10000000-0000-0000-0000-000000000009"), "categories", "Categories"),
-        (Guid.Parse("10000000-0000-0000-0000-000000000010"), "cash_registers", "Cash Registers")
+        (Guid.Parse("10000000-0000-0000-0000-000000000010"), "cash_registers", "Cash Registers"),
+        (Guid.Parse("10000000-0000-0000-0000-000000000011"), "expenses", "Expenses"),
+        (Guid.Parse("10000000-0000-0000-0000-000000000012"), "suppliers", "Suppliers")
     ];
 
     public static readonly DomainModule[] Modules = ModuleDefinitions
@@ -63,7 +65,13 @@ internal static class SeedData
         Permission("20000000-0000-0000-0000-000000000035", 9, PermissionCodes.CashRegistersOperate),
         Permission("20000000-0000-0000-0000-000000000036", 9, PermissionCodes.CashRegistersManage),
         Permission("20000000-0000-0000-0000-000000000037", 6, PermissionCodes.BillingRead),
-        Permission("20000000-0000-0000-0000-000000000038", 6, PermissionCodes.BillingCancel)
+        Permission("20000000-0000-0000-0000-000000000038", 6, PermissionCodes.BillingCancel),
+        Permission("20000000-0000-0000-0000-000000000039", 10, PermissionCodes.ExpensesRead),
+        Permission("20000000-0000-0000-0000-000000000040", 10, PermissionCodes.ExpensesCreate),
+        Permission("20000000-0000-0000-0000-000000000041", 10, PermissionCodes.ExpensesEdit),
+        Permission("20000000-0000-0000-0000-000000000042", 10, PermissionCodes.ExpensesAnnul),
+        Permission("20000000-0000-0000-0000-000000000043", 11, PermissionCodes.SuppliersRead),
+        Permission("20000000-0000-0000-0000-000000000044", 11, PermissionCodes.SuppliersManage)
     ];
 
     private static Permission Permission(string id, int moduleIndex, string code) => new()
