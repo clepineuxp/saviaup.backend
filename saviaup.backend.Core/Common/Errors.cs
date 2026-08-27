@@ -53,4 +53,9 @@ internal static class Errors
     public static readonly Error CashRegisterShiftNotFound = new(ErrorCodes.CashRegisterShiftNotFound, LocalizationKeys.Validation, ErrorType.NotFound);
     public static readonly Error OccupiedTablesOrPendingOrdersPreventCashRegisterSettingChange = new(ErrorCodes.OccupiedTablesOrPendingOrdersPreventCashRegisterSettingChange, LocalizationKeys.Validation, ErrorType.Business);
     public static readonly Error OccupiedTablesOrPendingOrdersPreventCashRegisterClose = new(ErrorCodes.OccupiedTablesOrPendingOrdersPreventCashRegisterClose, LocalizationKeys.Validation, ErrorType.Business);
+    public static readonly Error SupplierNotFound = new(ErrorCodes.SupplierNotFound, LocalizationKeys.Validation, ErrorType.NotFound);
+    public static readonly Error SupplierNameAlreadyExists = new(ErrorCodes.SupplierNameAlreadyExists, LocalizationKeys.Validation, ErrorType.Conflict);
+    public static readonly Error ExpenseNotFound = new(ErrorCodes.ExpenseNotFound, LocalizationKeys.Validation, ErrorType.NotFound);
+    public static readonly Error ExpenseAlreadyAnnulled = new(ErrorCodes.ExpenseAlreadyAnnulled, LocalizationKeys.Validation, ErrorType.Conflict);
+    public static readonly Error ExpenseConsecutiveCannotBeDecreased = new(ErrorCodes.ExpenseConsecutiveCannotBeDecreased, LocalizationKeys.Validation, ErrorType.Validation);
 }

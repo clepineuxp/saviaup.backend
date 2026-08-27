@@ -67,7 +67,7 @@ public sealed class NavigationAndUserInfoTests
             },
             section =>
             {
-                Assert.Equal(("configuration", "Configuración", 4, false),
+                Assert.Equal(("configuration", "Configuración", 5, false),
                     (section.Code, section.Name, section.Order, section.IsGrouped));
                 Assert.Equal("settings", Assert.Single(section.Modules).Code);
             });

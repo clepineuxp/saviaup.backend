@@ -40,6 +40,12 @@ public static class PermissionCodes
     public const string CashRegistersRead = "cash-registers.read";
     public const string CashRegistersOperate = "cash-registers.operate";
     public const string CashRegistersManage = "cash-registers.manage";
+    public const string SuppliersRead = "suppliers.read";
+    public const string SuppliersManage = "suppliers.manage";
+    public const string ExpensesRead = "expenses.read";
+    public const string ExpensesCreate = "expenses.create";
+    public const string ExpensesEdit = "expenses.edit";
+    public const string ExpensesAnnul = "expenses.annul";
 
     public static readonly IReadOnlyCollection<string> All =
     [
@@ -55,6 +61,8 @@ public static class PermissionCodes
         SettingsPaymentMethodsRead, SettingsPaymentMethodsManage,
         SettingsUsersRead, SettingsUsersManage,
         SettingsRolesRead, SettingsRolesManage,
-        CashRegistersRead, CashRegistersOperate, CashRegistersManage
+        CashRegistersRead, CashRegistersOperate, CashRegistersManage,
+        SuppliersRead, SuppliersManage,
+        ExpensesRead, ExpensesCreate, ExpensesEdit, ExpensesAnnul
     ];
 }

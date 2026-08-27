@@ -107,6 +107,102 @@ public interface IDeleteCategoryUseCase
     Task<Result> ExecuteAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken);
 }
 
+public interface IGetSuppliersUseCase
+{
+    Task<Result<SupplierPageDto>> ExecuteAsync(
+        Guid tenantId,
+        string? search,
+        bool? isActive,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+}
+
+public interface IGetSupplierLookupUseCase
+{
+    Task<Result<IReadOnlyCollection<SupplierLookupDto>>> ExecuteAsync(Guid tenantId, CancellationToken cancellationToken);
+}
+
+public interface ICreateSupplierUseCase
+{
+    Task<Result<SupplierDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid userId,
+        string userName,
+        CreateSupplierRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IUpdateSupplierUseCase
+{
+    Task<Result<SupplierDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid supplierId,
+        Guid userId,
+        string userName,
+        UpdateSupplierRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface ISetSupplierStatusUseCase
+{
+    Task<Result<SupplierDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid supplierId,
+        Guid userId,
+        string userName,
+        SetSupplierStatusRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IGetExpensesUseCase
+{
+    Task<Result<ExpensePageDto>> ExecuteAsync(
+        Guid tenantId,
+        DateTimeOffset? fromDate,
+        DateTimeOffset? toDate,
+        string? search,
+        Guid? supplierId,
+        string? status,
+        string? paymentMethod,
+        bool? isCashOut,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken);
+}
+
+public interface ICreateExpenseUseCase
+{
+    Task<Result<ExpenseDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid userId,
+        string userName,
+        CreateExpenseRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IUpdateExpenseUseCase
+{
+    Task<Result<ExpenseDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid expenseId,
+        Guid userId,
+        string userName,
+        UpdateExpenseRequest request,
+        CancellationToken cancellationToken);
+}
+
+public interface IAnnulExpenseUseCase
+{
+    Task<Result<ExpenseDto>> ExecuteAsync(
+        Guid tenantId,
+        Guid expenseId,
+        Guid userId,
+        string userName,
+        AnnulExpenseRequest request,
+        CancellationToken cancellationToken);
+}
+
 public interface IListInventoryUseCase
 {
     Task<Result<PagedResponse<InventoryItemDto>>> ExecuteAsync(Guid tenantId, InventoryQueryRequest request, CancellationToken cancellationToken);
