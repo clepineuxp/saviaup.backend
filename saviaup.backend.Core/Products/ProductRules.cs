@@ -79,7 +79,24 @@ internal static class ProductRules
         product.CreatedByUserName,
         product.LastModifiedByUserName,
         product.CreatedAt,
-        product.UpdatedAt);
+        product.UpdatedAt,
+        product.RecipeItems?
+            .OrderBy(r => r.Order)
+            .ThenBy(r => r.CreatedAt)
+            .Select(ToRecipeDto)
+            .ToArray() ?? []);
+
+    public static ProductRecipeItemDto ToRecipeDto(ProductRecipeItem item) => new(
+        item.Id,
+        item.IngredientId,
+        item.Ingredient?.Name ?? item.CustomIngredientName,
+        item.Ingredient?.MeasurementUnit?.Name,
+        item.Ingredient?.MeasurementUnit?.Code,
+        item.CustomIngredientName,
+        item.Quantity,
+        item.Notes,
+        item.Order,
+        item.IngredientId.HasValue);
 
     public static PagedResponse<ProductDto> ToPage(PageData<Product> page, int pageNumber, int pageSize)
         => new(

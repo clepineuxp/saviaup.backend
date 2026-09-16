@@ -100,10 +100,15 @@ Entidades actuales:
 - `Permission`: permiso global identificado por `Code`.
 - `RolePermission`: relación compuesta rol/permiso.
 - `Category`: categoría funcional perteneciente a un tenant, con nombre normalizado, descripción/imagen opcionales, clasificación inventariable, estado y timestamps.
-- `Product`: producto tenant-aware de tipo `NORMAL` o `COMBO`, con categoría obligatoria, precio de venta, descripción/imagen/tiempo de preparación opcionales, clasificación inventariable, estado y timestamps.
+- `Product`: producto tenant-aware de tipo `NORMAL` o `COMBO`, con categoría obligatoria, precio de venta, descripción/imagen/tiempo de preparación opcionales, clasificación inventariable, estado, timestamps y colección de ítems de receta (`ProductRecipeItem`).
+- `ProductRecipeItem`: relación de un producto con ingredientes de inventario (`IngredientId`) o insumos personalizados (`CustomIngredientName`), cantidad requerida, unidad, notas y orden secuencial.
+- `StoredImage`: persistencia binaria comprimida en Base64 para imágenes de categorías y productos, vinculada mediante `ImageRef`.
 - `DiningArea`: sala tenant-aware con nombre normalizado único, orden único y estado activo.
 - `RestaurantTable`: mesa tenant-aware asignada a una sala, con capacidad, coordenadas 2D, forma, flags de domicilio/caja, estado y referencia opcional a la orden activa.
-- `CashRegisterShift`: hook persistente mínimo para conocer si existe un turno de caja abierto cuando el tenant lo exige.
+- `Order`, `OrderItem`, `OrderReceipt`: comandas de mesa con ítems, observaciones, estados (`PENDING`, `PAID`, `CANCELLED`), cuentas separadas, cobros parciales por ítem y recibos generados.
+- `CashRegister`, `CashRegisterShift`, `CashRegisterShiftMovement`: control integral de cajas, turnos de caja (apertura, egresos en efectivo, arqueo y cierre) y balance financiero.
+- `Expense`: egreso operativo tenant-aware con concepto, categoría de gasto, monto, medio de pago, soporte, proveedor y asociación opcional con turno de caja.
+- `Supplier`: proveedor tenant-aware con nombre/razón social, NIT/identificación fiscal, contacto y estado.
 - `OrganizationParameter`: parámetro extensible y tipado por organización, identificado por una clave estable.
 - `PaymentMethod`: medio de pago tenant-aware con nombre único, estado y participación en apertura de caja.
 - `TenantPermission`: catálogo de permisos globales habilitados explícitamente para una organización.
@@ -119,10 +124,14 @@ Contratos HTTP/aplicación:
 - Autenticación: login, registro, refresh, logout, forgot/reset password.
 - Usuario: `UserDto` para sesión y `UserInfoDto` para nombre, apellido, organización y rol actuales.
 - Navegación: `AvailableModulesResponse`, secciones, módulos/opciones ordenados y copy de estado vacío.
-- Categorías: listado y contratos de creación, actualización y cambio de estado.
-- Productos: listado paginado y contratos de creación, actualización y cambio de estado.
+- Categorías: listado y contratos de creación, actualización y cambio de estado con soporte para imagen Base64.
+- Productos y Recetas: listado paginado, detalle, contratos de creación/actualización con colección de recetas (`ProductRecipeItemDto`), imagen Base64 y cambio de estado.
 - Inventario: listados paginados de existencias, ingredientes, movimientos y unidades; contratos de creación/edición/estado para ingredientes y unidades, y creación de movimientos.
-- Mesas: CRUD de salas/mesas, reordenamiento, snapshot operativo, apertura/liberación, actualización de total y eventos SignalR.
+- Mesas y Comandas: CRUD de salas/mesas, reordenamiento, snapshot operativo, apertura/liberación, comandas, agregar ítems, cobro parcial/total (`PayAndCloseTableOrderRequest`), eventos SignalR y deducción automática de stock de ingredientes según recetas.
+- Cajas y Turnos: contratos de apertura, cierre con arqueo, consulta de turnos, egresos y resumen financiero con deducción de gastos.
+- Gastos y Proveedores: contratos CRUD de egresos operativos con soporte de proveedores, categorías y medios de pago.
+- Facturación: listados de recibos y comandas facturadas, consulta de recibos térmicos para reimpresión.
+- Estadísticas: contratos de resumen analítico con KPIs, desglose por medios de pago, ranking de productos y vendedores, y balance ventas vs gastos.
 - Tenants: listado, creación y respuesta de sesión contextualizada.
 - Todos los contratos públicos son DTO; nunca se exponen entidades directamente.
 
@@ -157,12 +166,14 @@ Casos de uso actuales:
 - `UpdateCategoryUseCase`.
 - `SetCategoryStatusUseCase`.
 - `DeleteCategoryUseCase`.
-- `ListProductsUseCase`, `CreateProductUseCase`, `UpdateProductUseCase`, `SetProductStatusUseCase`, `DeleteProductUseCase`.
-- casos de uso de salas, mesas y operación agrupados bajo `Core/Tables`, incluido el bloqueo por turno de caja.
-- `ListInventoryUseCase`.
-- `ListIngredientsUseCase`, `CreateIngredientUseCase`, `UpdateIngredientUseCase`, `SetIngredientStatusUseCase`, `DeleteIngredientUseCase`.
-- `ListInventoryMovementsUseCase`, `CreateInventoryMovementUseCase`.
-- `ListMeasurementUnitsUseCase`, `CreateMeasurementUnitUseCase`, `UpdateMeasurementUnitUseCase`, `SetMeasurementUnitStatusUseCase`, `DeleteMeasurementUnitUseCase`.
+- `ListProductsUseCase`, `CreateProductUseCase`, `UpdateProductUseCase`, `SetProductStatusUseCase`, `DeleteProductUseCase` (con gestión de `ProductRecipeItem` y persistencia en `stored_images`).
+- casos de uso de salas, mesas, órdenes y comanda agrupados bajo `Core/Tables` y `Core/Orders`, incluyendo `PayAndCloseTableOrderUseCase` (con deducción automática de stock de ingredientes por receta al cobrar), `AddTableOrderItemsUseCase` y notificación SignalR en tiempo real.
+- casos de uso de cajas registradoras y turnos: apertura, cierre, resumen con balance de efectivo y egresos (`Core/CashRegisters`).
+- casos de uso de inventario: `ListInventoryUseCase`, ingredientes (`List`, `Create`, `Update`, `SetStatus`, `Delete`), movimientos (`List`, `Create`) y unidades de medida (`List`, `Create`, `Update`, `SetStatus`, `Delete`).
+- casos de uso de gastos (`ListExpensesUseCase`, `CreateExpenseUseCase`, `UpdateExpenseUseCase`, `DeleteExpenseUseCase`).
+- casos de uso de proveedores (`ListSuppliersUseCase`, `CreateSupplierUseCase`, `UpdateSupplierUseCase`, `SetSupplierStatusUseCase`, `DeleteSupplierUseCase`).
+- casos de uso de facturación (`ListBillingReceiptsUseCase`, `ListBillingOrdersUseCase`, `GetBillingReceiptUseCase`).
+- casos de uso de estadísticas (`GetStatisticsUseCase`).
 - `PermissionService`.
 - `OrganizationSettingsUseCase`, `BusinessSettingsUseCase`, `PaymentMethodsSettingsUseCase` y `AccessSettingsUseCase`.
 
@@ -426,17 +437,22 @@ Configuración actual de navegación:
 1 sales / Ventas
   1 tables
 2 operation / Operación
-  1 orders
-  2 reports
-  3 billing
+  1 cash_registers
+  2 orders
+  3 statistics
+  4 billing
 3 inventory / Inventario
   1 products
   2 categories
   3 inventory
   4 kitchen
-4 configuration / Configuración
+4 expenses / Gastos
+  1 expenses
+  2 suppliers
+5 configuration / Configuración
   1 settings
   2 tables.manage (opción administrativa)
+  3 cash-registers.manage (opción administrativa)
 ```
 
 Al crear un módulo nuevo es obligatorio, dentro del mismo cambio:
@@ -469,11 +485,14 @@ El catálogo falla explícitamente si la base de datos devuelve un módulo sin c
 - `Type` solo admite `NORMAL` o `COMBO`, sin distinguir mayúsculas/minúsculas en la entrada. Si se omite al crear o actualizar, el valor efectivo es `NORMAL`.
 - El nombre es obligatorio, se recorta y colapsa espacios internos, y tiene máximo 120 caracteres. No existe una restricción de unicidad de nombre para productos.
 - `SalePrice` es obligatorio, positivo y usa precisión `numeric(18,2)`. `PreparationTimeMinutes` es opcional y no negativo.
-- `Description` es opcional y tiene máximo 1000 caracteres. `ImageUrl` es opcional, admite solo URL absoluta HTTP/HTTPS y tiene máximo 2048 caracteres; no se reciben binarios ni multipart en esta fase.
+- `Description` es opcional y tiene máximo 1000 caracteres.
+- Las imágenes se procesan en Base64 mediante `ImageHelper.CreateStoredImage`, se persisten en `stored_images` y se asocian mediante la clave foránea `ImageRef`.
+- Las recetas de productos (`ProductRecipeItem`) permiten vincular ingredientes de inventario (`IngredientId`) o insumos manuales (`CustomIngredientName`) con cantidad requerida por porción.
+- Al cobrar y cerrar una orden (`PayAndCloseTableOrderUseCase`), el backend deduce de forma atómica y transaccional los ingredientes vinculados en las recetas de los productos pagados mediante movimientos de inventario (`Decrease`/`Sale`).
 - La categoría debe estar activa. `IsInventoryTracked` solo puede ser `true` cuando la categoría elegida es inventariable; Core lo fuerza a `false` si la categoría no lo permite, tanto al crear como al actualizar. Si una categoría deja de ser inventariable, todos sus productos se actualizan a `false` en la misma persistencia.
 - Todos los listados son paginados y aceptan búsqueda por nombre, filtro por categoría, filtro por tipo e `includeInactive`. Toda consulta filtra explícitamente por tenant.
 - `IsActive` cambia de forma reversible mediante `PATCH /status`. El listado normal omite productos inactivos.
-- `DELETE` elimina físicamente el producto actual mientras no existan restricciones de uso futuras. Las relaciones con tenant y categoría usan `Restrict`.
+- `DELETE` elimina físicamente el producto actual y sus ítems de receta asociados en cascada controlada mientras no existan restricciones en órdenes activas.
 
 ## Invariantes de inventario
 
@@ -517,6 +536,32 @@ El catálogo falla explícitamente si la base de datos devuelve un módulo sin c
 - Una mesa `IsCashRegister` procesa pedidos inmediatos sin conservar ocupación persistente.
 - Si `Tenant.RequiresOpenCashRegister` es verdadero, toda mutación operativa exige un `CashRegisterShift` sin `ClosedAt`.
 - `TablesHub` publica `OnTableStatusChanged` y `OnTableOrderUpdated` únicamente al grupo derivado del tenant autenticado.
+
+## Invariantes de gastos y proveedores
+
+- Todo gasto y proveedor pertenece al tenant activo. `expenses.read` y `expenses.manage` controlan el acceso a gastos; `suppliers.read` y `suppliers.manage` (o equivalentes del módulo) controlan el acceso a proveedores.
+- Los egresos pueden registrarse con o sin proveedor asociado. Si se selecciona un proveedor, este debe pertenecer al tenant y estar activo.
+- Un gasto puede asociarse al turno de caja abierto actual (`CashRegisterShiftId`). Los egresos en efectivo restan del balance esperado al cierre de turno.
+- No se permite eliminar un proveedor que posea gastos asociados; debe ofrecerse desactivación reversible (`PATCH /status`).
+
+## Invariantes de facturación y comandas
+
+- Toda orden (`Order`) posee un `OrderNumber` secuencial único por tenant y puede contener múltiples ítems con cantidades, precios y notas.
+- `PayAndCloseTableOrderUseCase` procesa cobros parciales por ítem o el pago total de la orden, emitiendo el comprobante de pago (`OrderReceipt`).
+- Al pagarse y cerrarse una comanda, los productos que tengan recetas asociadas descuentan automáticamente el inventario de sus ingredientes en tiempo real.
+- Los comprobantes de pago generados son inmutables y quedan archivados para consulta y reimpresión en `/api/billing/receipts`.
+
+## Invariantes de estadísticas
+
+- El módulo de estadísticas procesa información agregada sin exponer datos sensibles de tarjetas o transacciones.
+- Los períodos disponibles (`current_month`, `last_month`, `current_week`, etc.) calculan métricas filtrando en base de datos con timestamps UTC.
+- Las estadísticas consolidan ventas por medio de pago, ranking de productos por cantidad vendida y recaudación, ranking de meseros y el gráfico comparativo agrupado Ventas vs Gastos.
+
+## Invariantes de imágenes almacenadas
+
+- Las imágenes se cargan en Base64 con prefijo MIME (`data:image/...;base64,...`) y se almacenan en la tabla `stored_images` con metadatos técnicos.
+- Categorías y Productos mantienen la referencia foránea `ImageRef`. Al actualizar un producto o categoría con una nueva imagen, se reutiliza o crea el registro correspondiente y se actualiza `ImageRef`.
+- Las consultas principales proyectan el Base64 directamente en un solo SELECT evitando llamadas secundarias.
 
 ## Contrato con el frontend
 

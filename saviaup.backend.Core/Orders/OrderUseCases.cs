@@ -5,6 +5,7 @@ using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Core.Tables;
 using SaviaUp.Backend.Domain.Results;
+using SaviaUp.Backend.Shared.Constants;
 
 namespace SaviaUp.Backend.Core.Orders;
 
@@ -377,6 +378,9 @@ public sealed class PayAndCloseTableOrderUseCase(
     IRestaurantTableRepository tableRepository,
     ITenantRepository tenantRepository,
     ICashRegisterShiftRepository shiftRepository,
+    IProductRepository productRepository,
+    IIngredientRepository ingredientRepository,
+    IInventoryMovementRepository movementRepository,
     ITableRealtimeNotifier realtime,
     IDateTimeProvider clock,
     IUnitOfWork unitOfWork) : IPayAndCloseTableOrderUseCase
@@ -481,6 +485,7 @@ public sealed class PayAndCloseTableOrderUseCase(
 
         // 3. Procesar cobros parciales por ítem y cantidad
         var transactionPaidItems = new List<OrderReceiptItemDto>();
+        var paidProductQuantities = new Dictionary<Guid, int>();
 
         if (request.ItemsToPay is not null && request.ItemsToPay.Count > 0)
         {
@@ -499,6 +504,12 @@ public sealed class PayAndCloseTableOrderUseCase(
                     existingItem.UpdatedAt = now;
 
                     transactionPaidItems.Add(new OrderReceiptItemDto(existingItem.ProductName, existingItem.Quantity, existingItem.UnitPrice, existingItem.Subtotal));
+
+                    if (existingItem.ProductId.HasValue && !existingItem.IsCustomSale)
+                    {
+                        paidProductQuantities[existingItem.ProductId.Value] =
+                            paidProductQuantities.GetValueOrDefault(existingItem.ProductId.Value) + existingItem.Quantity;
+                    }
                 }
                 else
                 {
@@ -530,6 +541,12 @@ public sealed class PayAndCloseTableOrderUseCase(
                     };
                     newPaidItems.Add(paidSplitItem);
                     transactionPaidItems.Add(new OrderReceiptItemDto(paidSplitItem.ProductName, paidSplitItem.Quantity, paidSplitItem.UnitPrice, paidSplitItem.Subtotal));
+
+                    if (existingItem.ProductId.HasValue && !existingItem.IsCustomSale)
+                    {
+                        paidProductQuantities[existingItem.ProductId.Value] =
+                            paidProductQuantities.GetValueOrDefault(existingItem.ProductId.Value) + qtyToPay;
+                    }
                 }
             }
 
@@ -551,11 +568,71 @@ public sealed class PayAndCloseTableOrderUseCase(
                     item.UpdatedAt = now;
 
                     transactionPaidItems.Add(new OrderReceiptItemDto(item.ProductName, item.Quantity, item.UnitPrice, item.Subtotal));
+
+                    if (item.ProductId.HasValue && !item.IsCustomSale)
+                    {
+                        paidProductQuantities[item.ProductId.Value] =
+                            paidProductQuantities.GetValueOrDefault(item.ProductId.Value) + item.Quantity;
+                    }
                 }
             }
         }
 
         OrderRules.RecalculateTotals(order);
+
+        // Descontar inventario de las recetas de los productos pagados
+        if (paidProductQuantities.Count > 0)
+        {
+            var productsWithRecipes = await productRepository.GetByIdsWithRecipesAsync(
+                tenantId,
+                paidProductQuantities.Keys,
+                cancellationToken);
+
+            var ingredientDeductions = new Dictionary<Guid, decimal>();
+            foreach (var product in productsWithRecipes)
+            {
+                if (!paidProductQuantities.TryGetValue(product.Id, out var productQty) || productQty <= 0) continue;
+
+                foreach (var recipeItem in product.RecipeItems)
+                {
+                    if (recipeItem.IngredientId.HasValue && recipeItem.Quantity > 0)
+                    {
+                        var totalToDeduct = recipeItem.Quantity * productQty;
+                        ingredientDeductions[recipeItem.IngredientId.Value] =
+                            ingredientDeductions.GetValueOrDefault(recipeItem.IngredientId.Value) + totalToDeduct;
+                    }
+                }
+            }
+
+            foreach (var (ingredientId, deductQty) in ingredientDeductions)
+            {
+                if (deductQty <= 0) continue;
+                var ingredient = await ingredientRepository.GetForStockUpdateAsync(tenantId, ingredientId, cancellationToken);
+                if (ingredient is null) continue;
+
+                var stockBefore = ingredient.CurrentStock;
+                ingredient.CurrentStock -= deductQty;
+                ingredient.UpdatedAt = now;
+
+                var movement = new InventoryMovement
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    IngredientId = ingredient.Id,
+                    Ingredient = ingredient,
+                    CreatedByUserId = userId,
+                    Direction = InventoryMovementCodes.Decrease,
+                    Reason = InventoryMovementCodes.Sale,
+                    Quantity = deductQty,
+                    StockBefore = stockBefore,
+                    StockAfter = ingredient.CurrentStock,
+                    Note = $"Venta Mesa {table.Name} - Orden #{order.OrderNumber}",
+                    CreatedAt = now
+                };
+
+                await movementRepository.AddAsync(movement, cancellationToken);
+            }
+        }
 
         var hasRemainingPending = order.Items.Any(i => i.Status == "PENDING");
         if (!hasRemainingPending)

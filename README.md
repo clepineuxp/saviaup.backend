@@ -72,10 +72,14 @@ El historial de migraciones crea:
 ```text
 users, tenants, tenant_memberships, roles, modules, permissions,
 role_permissions, refresh_tokens, password_reset_tokens, categories,
-measurement_units, ingredients, inventory_movements, products
+measurement_units, ingredients, inventory_movements, products,
+product_recipe_items, dining_areas, restaurant_tables, orders,
+order_items, order_receipts, cash_registers, cash_register_shifts,
+cash_register_shift_movements, expenses, suppliers, stored_images,
+organization_parameters, payment_methods, tenant_permissions, tenant_invitations
 ```
 
-Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`, nombres normalizados de categoría/unidad por tenant, códigos de permisos, relación role/permission y hashes de tokens. Las relaciones sensibles usan eliminación `Restrict`. El seed contiene únicamente módulos y permisos globales. `AddCategoriesModule` agrega los permisos del módulo, `AddTenantCategories` crea categorías, `AddInventoryManagement` crea unidades, ingredientes, movimientos, permisos granulares y el backfill `gr`/`kg`/`und`, `AddTenantProducts` crea el catálogo de productos tenant-aware y `AddProductTypeDefault` fija `NORMAL` como default de base de datos.
+Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`, nombres normalizados de categoría/unidad por tenant, códigos de permisos, relación role/permission y hashes de tokens. Las relaciones sensibles usan eliminación `Restrict`. El seed contiene únicamente módulos y permisos globales. Las migraciones crean y actualizan la infraestructura multi-tenant completa, turnos de caja, salas y mesas, comandas, recetas de productos, facturación, estadísticas, gastos y proveedores.
 
 ## Docker
 
@@ -135,11 +139,53 @@ PUT    /api/inventory/complements/units/{unitId}
 PATCH  /api/inventory/complements/units/{unitId}/status
 DELETE /api/inventory/complements/units/{unitId}
 
+GET    /api/dining-areas
+POST   /api/dining-areas
+PUT    /api/dining-areas/{id}
+DELETE /api/dining-areas/{id}
+
+GET    /api/tables
+POST   /api/tables
+PUT    /api/tables/{id}
+PATCH  /api/tables/{id}/status
+DELETE /api/tables/{id}
+GET    /api/tables/operation
+
+GET    /api/orders?page=1&pageSize=20&status=&search=&date=
+POST   /api/tables/{tableId}/orders/items
+POST   /api/tables/{tableId}/orders/pay-and-close
+
+GET    /api/cash-registers
+POST   /api/cash-registers
+GET    /api/cash-registers/shifts/current
+POST   /api/cash-registers/shifts/open
+POST   /api/cash-registers/shifts/close
+GET    /api/cash-registers/shifts/{id}/summary
+
+GET    /api/expenses?page=1&pageSize=20&startDate=&endDate=&supplierId=&category=
+POST   /api/expenses
+PUT    /api/expenses/{id}
+DELETE /api/expenses/{id}
+
+GET    /api/suppliers?page=1&pageSize=20&search=&includeInactive=false
+POST   /api/suppliers
+PUT    /api/suppliers/{id}
+PATCH  /api/suppliers/{id}/status
+DELETE /api/suppliers/{id}
+
 GET    /api/statistics?period=current_month&includeTips=true
 
 GET    /api/billing/receipts?page=1&pageSize=25&search=&fromDate=&toDate=
 GET    /api/billing/orders?page=1&pageSize=25&search=&fromDate=&toDate=
 GET    /api/billing/receipts/{id}
+
+GET    /api/images/{id}
+
+GET    /api/settings/organization
+PUT    /api/settings/organization
+GET    /api/settings/access/permissions
+GET    /api/settings/users
+POST   /api/settings/users/invite
 
 GET  /api/i18n/{language}
 GET  /health
@@ -166,31 +212,80 @@ Los endpoints de tenants y `/users/me` requieren usuario y sesión válidos, per
 {
   "sections": [
     {
+      "code": "sales",
+      "name": "Ventas",
+      "order": 1,
+      "isGrouped": false,
+      "modules": [
+        { "id": "...", "code": "tables", "name": "Mesas", "order": 1 }
+      ],
+      "options": []
+    },
+    {
       "code": "operation",
       "name": "Operación",
       "order": 2,
       "isGrouped": true,
       "modules": [
-        { "id": "...", "code": "orders", "name": "Pedidos", "order": 1 },
-        { "id": "...", "code": "reports", "name": "Reportes", "order": 2 },
-        { "id": "...", "code": "billing", "name": "Facturación", "order": 3 }
+        { "id": "...", "code": "cash_registers", "name": "Cajas", "order": 1 },
+        { "id": "...", "code": "orders", "name": "Comandas", "order": 2 },
+        { "id": "...", "code": "statistics", "name": "Estadísticas", "order": 3 },
+        { "id": "...", "code": "billing", "name": "Facturación", "order": 4 }
       ],
       "options": []
+    },
+    {
+      "code": "inventory",
+      "name": "Inventario",
+      "order": 3,
+      "isGrouped": true,
+      "modules": [
+        { "id": "...", "code": "products", "name": "Productos", "order": 1 },
+        { "id": "...", "code": "categories", "name": "Categorías", "order": 2 },
+        { "id": "...", "code": "inventory", "name": "Inventario", "order": 3 },
+        { "id": "...", "code": "kitchen", "name": "Cocina", "order": 4 }
+      ],
+      "options": []
+    },
+    {
+      "code": "expenses",
+      "name": "Gastos",
+      "order": 4,
+      "isGrouped": true,
+      "modules": [
+        { "id": "...", "code": "expenses", "name": "Gastos", "order": 1 },
+        { "id": "...", "code": "suppliers", "name": "Proveedores", "order": 2 }
+      ],
+      "options": []
+    },
+    {
+      "code": "configuration",
+      "name": "Configuración",
+      "order": 5,
+      "isGrouped": false,
+      "modules": [
+        { "id": "...", "code": "settings", "name": "Configuración", "order": 1 }
+      ],
+      "options": [
+        { "code": "tables.manage", "moduleCode": "tables", "requiredPermissionCode": "tables.manage", "order": 2 },
+        { "code": "cash-registers.manage", "moduleCode": "cash_registers", "requiredPermissionCode": "cash-registers.manage", "order": 3 }
+      ]
     }
   ],
   "emptyStateMessage": null
 }
 ```
 
-Los nombres se localizan con `Accept-Language` (`es` o `en`, fallback español) y el frontend debe usar `code` como identificador estable. Secciones y módulos ya vienen ordenados. `isGrouped: false` indica que el único módulo debe mostrarse directamente, sin pestaña. Cuando el rol no tiene módulos u opciones, `sections` es `[]` y `emptyStateMessage` indica que debe contactar al administrador para gestionar los permisos.
+Los nombres se localizan con `Accept-Language` (`es` o `en`, fallback español) y el frontend debe usar `code` como identificador estable. Secciones y módulos ya vienen ordenados. `isGrouped: false` indica que el único módulo debe mostrarse directamente, sin pestaña desplegable. Cuando el rol no tiene módulos u opciones, `sections` es `[]` y `emptyStateMessage` indica que debe contactar al administrador para gestionar los permisos.
 
 Orden actual:
 
 ```text
 1 Ventas: Mesas
-2 Operación: Pedidos, Reportes, Facturación
+2 Operación: Cajas, Comandas, Estadísticas, Facturación
 3 Inventario: Productos, Categorías, Inventario, Cocina
-4 Configuración: Configuración
+4 Gastos: Gastos, Proveedores
+5 Configuración: Configuración (con opciones directas para administrar salas/mesas y cajas)
 ```
 
 La fuente de verdad es `Core/Navigation/NavigationCatalog.cs`. Cada módulo nuevo debe declarar sección/subcategoría y orden, además de seed, permisos, migración, copies y pruebas. El contrato incluye `options` para crecer con accesos administrativos respaldados por permisos `.manage`.
@@ -214,11 +309,11 @@ La respuesta agrega `id`, `isActive`, `createdAt` y `updatedAt`. `description` e
 
 `GET /api/categories` devuelve solo activas para consumo de productos, inventarios y menús. La pantalla administrativa puede solicitar `includeInactive=true`. `PATCH /api/categories/{id}/status` recibe `{ "isActive": false }` y permite deshabilitar o reactivar. `DELETE` elimina físicamente la categoría solo si no tiene ingredientes ni productos; si está en uso devuelve `CATEGORY_IN_USE`.
 
-## Productos
+## Productos y recetas
 
 Los productos pertenecen al tenant activo y requieren una categoría activa del mismo tenant. `products.read` permite listar y `products.manage` permite crear, actualizar, activar/desactivar y eliminar. El listado usa paginación real y admite `search`, `categoryId`, `type=NORMAL|COMBO` e `includeInactive`.
 
-Creación y actualización usan el mismo contrato:
+Creación y actualización reciben:
 
 ```json
 {
@@ -227,15 +322,37 @@ Creación y actualización usan el mismo contrato:
   "categoryId": "00000000-0000-0000-0000-000000000000",
   "salePrice": 25000.0,
   "description": "Carne, queso y vegetales",
-  "imageUrl": "https://cdn.example.com/products/burger.webp",
+  "image": "data:image/webp;base64,...",
   "preparationTimeMinutes": 15,
-  "isInventoryTracked": true
+  "isInventoryTracked": true,
+  "recipe": [
+    {
+      "ingredientId": "11111111-1111-1111-1111-111111111111",
+      "quantity": 150.0,
+      "notes": "Carne molida de res",
+      "order": 1
+    },
+    {
+      "customIngredientName": "Pan brioche artesanal",
+      "quantity": 1.0,
+      "notes": "Panadería local",
+      "order": 2
+    }
+  ]
 }
 ```
 
-`type` acepta `NORMAL` y `COMBO`; al omitirse usa `NORMAL`. Nombre, categoría y precio positivo son obligatorios. Descripción, URL HTTP/HTTPS y tiempo de preparación no negativo son opcionales. `salePrice` se persiste como `numeric(18,2)`.
+`type` acepta `NORMAL` y `COMBO`; al omitirse usa `NORMAL`. Nombre, categoría y precio positivo son obligatorios. La imagen puede enviarse como data URL en base64; el backend la almacena en `stored_images` y la vincula de forma atómica mediante `ImageRef`.
 
-La clasificación inventariable depende de la categoría: si la categoría seleccionada no es inventariable, Core fuerza `isInventoryTracked=false` incluso si el cliente envía `true`. Si una categoría cambia de inventariable a no inventariable, sus productos también se actualizan a `false`. `PATCH /api/products/{id}/status` recibe `{ "isActive": false }`; `DELETE` realiza eliminación física y responde `204`.
+### Recetas y deducción automática de inventario
+
+Cada producto puede tener una receta compuesta por ingredientes vinculados de inventario (`ingredientId`) o insumos personalizados (`customIngredientName`), con su cantidad requerida por porción/unidad vendida.
+
+Al registrar el pago de una comanda (`POST /api/tables/{tableId}/orders/pay-and-close`), el backend ejecuta `PayAndCloseTableOrderUseCase`:
+1. Identifica los productos efectivamente pagados en la transacción.
+2. Consulta sus recetas completas en base de datos (`GetByIdsWithRecipesAsync`).
+3. Calcula el consumo total de cada ingrediente vinculado (`recipeItem.Quantity * productQty`).
+4. Genera movimientos automáticos de salida en inventario (`InventoryMovementCodes.Decrease`, motivo `Sale`) con nota de auditoría (ej. `Venta Mesa 1 - Orden #1024`) y actualiza el stock actual del ingrediente en tiempo real de forma transaccional.
 
 ## Inventario, ingredientes, movimientos y complementos
 
@@ -320,3 +437,23 @@ El frontend conectado está en `../saviaup.frontend`: desarrollo usa `useMockApi
 `AddTableManagement` agrega salas ordenables, mesas con coordenadas 2D y el hook persistente de turnos de caja. `AddRestaurantTableShape` incorpora las formas `SQUARE`, `ROUND`, `RECTANGLE_HORIZONTAL` y `RECTANGLE_VERTICAL`, con `SQUARE` como valor por defecto para datos existentes. La configuración usa `/api/table-areas` y `/api/tables`; el snapshot operativo se obtiene en `/api/tables/operation`. `tables.read`, `tables.operate` y `tables.manage` separan consulta, operación y configuración.
 
 `TablesHub` se publica en `/hubs/tables`, valida sesión/tenant/permiso y aísla cada conexión en un grupo por tenant. Emite `OnTableStatusChanged` y `OnTableOrderUpdated` después de persistir cada cambio. Si `RequiresOpenCashRegister` está activo, las mutaciones se bloquean hasta que exista un turno sin fecha de cierre.
+
+## Gastos y proveedores
+
+El módulo de Gastos permite controlar egresos operativos de la organización:
+- **Proveedores (`/api/suppliers`)**: administración de directorio de proveedores (nombre comercial, NIT/identificación, teléfono, email, contacto y estado activo/inactivo).
+- **Gastos (`/api/expenses`)**: registro de gastos con concepto, categoría de gasto, monto, proveedor opcional, medio de pago, soporte documental y vinculación con el turno de caja vigente.
+- **Integración con turnos de caja**: los egresos en efectivo registrados durante un turno abierto se consolidan en el resumen de cierre (`CashRegisterShiftSummaryDto`), restándose del total esperado en caja.
+- **Métricas operativas**: el snapshot de mesas incluye `OpenShiftExpensesTotal` y `OpenShiftSalesTotal` para que el personal visualice en tiempo real la salud financiera del turno.
+
+## Facturación y estadísticas
+
+- **Facturación (`/api/billing`)**: consulta paginada de comprobantes emitidos (`/api/billing/receipts`) y órdenes completadas (`/api/billing/orders`), con búsqueda, filtros por rango de fechas y detalle para impresión/reimpresión de tirillas térmicas de 80mm.
+- **Estadísticas (`/api/statistics`)**: agregación analítica de ventas y gastos por período (`current_month`, etc.), cálculo de KPIs (Ventas totales, Gastos totales, Ticket promedio, Propinas opcionales), desglose por medio de pago, ranking de productos más vendidos, ranking de meseros y comparativo agrupado Ventas vs Gastos.
+
+## Almacenamiento optimizado de imágenes
+
+Para evitar dependencias de almacenamiento externo en etapas tempranas y agilizar la respuesta del cliente:
+- Se implementó la tabla `stored_images` con entidad `StoredImage`, que conserva el contenido binario comprimido en base64 junto con metadata técnica (mime type, peso, tenant).
+- Entidades como `Category` y `Product` utilizan la clave foránea `ImageRef` hacia `stored_images`.
+- Las consultas principales realizan una proyección en una única consulta SQL (evitando llamadas N+1 o endpoints adicionales), entregando la imagen lista para visualización inmediata en el frontend.

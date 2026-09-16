@@ -22,7 +22,8 @@ public sealed class IngredientRepository(ApplicationDbContext context) : IIngred
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
             var search = request.Search.Trim().ToUpperInvariant();
-            query = query.Where(ingredient => ingredient.NormalizedName.Contains(search));
+            query = query.Where(ingredient => ingredient.NormalizedName.Contains(search)
+                || ingredient.Category.NormalizedName.Contains(search));
         }
         var count = await query.CountAsync(cancellationToken);
         var items = await query.OrderBy(ingredient => ingredient.NormalizedName)
@@ -47,7 +48,8 @@ public sealed class IngredientRepository(ApplicationDbContext context) : IIngred
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
             var search = request.Search.Trim().ToUpperInvariant();
-            query = query.Where(ingredient => ingredient.NormalizedName.Contains(search));
+            query = query.Where(ingredient => ingredient.NormalizedName.Contains(search)
+                || ingredient.Category.NormalizedName.Contains(search));
         }
         var count = await query.CountAsync(cancellationToken);
         var entities = await query.OrderBy(ingredient => ingredient.NormalizedName)

@@ -24,4 +24,5 @@ public sealed class Product
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public Category Category { get; set; } = null!;
+    public ICollection<ProductRecipeItem> RecipeItems { get; set; } = [];
 }

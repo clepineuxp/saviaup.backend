@@ -18,6 +18,9 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
         var query = context.Products.AsNoTracking()
             .Include(product => product.Category)
             .Include(product => product.ImageStored)
+            .Include(product => product.RecipeItems)
+                .ThenInclude(item => item.Ingredient)
+                    .ThenInclude(ingredient => ingredient!.MeasurementUnit)
             .Where(product => product.TenantId == tenantId
                 && (request.IncludeInactive || product.IsActive));
         if (request.CategoryId.HasValue)
@@ -42,9 +45,40 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
     public Task<Product?> GetByIdAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
         => context.Products.Include(product => product.Category)
             .Include(product => product.ImageStored)
+            .Include(product => product.RecipeItems)
+                .ThenInclude(item => item.Ingredient)
+                    .ThenInclude(ingredient => ingredient!.MeasurementUnit)
             .SingleOrDefaultAsync(
                 product => product.TenantId == tenantId && product.Id == productId,
                 cancellationToken);
+
+    /// <summary>
+    /// Carga el producto SIN RecipeItems en el ChangeTracker.
+    /// Usar exclusivamente en el path de actualización para evitar conflictos
+    /// de concurrencia cuando se gestionan recetas con ExecuteDeleteAsync.
+    /// </summary>
+    public Task<Product?> GetByIdForUpdateAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
+        => context.Products
+            .Include(product => product.Category)
+            .Include(product => product.ImageStored)
+            .SingleOrDefaultAsync(
+                product => product.TenantId == tenantId && product.Id == productId,
+                cancellationToken);
+
+    public async Task<IReadOnlyCollection<Product>> GetByIdsWithRecipesAsync(
+        Guid tenantId,
+        IEnumerable<Guid> productIds,
+        CancellationToken cancellationToken)
+    {
+        var idList = productIds.Distinct().ToList();
+        if (idList.Count == 0) return [];
+
+        return await context.Products.AsNoTracking()
+            .Include(product => product.RecipeItems)
+                .ThenInclude(item => item.Ingredient)
+            .Where(product => product.TenantId == tenantId && idList.Contains(product.Id))
+            .ToArrayAsync(cancellationToken);
+    }
 
     public async Task DisableInventoryTrackingByCategoryAsync(
         Guid tenantId,
@@ -66,6 +100,19 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
 
     public async Task AddAsync(Product product, CancellationToken cancellationToken)
         => await context.Products.AddAsync(product, cancellationToken);
+
+    /// <summary>
+    /// Elimina todos los recipe items de un producto directamente en base de datos,
+    /// sin pasar por el Change Tracker de EF Core. Esto evita DbUpdateConcurrencyException
+    /// cuando los RecipeItems están rastreados en el contexto actual.
+    /// </summary>
+    public Task DeleteRecipeItemsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
+        => context.ProductRecipeItems
+            .Where(item => item.TenantId == tenantId && item.ProductId == productId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+    public async Task AddRecipeItemsAsync(IEnumerable<ProductRecipeItem> items, CancellationToken cancellationToken)
+        => await context.ProductRecipeItems.AddRangeAsync(items, cancellationToken);
 
     public void Remove(Product product) => context.Products.Remove(product);
 }

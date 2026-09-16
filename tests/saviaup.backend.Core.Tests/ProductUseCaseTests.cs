@@ -105,9 +105,9 @@ public sealed class ProductUseCaseTests
         var product = Product(tenantId);
         var products = new Mock<IProductRepository>();
         var categories = new Mock<ICategoryRepository>();
-        products.Setup(value => value.GetByIdAsync(tenantId, product.Id, It.IsAny<CancellationToken>()))
+        products.Setup(value => value.GetByIdForUpdateAsync(tenantId, product.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(product);
-        categories.Setup(value => value.GetByIdAsync(tenantId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        categories.Setup(value => value.GetByIdAsNoTrackingAsync(tenantId, It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Category?)null);
         var useCase = new UpdateProductUseCase(
             products.Object, categories.Object, new FixedClock(TestSupport.Now), UnitOfWork().Object);
