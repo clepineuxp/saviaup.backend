@@ -12,7 +12,7 @@ public sealed record PagedResponse<T>(
 public sealed class InventoryQueryRequest
 {
     [Range(1, int.MaxValue)] public int Page { get; init; } = 1;
-    [Range(1, 100)] public int PageSize { get; init; } = 20;
+    [Range(1, 1000)] public int PageSize { get; init; } = 20;
     [MaxLength(120)] public string? Search { get; init; }
     public bool? BelowMinimum { get; init; }
 }
@@ -20,7 +20,7 @@ public sealed class InventoryQueryRequest
 public sealed class IngredientQueryRequest
 {
     [Range(1, int.MaxValue)] public int Page { get; init; } = 1;
-    [Range(1, 100)] public int PageSize { get; init; } = 20;
+    [Range(1, 1000)] public int PageSize { get; init; } = 20;
     [MaxLength(120)] public string? Search { get; init; }
     public Guid? CategoryId { get; init; }
     public bool IncludeInactive { get; init; }

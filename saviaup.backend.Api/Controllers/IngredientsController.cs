@@ -21,7 +21,7 @@ public sealed class IngredientsController(
     ICurrentUserContext currentUser) : ControllerBase
 {
     [HttpGet]
-    [RequirePermission(PermissionCodes.InventoryIngredientsRead)]
+    [RequirePermission(PermissionCodes.InventoryIngredientsRead, PermissionCodes.ProductsManage, PermissionCodes.ProductsRead)]
     public async Task<ActionResult<PagedResponse<IngredientDto>>> List(
         [FromQuery] IngredientQueryRequest request, CancellationToken cancellationToken)
         => this.FromResult(await listUseCase.ExecuteAsync(currentUser.TenantId!.Value, request, cancellationToken));

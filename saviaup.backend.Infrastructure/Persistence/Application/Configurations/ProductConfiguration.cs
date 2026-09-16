@@ -17,11 +17,13 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
                 "\"PreparationTimeMinutes\" IS NULL OR \"PreparationTimeMinutes\" >= 0");
         });
         builder.HasKey(product => product.Id);
+        builder.Property(product => product.Id).ValueGeneratedNever();
         builder.Property(product => product.Type)
             .HasConversion(
                 value => value.ToString().ToUpperInvariant(),
                 value => Enum.Parse<ProductType>(value, true))
             .HasDefaultValue(ProductType.Normal)
+            .ValueGeneratedNever()
             .HasMaxLength(10)
             .IsRequired();
         builder.Property(product => product.Name).HasMaxLength(120).IsRequired();

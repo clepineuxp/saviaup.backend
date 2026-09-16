@@ -90,9 +90,37 @@ public sealed class CreateProductUseCase(
             CreatedAt = now,
             UpdatedAt = now
         };
+
+        if (request.Recipe is not null && request.Recipe.Count > 0)
+        {
+            var orderIdx = 0;
+            foreach (var r in request.Recipe)
+            {
+                if (r.Quantity <= 0) continue;
+                var hasIng = r.IngredientId.HasValue && r.IngredientId.Value != Guid.Empty;
+                var hasCustom = !string.IsNullOrWhiteSpace(r.CustomIngredientName);
+                if (!hasIng && !hasCustom) continue;
+
+                product.RecipeItems.Add(new ProductRecipeItem
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    ProductId = productId,
+                    IngredientId = hasIng ? r.IngredientId : null,
+                    CustomIngredientName = hasCustom ? r.CustomIngredientName!.Trim() : null,
+                    Quantity = r.Quantity,
+                    Notes = string.IsNullOrWhiteSpace(r.Notes) ? null : r.Notes.Trim(),
+                    Order = r.Order > 0 ? r.Order : orderIdx++,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+        }
+
         await productRepository.AddAsync(product, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Result<ProductDto>.Success(ProductRules.ToDto(product));
+        var reloaded = await productRepository.GetByIdAsync(tenantId, productId, cancellationToken);
+        return Result<ProductDto>.Success(ProductRules.ToDto(reloaded ?? product));
     }
 }
 
@@ -117,9 +145,14 @@ public sealed class UpdateProductUseCase(
                 out var values))
             return Result<ProductDto>.Failure(Errors.Validation);
 
-        var product = await productRepository.GetByIdAsync(tenantId, productId, cancellationToken);
+        // GetByIdForUpdateAsync carga el producto SIN RecipeItems en el ChangeTracker.
+        // Esto evita el DbUpdateConcurrencyException que ocurría al intentar gestionar
+        // los RecipeItems antiguos (ya rastreados) junto con los nuevos en el mismo contexto.
+        var product = await productRepository.GetByIdForUpdateAsync(tenantId, productId, cancellationToken);
         if (product is null) return Result<ProductDto>.Failure(Errors.ProductNotFound);
-        var category = await categoryRepository.GetByIdAsync(tenantId, request.CategoryId, cancellationToken);
+
+        // AsNoTracking porque GetByIdForUpdateAsync ya tiene product.Category en el tracker.
+        var category = await categoryRepository.GetByIdAsNoTrackingAsync(tenantId, request.CategoryId, cancellationToken);
         if (category is null || !category.IsActive)
             return Result<ProductDto>.Failure(Errors.CategoryNotFound);
 
@@ -129,12 +162,15 @@ public sealed class UpdateProductUseCase(
             && !string.IsNullOrWhiteSpace(values.Image)
             && values.Image.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
         {
-            var storedImage = ImageHelper.CreateStoredImage(tenantId, "products", productId.ToString(), values.Image, now);
-            if (storedImage != null)
+            if (product.ImageStored == null || product.ImageStored.Base64Content != values.Image)
             {
-                await imageRepository.AddAsync(storedImage, cancellationToken);
-                product.ImageRef = storedImage.Id;
-                product.ImageStored = storedImage;
+                var storedImage = ImageHelper.CreateStoredImage(tenantId, "products", productId.ToString(), values.Image, now);
+                if (storedImage != null)
+                {
+                    await imageRepository.AddAsync(storedImage, cancellationToken);
+                    product.ImageRef = storedImage.Id;
+                    product.ImageStored = storedImage;
+                }
             }
         }
         else if (string.IsNullOrWhiteSpace(values.Image))
@@ -144,7 +180,6 @@ public sealed class UpdateProductUseCase(
         }
 
         product.CategoryId = category.Id;
-        product.Category = category;
         product.Type = values.Type;
         product.Name = values.Name;
         product.NormalizedName = values.NormalizedName;
@@ -155,8 +190,45 @@ public sealed class UpdateProductUseCase(
         product.LastModifiedByUserId = userId;
         product.LastModifiedByUserName = userName;
         product.UpdatedAt = now;
+
+        if (request.Recipe is not null)
+        {
+            // DeleteRecipeItemsAsync usa ExecuteDeleteAsync → bypass del ChangeTracker.
+            await productRepository.DeleteRecipeItemsAsync(tenantId, productId, cancellationToken);
+
+            var itemsToAdd = new List<ProductRecipeItem>();
+            var orderIdx = 0;
+            foreach (var r in request.Recipe)
+            {
+                if (r.Quantity <= 0) continue;
+                var hasIng = r.IngredientId.HasValue && r.IngredientId.Value != Guid.Empty;
+                var hasCustom = !string.IsNullOrWhiteSpace(r.CustomIngredientName);
+                if (!hasIng && !hasCustom) continue;
+
+                itemsToAdd.Add(new ProductRecipeItem
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    ProductId = product.Id,
+                    IngredientId = hasIng ? r.IngredientId : null,
+                    CustomIngredientName = hasCustom ? r.CustomIngredientName!.Trim() : null,
+                    Quantity = r.Quantity,
+                    Notes = string.IsNullOrWhiteSpace(r.Notes) ? null : r.Notes.Trim(),
+                    Order = r.Order > 0 ? r.Order : orderIdx++,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+
+            if (itemsToAdd.Count > 0)
+            {
+                await productRepository.AddRecipeItemsAsync(itemsToAdd, cancellationToken);
+            }
+        }
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Result<ProductDto>.Success(ProductRules.ToDto(product));
+        var reloaded = await productRepository.GetByIdAsync(tenantId, product.Id, cancellationToken);
+        return Result<ProductDto>.Success(ProductRules.ToDto(reloaded ?? product));
     }
 }
 

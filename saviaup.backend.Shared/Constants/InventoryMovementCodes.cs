@@ -12,4 +12,5 @@ public static class InventoryMovementCodes
     public const string Expiration = "expiration";
     public const string Loss = "loss";
     public const string Waste = "waste";
+    public const string Sale = "sale";
 }

@@ -12,6 +12,25 @@ public sealed class ProductQueryRequest
     public bool IncludeInactive { get; init; }
 }
 
+public sealed record ProductRecipeItemDto(
+    Guid Id,
+    Guid? IngredientId,
+    string? IngredientName,
+    string? MeasurementUnitName,
+    string? MeasurementUnitCode,
+    string? CustomIngredientName,
+    decimal Quantity,
+    string? Notes,
+    int Order,
+    bool IsLinked);
+
+public sealed record ProductRecipeItemRequest(
+    Guid? IngredientId,
+    [MaxLength(160)] string? CustomIngredientName,
+    [Range(typeof(decimal), "0.0001", "9999999999999999.9999")] decimal Quantity,
+    [MaxLength(500)] string? Notes,
+    int Order = 0);
+
 public sealed record ProductDto(
     Guid Id,
     string Type,
@@ -26,7 +45,8 @@ public sealed record ProductDto(
     string? CreatedByUserName,
     string? LastModifiedByUserName,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    IReadOnlyCollection<ProductRecipeItemDto> Recipe);
 
 public sealed record CreateProductRequest(
     string? Type,
@@ -36,7 +56,8 @@ public sealed record CreateProductRequest(
     [MaxLength(1000)] string? Description,
     string? Image,
     [Range(0, int.MaxValue)] int? PreparationTimeMinutes,
-    bool IsInventoryTracked);
+    bool IsInventoryTracked,
+    IReadOnlyCollection<ProductRecipeItemRequest>? Recipe = null);
 
 public sealed record UpdateProductRequest(
     string? Type,
@@ -46,6 +67,7 @@ public sealed record UpdateProductRequest(
     [MaxLength(1000)] string? Description,
     string? Image,
     [Range(0, int.MaxValue)] int? PreparationTimeMinutes,
-    bool IsInventoryTracked);
+    bool IsInventoryTracked,
+    IReadOnlyCollection<ProductRecipeItemRequest>? Recipe = null);
 
 public sealed record SetProductStatusRequest(bool IsActive);

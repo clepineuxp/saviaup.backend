@@ -25,6 +25,14 @@ public sealed class CategoryRepository(ApplicationDbContext context) : ICategory
                 category => category.TenantId == tenantId && category.Id == categoryId,
                 cancellationToken);
 
+    public Task<Category?> GetByIdAsNoTrackingAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken)
+        => context.Categories
+            .AsNoTracking()
+            .Include(category => category.ImageStored)
+            .SingleOrDefaultAsync(
+                category => category.TenantId == tenantId && category.Id == categoryId,
+                cancellationToken);
+
     public Task<bool> NameExistsAsync(
         Guid tenantId,
         string normalizedName,
