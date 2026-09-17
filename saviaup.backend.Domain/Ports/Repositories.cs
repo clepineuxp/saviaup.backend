@@ -25,6 +25,7 @@ public interface IRoleRepository
     Task AddAsync(Role role, CancellationToken cancellationToken);
     Task<Role?> GetByIdAsync(Guid roleId, CancellationToken cancellationToken);
     Task AssignAllPermissionsAsync(Guid roleId, CancellationToken cancellationToken);
+    Task AssignPermissionsAsync(Guid roleId, IReadOnlyCollection<string> permissionCodes, CancellationToken cancellationToken);
 }
 
 public interface IPermissionRepository
@@ -248,6 +249,7 @@ public interface ISettingsRepository
     Task AddPaymentMethodAsync(PaymentMethod paymentMethod, CancellationToken cancellationToken);
     void RemovePaymentMethod(PaymentMethod paymentMethod);
     Task EnableAllPermissionsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task EnablePermissionsAsync(Guid tenantId, IReadOnlyCollection<string> permissionCodes, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<EnabledModulePermissionsDto>> GetEnabledPermissionCatalogAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<string>> GetEnabledPermissionCodesAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<Role>> GetRolesAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);

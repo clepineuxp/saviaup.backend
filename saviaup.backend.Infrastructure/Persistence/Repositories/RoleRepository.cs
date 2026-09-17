@@ -23,4 +23,17 @@ public sealed class RoleRepository(
             permissionIds.Select(permissionId => new RolePermission { RoleId = roleId, PermissionId = permissionId }),
             cancellationToken);
     }
+
+    public async Task AssignPermissionsAsync(Guid roleId, IReadOnlyCollection<string> permissionCodes, CancellationToken cancellationToken)
+    {
+        var codes = permissionCodes.Distinct(StringComparer.Ordinal).ToArray();
+        var permissionIds = await platformContext.Permissions.AsNoTracking()
+            .Where(permission => codes.Contains(permission.Code))
+            .Select(permission => permission.Id)
+            .ToArrayAsync(cancellationToken);
+
+        await appContext.RolePermissions.AddRangeAsync(
+            permissionIds.Select(permissionId => new RolePermission { RoleId = roleId, PermissionId = permissionId }),
+            cancellationToken);
+    }
 }

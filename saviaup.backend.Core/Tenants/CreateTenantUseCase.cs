@@ -16,6 +16,7 @@ public sealed class CreateTenantUseCase(
     ISettingsRepository settingsRepository,
     IRefreshTokenRepository refreshTokenRepository,
     SessionIssuer sessionIssuer,
+    IAdminPlanClient adminPlanClient,
     IDateTimeProvider dateTimeProvider,
     IUnitOfWork unitOfWork) : ICreateTenantUseCase
 {
@@ -28,6 +29,8 @@ public sealed class CreateTenantUseCase(
         if (string.IsNullOrWhiteSpace(request.Name)) return Result<TenantSessionResponse>.Failure(Errors.Validation);
         var user = await userRepository.GetByIdAsync(userId, cancellationToken);
         if (user is null || !user.IsActive) return Result<TenantSessionResponse>.Failure(Errors.AccountDisabled);
+
+        var defaultPlan = await adminPlanClient.GetDefaultPlanAsync(cancellationToken);
 
         return await unitOfWork.ExecuteInTransactionAsync(async transactionToken =>
         {
@@ -65,8 +68,17 @@ public sealed class CreateTenantUseCase(
             await tenantRepository.AddAsync(tenant, transactionToken);
             await roleRepository.AddAsync(role, transactionToken);
             await tenantRepository.AddMembershipAsync(membership, transactionToken);
-            await roleRepository.AssignAllPermissionsAsync(role.Id, transactionToken);
-            await settingsRepository.EnableAllPermissionsAsync(tenant.Id, transactionToken);
+
+            if (defaultPlan is not null && defaultPlan.PermissionCodes.Count > 0)
+            {
+                await roleRepository.AssignPermissionsAsync(role.Id, defaultPlan.PermissionCodes, transactionToken);
+                await settingsRepository.EnablePermissionsAsync(tenant.Id, defaultPlan.PermissionCodes, transactionToken);
+            }
+            else
+            {
+                await roleRepository.AssignAllPermissionsAsync(role.Id, transactionToken);
+                await settingsRepository.EnableAllPermissionsAsync(tenant.Id, transactionToken);
+            }
             await settingsRepository.AddParametersAsync(SettingsDefaults.CreateBusinessParameters(tenant.Id, now), transactionToken);
             foreach (var paymentMethod in SettingsDefaults.CreatePaymentMethods(tenant.Id, now))
                 await settingsRepository.AddPaymentMethodAsync(paymentMethod, transactionToken);
