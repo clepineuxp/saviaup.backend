@@ -41,6 +41,17 @@ public sealed class SettingsRepository(
         await platformContext.TenantPermissions.AddRangeAsync(ids.Select(id => new TenantPermission { TenantId = tenantId, PermissionId = id }), cancellationToken);
     }
 
+    public async Task EnablePermissionsAsync(Guid tenantId, IReadOnlyCollection<string> permissionCodes, CancellationToken cancellationToken)
+    {
+        var codes = permissionCodes.Distinct(StringComparer.Ordinal).ToArray();
+        var ids = await platformContext.Permissions.AsNoTracking()
+            .Where(permission => codes.Contains(permission.Code))
+            .Select(permission => permission.Id)
+            .ToArrayAsync(cancellationToken);
+
+        await platformContext.TenantPermissions.AddRangeAsync(ids.Select(id => new TenantPermission { TenantId = tenantId, PermissionId = id }), cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<EnabledModulePermissionsDto>> GetEnabledPermissionCatalogAsync(Guid tenantId, CancellationToken cancellationToken)
     {
         var rows = await platformContext.TenantPermissions.AsNoTracking().Where(item => item.TenantId == tenantId && item.Permission.Module.IsActive

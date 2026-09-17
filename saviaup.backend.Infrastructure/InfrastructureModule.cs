@@ -33,6 +33,15 @@ public static class InfrastructureModule
         services.Configure<FrontendOptions>(configuration.GetSection(FrontendOptions.SectionName));
         services.Configure<PasswordPolicyOptions>(configuration.GetSection(PasswordPolicyOptions.SectionName));
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        services.Configure<AdminApiOptions>(configuration.GetSection(AdminApiOptions.SectionName));
+
+        services.AddHttpClient<IAdminPlanClient, SaviaUp.Backend.Infrastructure.Clients.AdminPlanClient>((serviceProvider, client) =>
+        {
+            var adminOptions = configuration.GetSection(AdminApiOptions.SectionName).Get<AdminApiOptions>() ?? new AdminApiOptions();
+            var baseUrl = string.IsNullOrWhiteSpace(adminOptions.BaseUrl) ? "http://localhost:5100" : adminOptions.BaseUrl;
+            client.BaseAddress = new Uri(baseUrl.TrimEnd('/'));
+            client.Timeout = TimeSpan.FromSeconds(adminOptions.TimeoutSeconds > 0 ? adminOptions.TimeoutSeconds : 5);
+        });
 
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ITenantRepository, TenantRepository>();
