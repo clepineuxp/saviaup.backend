@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SaviaUp.Backend.Infrastructure.Persistence.Application;
@@ -11,9 +12,11 @@ using SaviaUp.Backend.Infrastructure.Persistence.Application;
 namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260917194157_AddDigitalMenuItemsTable")]
+    partial class AddDigitalMenuItemsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -335,9 +338,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<DateOnly?>("BusinessDate")
-                        .HasColumnType("date");
-
                     b.Property<long>("ConsecutiveNumber")
                         .HasColumnType("bigint");
 
@@ -402,8 +402,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.HasKey("Id");
 
                     b.HasIndex("SupplierId");
-
-                    b.HasIndex("TenantId", "BusinessDate");
 
                     b.HasIndex("TenantId", "ConsecutiveNumber")
                         .IsUnique();
@@ -670,11 +668,7 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 
                     b.HasIndex("TableId");
 
-                    b.HasIndex("TenantId", "CreatedAt");
-
                     b.HasIndex("TenantId", "OrderNumber");
-
-                    b.HasIndex("TenantId", "PaidAt");
 
                     b.HasIndex("TenantId", "TableId", "Status");
 
@@ -832,8 +826,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 
                     b.HasIndex("OrderId");
 
-                    b.HasIndex("TenantId", "CreatedAt");
-
                     b.HasIndex("TenantId", "OrderId");
 
                     b.HasIndex("TenantId", "ReceiptNumber");
@@ -872,11 +864,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .HasColumnType("character varying(20)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Value")
-                        .IsUnique()
-                        .HasDatabaseName("UX_organization_parameters_digital_menu_slug")
-                        .HasFilter("\"Key\" = 'business.digitalMenuSlug' AND btrim(\"Value\") <> ''");
 
                     b.HasIndex("TenantId", "Key")
                         .IsUnique();

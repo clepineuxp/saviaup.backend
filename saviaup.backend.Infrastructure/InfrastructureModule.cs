@@ -61,6 +61,7 @@ public static class InfrastructureModule
         services.AddScoped<ICashRegisterRepository, CashRegisterRepository>();
         services.AddScoped<ICashRegisterShiftRepository, CashRegisterShiftRepository>();
         services.AddScoped<ISettingsRepository, SettingsRepository>();
+        services.AddScoped<IDigitalMenuRepository, DigitalMenuRepository>();
         services.AddScoped<IStatisticsRepository, StatisticsRepository>();
         services.AddScoped<IBillingRepository, BillingRepository>();
         services.AddScoped<IStoredImageRepository, StoredImageRepository>();

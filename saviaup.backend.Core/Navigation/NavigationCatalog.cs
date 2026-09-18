@@ -47,7 +47,8 @@ internal static class NavigationCatalog
             [new("settings", 1)],
             [
                 new("tables.manage", "tables", "tables.manage", 2),
-                new("cash-registers.manage", "cash_registers", "cash-registers.manage", 3)
+                new("cash-registers.manage", "cash_registers", "cash-registers.manage", 3),
+                new("digital-menu.manage", "settings", "settings.manage", 4)
             ])
     ];
 

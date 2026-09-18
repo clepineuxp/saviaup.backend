@@ -42,6 +42,15 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
         return new PageData<Product>(items, totalCount);
     }
 
+    public async Task<IReadOnlyCollection<Product>> GetAllForTenantAsync(
+        Guid tenantId,
+        bool includeInactive,
+        CancellationToken cancellationToken)
+        => await context.Products.AsNoTracking()
+            .Where(product => product.TenantId == tenantId && (includeInactive || product.IsActive))
+            .OrderBy(product => product.NormalizedName)
+            .ToArrayAsync(cancellationToken);
+
     public Task<Product?> GetByIdAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
         => context.Products.Include(product => product.Category)
             .Include(product => product.ImageStored)

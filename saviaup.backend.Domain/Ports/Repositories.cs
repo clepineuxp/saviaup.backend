@@ -112,6 +112,10 @@ public interface IProductRepository
         ProductQueryRequest request,
         ProductType? type,
         CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<Product>> GetAllForTenantAsync(
+        Guid tenantId,
+        bool includeInactive,
+        CancellationToken cancellationToken);
     Task<Product?> GetByIdAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
     Task<Product?> GetByIdForUpdateAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<Product>> GetByIdsWithRecipesAsync(Guid tenantId, IEnumerable<Guid> productIds, CancellationToken cancellationToken);
@@ -242,6 +246,7 @@ public interface ISettingsRepository
 {
     Task<Tenant?> GetTenantForUpdateAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<OrganizationParameter>> GetParametersAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<bool> DigitalMenuSlugExistsAsync(string slug, Guid excludedTenantId, CancellationToken cancellationToken);
     Task AddParametersAsync(IEnumerable<OrganizationParameter> parameters, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<PaymentMethod>> GetPaymentMethodsAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);
     Task<PaymentMethod?> GetPaymentMethodAsync(Guid tenantId, Guid paymentMethodId, CancellationToken cancellationToken);
@@ -307,6 +312,13 @@ public interface IStoredImageRepository
     Task<StoredImage?> GetByIdAsync(Guid tenantId, Guid imageId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<StoredImage>> GetByEntityAsync(Guid tenantId, string module, string entityId, CancellationToken cancellationToken);
     void Remove(StoredImage image);
+}
+
+public interface IDigitalMenuRepository
+{
+    Task<IReadOnlyCollection<DigitalMenuItem>> GetItemsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task ReplaceItemsAsync(Guid tenantId, IEnumerable<DigitalMenuItem> items, CancellationToken cancellationToken);
+    Task<PublicDigitalMenuDto?> GetPublicMenuAsync(string slug, CancellationToken cancellationToken);
 }
 
 public interface IUnitOfWork

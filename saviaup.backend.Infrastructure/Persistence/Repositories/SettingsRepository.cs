@@ -4,6 +4,7 @@ using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Infrastructure.Persistence.Application;
 using SaviaUp.Backend.Infrastructure.Persistence.Platform;
+using SaviaUp.Backend.Shared.Constants;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
@@ -16,6 +17,14 @@ public sealed class SettingsRepository(
 
     public async Task<IReadOnlyCollection<OrganizationParameter>> GetParametersAsync(Guid tenantId, CancellationToken cancellationToken)
         => await appContext.OrganizationParameters.IgnoreQueryFilters().Where(item => item.TenantId == tenantId).OrderBy(item => item.Key).ToArrayAsync(cancellationToken);
+
+    public Task<bool> DigitalMenuSlugExistsAsync(string slug, Guid excludedTenantId, CancellationToken cancellationToken)
+    {
+        var lower = slug.Trim().ToLowerInvariant();
+        return appContext.OrganizationParameters
+            .IgnoreQueryFilters()
+            .AnyAsync(item => item.Key == OrganizationParameterKeys.DigitalMenuSlug && item.Value.ToLower() == lower && item.TenantId != excludedTenantId, cancellationToken);
+    }
 
     public async Task AddParametersAsync(IEnumerable<OrganizationParameter> parameters, CancellationToken cancellationToken)
         => await appContext.OrganizationParameters.AddRangeAsync(parameters, cancellationToken);
