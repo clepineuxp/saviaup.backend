@@ -31,7 +31,7 @@ public sealed class GetCurrentUserUseCase(
 
             if (membership is not null && membership.RoleId == roleId && membership.IsEnabledAt(clock.UtcNow) && membership.Tenant.IsActive && roleEntity is not null && roleEntity.IsActive)
             {
-                activeTenant = new ActiveTenantDto(membership.TenantId, membership.Tenant.Name);
+                activeTenant = new ActiveTenantDto(membership.TenantId, membership.Tenant.Name, membership.Tenant.TimeZoneId);
                 role = new RoleDto(membership.RoleId, roleEntity.Code, roleEntity.Name);
                 permissions = await permissionRepository.GetForRoleAsync(membership.TenantId, membership.RoleId, cancellationToken);
             }

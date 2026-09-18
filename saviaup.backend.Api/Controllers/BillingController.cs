@@ -24,11 +24,11 @@ public sealed class BillingController(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
         [FromQuery] string? search = null,
-        [FromQuery] DateTimeOffset? fromDate = null,
-        [FromQuery] DateTimeOffset? toDate = null,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
         CancellationToken cancellationToken = default)
     {
-        var req = new BillingReceiptQueryRequest(page, pageSize, search, fromDate, toDate);
+        var req = new BillingReceiptQueryRequest(page, pageSize, search, FromLocalDate: fromDate, ToLocalDate: toDate);
         var result = await getBillingReceiptsUseCase.ExecuteAsync(currentUser.TenantId!.Value, req, cancellationToken);
         return this.FromResult(result);
     }
@@ -39,11 +39,11 @@ public sealed class BillingController(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
         [FromQuery] string? search = null,
-        [FromQuery] DateTimeOffset? fromDate = null,
-        [FromQuery] DateTimeOffset? toDate = null,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
         CancellationToken cancellationToken = default)
     {
-        var req = new BillingReceiptQueryRequest(page, pageSize, search, fromDate, toDate);
+        var req = new BillingReceiptQueryRequest(page, pageSize, search, FromLocalDate: fromDate, ToLocalDate: toDate);
         var result = await getBillingOrdersUseCase.ExecuteAsync(currentUser.TenantId!.Value, req, cancellationToken);
         return this.FromResult(result);
     }

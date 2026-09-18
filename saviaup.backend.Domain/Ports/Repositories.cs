@@ -25,6 +25,7 @@ public interface IRoleRepository
     Task AddAsync(Role role, CancellationToken cancellationToken);
     Task<Role?> GetByIdAsync(Guid roleId, CancellationToken cancellationToken);
     Task AssignAllPermissionsAsync(Guid roleId, CancellationToken cancellationToken);
+    Task AssignPermissionsAsync(Guid roleId, IReadOnlyCollection<string> permissionCodes, CancellationToken cancellationToken);
 }
 
 public interface IPermissionRepository
@@ -153,7 +154,7 @@ public interface IExpenseRepository
         bool? isCashOut,
         int page,
         int pageSize,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken, bool ByCreatedAt = false, DateOnly? FromBusinessDate = null, DateOnly? ToBusinessDate = null);
     Task<Expense?> GetByIdAsync(Guid tenantId, Guid expenseId, CancellationToken cancellationToken);
     Task<long> GetNextConsecutiveAsync(Guid tenantId, CancellationToken cancellationToken);
     Task AddAsync(Expense expense, CancellationToken cancellationToken);
@@ -248,6 +249,7 @@ public interface ISettingsRepository
     Task AddPaymentMethodAsync(PaymentMethod paymentMethod, CancellationToken cancellationToken);
     void RemovePaymentMethod(PaymentMethod paymentMethod);
     Task EnableAllPermissionsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task EnablePermissionsAsync(Guid tenantId, IReadOnlyCollection<string> permissionCodes, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<EnabledModulePermissionsDto>> GetEnabledPermissionCatalogAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<string>> GetEnabledPermissionCodesAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<Role>> GetRolesAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);
@@ -274,6 +276,8 @@ public interface IStatisticsRepository
     Task<StatisticsDashboardDto> GetDashboardStatisticsAsync(
         Guid tenantId,
         string period,
+        DateOnly? fromDate,
+        DateOnly? toDate,
         bool includeTips,
         DateTimeOffset now,
         CancellationToken cancellationToken);

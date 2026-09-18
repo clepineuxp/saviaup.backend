@@ -14,8 +14,14 @@ internal sealed class FixedClock(DateTimeOffset utcNow) : IDateTimeProvider
     public DateTimeOffset UtcNow { get; } = utcNow;
 }
 
+internal sealed class FixedOrganizationTimeZone(string zone = "America/Bogota") : IOrganizationTimeZone
+{
+    public Task<string> GetAsync(Guid tenantId, CancellationToken cancellationToken) => Task.FromResult(zone);
+}
+
 internal static class TestSupport
 {
+    public static ITimeZoneService TimeZones() => new SaviaUp.Backend.Infrastructure.Time.IanaTimeZoneService();
     public static readonly DateTimeOffset Now = new(2026, 8, 19, 20, 0, 0, TimeSpan.Zero);
 
     public static PasswordPolicy PasswordPolicy()

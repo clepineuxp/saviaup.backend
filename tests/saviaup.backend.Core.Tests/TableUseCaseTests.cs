@@ -218,14 +218,14 @@ public sealed class TableUseCaseTests
             .ReturnsAsync(new PageData<OrderDto>([], 0));
 
         var expenseRepo = new Mock<IExpenseRepository>();
-        expenseRepo.Setup(r => r.GetPageAsync(tenantId, It.IsAny<DateTimeOffset?>(), It.IsAny<DateTimeOffset?>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+        expenseRepo.Setup(r => r.GetPageAsync(tenantId, It.IsAny<DateTimeOffset?>(), It.IsAny<DateTimeOffset?>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<bool>(), It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>()))
             .ReturnsAsync(new PageData<Expense>([], 0));
 
         var clock = new Mock<IDateTimeProvider>();
         clock.Setup(c => c.UtcNow).Returns(TestSupport.Now);
 
         var useCase = new GetTableOperationUseCase(
-            tables.Object, tenants.Object, Mock.Of<ICashRegisterShiftRepository>(), orderRepo.Object, expenseRepo.Object, clock.Object);
+            tables.Object, tenants.Object, Mock.Of<ICashRegisterShiftRepository>(), orderRepo.Object, expenseRepo.Object, clock.Object, TestSupport.TimeZones());
 
         var result = await useCase.ExecuteAsync(tenantId, default);
 

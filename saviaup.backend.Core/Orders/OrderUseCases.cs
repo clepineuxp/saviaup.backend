@@ -72,25 +72,39 @@ public static class OrderRules
     }
 }
 
-public sealed class GetOrdersPageUseCase(IOrderRepository orderRepository) : IGetOrdersPageUseCase
+public sealed class GetOrdersPageUseCase(IOrderRepository orderRepository, IOrganizationTimeZone organizationTimeZone, ITimeZoneService timeZones) : IGetOrdersPageUseCase
 {
     public async Task<Result<PagedResponse<OrderDto>>> ExecuteAsync(
         Guid tenantId,
         OrderQueryRequest request,
         CancellationToken cancellationToken)
     {
+        if (request.FromLocalDate > request.ToLocalDate || request.ToLocalDate == DateOnly.MaxValue) return Result<PagedResponse<OrderDto>>.Failure(Errors.Validation);
+        var zone = await organizationTimeZone.GetAsync(tenantId, cancellationToken);
+        request = request with
+        {
+            FromDate = request.FromLocalDate is { } from ? timeZones.StartOfDayUtc(from, zone) : request.FromDate,
+            ToDate = request.ToLocalDate is { } to ? timeZones.StartOfDayUtc(to.AddDays(1), zone) : request.ToDate
+        };
         var page = await orderRepository.GetOrdersPageAsync(tenantId, request, cancellationToken);
         return Result<PagedResponse<OrderDto>>.Success(OrderRules.ToPage(page, request.Page, request.PageSize));
     }
 }
 
-public sealed class GetOrderItemsPageUseCase(IOrderRepository orderRepository) : IGetOrderItemsPageUseCase
+public sealed class GetOrderItemsPageUseCase(IOrderRepository orderRepository, IOrganizationTimeZone organizationTimeZone, ITimeZoneService timeZones) : IGetOrderItemsPageUseCase
 {
     public async Task<Result<PagedResponse<OrderItemReportDto>>> ExecuteAsync(
         Guid tenantId,
         OrderQueryRequest request,
         CancellationToken cancellationToken)
     {
+        if (request.FromLocalDate > request.ToLocalDate || request.ToLocalDate == DateOnly.MaxValue) return Result<PagedResponse<OrderItemReportDto>>.Failure(Errors.Validation);
+        var zone = await organizationTimeZone.GetAsync(tenantId, cancellationToken);
+        request = request with
+        {
+            FromDate = request.FromLocalDate is { } from ? timeZones.StartOfDayUtc(from, zone) : request.FromDate,
+            ToDate = request.ToLocalDate is { } to ? timeZones.StartOfDayUtc(to.AddDays(1), zone) : request.ToDate
+        };
         var page = await orderRepository.GetOrderItemsPageAsync(tenantId, request, cancellationToken);
         var totalPages = (int)Math.Ceiling(page.TotalCount / (double)request.PageSize);
         var response = new PagedResponse<OrderItemReportDto>(page.Items, request.Page, request.PageSize, page.TotalCount, totalPages);

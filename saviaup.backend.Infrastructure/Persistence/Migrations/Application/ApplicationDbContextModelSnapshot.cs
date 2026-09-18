@@ -274,6 +274,9 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<DateOnly?>("BusinessDate")
+                        .HasColumnType("date");
+
                     b.Property<long>("ConsecutiveNumber")
                         .HasColumnType("bigint");
 
@@ -338,6 +341,8 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.HasKey("Id");
 
                     b.HasIndex("SupplierId");
+
+                    b.HasIndex("TenantId", "BusinessDate");
 
                     b.HasIndex("TenantId", "ConsecutiveNumber")
                         .IsUnique();
@@ -604,7 +609,11 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 
                     b.HasIndex("TableId");
 
+                    b.HasIndex("TenantId", "CreatedAt");
+
                     b.HasIndex("TenantId", "OrderNumber");
+
+                    b.HasIndex("TenantId", "PaidAt");
 
                     b.HasIndex("TenantId", "TableId", "Status");
 
@@ -762,6 +771,8 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 
                     b.HasIndex("OrderId");
 
+                    b.HasIndex("TenantId", "CreatedAt");
+
                     b.HasIndex("TenantId", "OrderId");
 
                     b.HasIndex("TenantId", "ReceiptNumber");
@@ -851,7 +862,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Product", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("CategoryId")
@@ -941,7 +951,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.ProductRecipeItem", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("CreatedAt")

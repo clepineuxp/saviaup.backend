@@ -6,7 +6,7 @@ using SaviaUp.Backend.Infrastructure.Persistence.Application;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
-internal sealed class ExpenseRepository(ApplicationDbContext dbContext) : IExpenseRepository
+internal sealed class ExpenseRepository(ApplicationDbContext dbContext, IDateTimeProvider clock) : IExpenseRepository
 {
     public async Task<PageData<Expense>> GetPageAsync(
         Guid tenantId,
@@ -19,7 +19,7 @@ internal sealed class ExpenseRepository(ApplicationDbContext dbContext) : IExpen
         bool? isCashOut,
         int page,
         int pageSize,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool ByCreatedAt = false, DateOnly? FromBusinessDate = null, DateOnly? ToBusinessDate = null)
     {
         var query = dbContext.Expenses
             .AsNoTracking()
@@ -29,13 +29,13 @@ internal sealed class ExpenseRepository(ApplicationDbContext dbContext) : IExpen
         if (fromDate.HasValue)
         {
             var fromUtc = fromDate.Value.ToUniversalTime();
-            query = query.Where(x => x.ExpenseDate >= fromUtc || x.CreatedAt >= fromUtc);
+            query = query.Where(x => ByCreatedAt ? x.CreatedAt >= fromUtc : (x.BusinessDate.HasValue && FromBusinessDate.HasValue ? x.BusinessDate >= FromBusinessDate : x.ExpenseDate >= fromUtc));
         }
 
         if (toDate.HasValue)
         {
             var toUtc = toDate.Value.ToUniversalTime();
-            query = query.Where(x => x.ExpenseDate <= toUtc || x.CreatedAt <= toUtc);
+            query = query.Where(x => ByCreatedAt ? x.CreatedAt < toUtc : (x.BusinessDate.HasValue && ToBusinessDate.HasValue ? x.BusinessDate < ToBusinessDate : x.ExpenseDate < toUtc));
         }
 
         if (supplierId.HasValue)
@@ -93,7 +93,7 @@ internal sealed class ExpenseRepository(ApplicationDbContext dbContext) : IExpen
             .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Key == parameterKey, cancellationToken);
 
         long currentConsecutive = 1;
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
 
         if (param is null)
         {

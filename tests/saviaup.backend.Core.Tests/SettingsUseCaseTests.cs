@@ -20,7 +20,7 @@ public sealed class SettingsUseCaseTests
         repository.Setup(value => value.GetTenantForUpdateAsync(tenant.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tenant);
         var roles = new Mock<IRoleRepository>();
         roles.Setup(value => value.GetByIdAsync(role.Id, It.IsAny<CancellationToken>())).ReturnsAsync(role);
-        var useCase = new OrganizationSettingsUseCase(repository.Object, roles.Object, new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
+        var useCase = new OrganizationSettingsUseCase(repository.Object, roles.Object, new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>(), TestSupport.TimeZones());
 
         var result = await useCase.UpdateAsync(tenant.Id, role.Id,
             new UpdateOrganizationSettingsRequest("Savia", null, "901", null, null, null, null, null, null, null, null), default);
@@ -37,7 +37,7 @@ public sealed class SettingsUseCaseTests
         var repository = new Mock<ISettingsRepository>();
         repository.Setup(value => value.GetTenantForUpdateAsync(tenant.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tenant);
         var roles = new Mock<IRoleRepository>(); roles.Setup(value => value.GetByIdAsync(role.Id, It.IsAny<CancellationToken>())).ReturnsAsync(role);
-        var useCase = new OrganizationSettingsUseCase(repository.Object, roles.Object, new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
+        var useCase = new OrganizationSettingsUseCase(repository.Object, roles.Object, new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>(), TestSupport.TimeZones());
 
         var result = await useCase.UpdateAsync(tenant.Id, role.Id,
             new UpdateOrganizationSettingsRequest("  Mi   Organización ", "Ana", "900", null, null, null, null, null, null, null, null), default);
@@ -109,7 +109,7 @@ public sealed class SettingsUseCaseTests
         repository.Setup(value => value.RoleCodeOrNameExistsAsync(tenantId, It.IsAny<string>(), It.IsAny<string>(), null, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         repository.Setup(value => value.GetEnabledPermissionCodesAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync([PermissionCodes.ProductsRead]);
         var useCase = new AccessSettingsUseCase(repository.Object, Mock.Of<IRoleRepository>(), Mock.Of<IPermissionRepository>(), Mock.Of<IUserRepository>(), Mock.Of<ITenantRepository>(), Mock.Of<IEmailSender>(),
-            Options.Create(new FrontendOptions()), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
+            Options.Create(new FrontendOptions()), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>(), TestSupport.TimeZones());
 
         var result = await useCase.CreateRoleAsync(tenantId, new SaveSettingsRoleRequest("Mesero", null, [PermissionCodes.SettingsManage]), default);
 

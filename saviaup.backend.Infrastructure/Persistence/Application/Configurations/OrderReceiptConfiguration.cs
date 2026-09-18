@@ -68,5 +68,6 @@ public sealed class OrderReceiptConfiguration : IEntityTypeConfiguration<OrderRe
 
         builder.HasIndex(r => new { r.TenantId, r.OrderId });
         builder.HasIndex(r => new { r.TenantId, r.ReceiptNumber });
+        builder.HasIndex(r => new { r.TenantId, r.CreatedAt });
     }
 }

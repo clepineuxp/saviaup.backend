@@ -10,6 +10,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
     {
         builder.ToTable("tenants");
         builder.HasKey(tenant => tenant.Id);
+        builder.Property(tenant => tenant.TimeZoneId).HasMaxLength(100).HasDefaultValue("America/Bogota").IsRequired();
         builder.Property(tenant => tenant.Name).HasMaxLength(120).IsRequired();
         builder.Property(tenant => tenant.ResponsibleName).HasMaxLength(160);
         builder.Property(tenant => tenant.Document).HasMaxLength(80);

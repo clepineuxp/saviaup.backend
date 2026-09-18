@@ -39,7 +39,7 @@ public sealed class ListCashRegistersUseCase(
 public sealed class CreateCashRegisterUseCase(
     ICashRegisterRepository repository,
     ICashRegisterShiftRepository shiftRepository,
-    IUnitOfWork unitOfWork) : ICreateCashRegisterUseCase
+    IUnitOfWork unitOfWork, IDateTimeProvider clock) : ICreateCashRegisterUseCase
 {
     public async Task<Result<CashRegisterDto>> ExecuteAsync(
         Guid tenantId,
@@ -69,7 +69,7 @@ public sealed class CreateCashRegisterUseCase(
             return Result<CashRegisterDto>.Failure(Errors.CashRegisterSingleActiveExceeded);
         }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
         var cashRegister = new CashRegister
         {
             Id = Guid.NewGuid(),
@@ -101,7 +101,7 @@ public sealed class CreateCashRegisterUseCase(
 public sealed class UpdateCashRegisterUseCase(
     ICashRegisterRepository repository,
     ICashRegisterShiftRepository shiftRepository,
-    IUnitOfWork unitOfWork) : IUpdateCashRegisterUseCase
+    IUnitOfWork unitOfWork, IDateTimeProvider clock) : IUpdateCashRegisterUseCase
 {
     public async Task<Result<CashRegisterDto>> ExecuteAsync(
         Guid tenantId,
@@ -142,7 +142,7 @@ public sealed class UpdateCashRegisterUseCase(
         cashRegister.NormalizedName = normalizedName;
         cashRegister.Location = location;
         cashRegister.IsActive = request.IsActive;
-        cashRegister.UpdatedAt = DateTimeOffset.UtcNow;
+        cashRegister.UpdatedAt = clock.UtcNow;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
@@ -162,7 +162,7 @@ public sealed class UpdateCashRegisterUseCase(
 public sealed class SetCashRegisterStatusUseCase(
     ICashRegisterRepository repository,
     ICashRegisterShiftRepository shiftRepository,
-    IUnitOfWork unitOfWork) : ISetCashRegisterStatusUseCase
+    IUnitOfWork unitOfWork, IDateTimeProvider clock) : ISetCashRegisterStatusUseCase
 {
     public async Task<Result<CashRegisterDto>> ExecuteAsync(
         Guid tenantId,
@@ -182,7 +182,7 @@ public sealed class SetCashRegisterStatusUseCase(
         }
 
         cashRegister.IsActive = request.IsActive;
-        cashRegister.UpdatedAt = DateTimeOffset.UtcNow;
+        cashRegister.UpdatedAt = clock.UtcNow;
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
 

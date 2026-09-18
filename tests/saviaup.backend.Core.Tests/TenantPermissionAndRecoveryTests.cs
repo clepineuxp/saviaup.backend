@@ -85,6 +85,85 @@ public sealed class TenantPermissionAndRecoveryTests
         Assert.Equal(allowed, await service.IsAllowedAsync(Guid.NewGuid(), Guid.NewGuid(), PermissionCodes.OrdersRead, default));
     }
 
+    [Fact]
+    public async Task CreateTenant_WhenDefaultPlanAvailable_AssignsDefaultPlanPermissions()
+    {
+        var user = new User { Id = Guid.NewGuid(), Email = "owner@test.com", FirstName = "Owner", LastName = "Test", IsActive = true };
+        var users = new Mock<IUserRepository>();
+        users.Setup(repo => repo.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        var tenants = new Mock<ITenantRepository>();
+        var roles = new Mock<IRoleRepository>();
+        var settings = new Mock<ISettingsRepository>();
+        var refreshTokens = new Mock<IRefreshTokenRepository>();
+        var measurementUnits = new Mock<IMeasurementUnitRepository>();
+        var adminPlanClient = new Mock<IAdminPlanClient>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        TestSupport.RunTransaction<Result<TenantSessionResponse>>(unitOfWork);
+
+        var planCodes = new[] { "orders.read", "tables.read" };
+        adminPlanClient.Setup(client => client.GetDefaultPlanAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new DefaultPlanResponse(Guid.NewGuid(), "STANDARD", "Standard", "", 0, "COP", planCodes));
+
+        var useCase = new CreateTenantUseCase(
+            users.Object,
+            tenants.Object,
+            roles.Object,
+            measurementUnits.Object,
+            settings.Object,
+            refreshTokens.Object,
+            TestSupport.SessionIssuer(refreshTokens, roles: roles),
+            adminPlanClient.Object,
+            new FixedClock(TestSupport.Now),
+            unitOfWork.Object);
+
+        var result = await useCase.ExecuteAsync(user.Id, Guid.NewGuid(), new CreateTenantRequest("Test Org"), default);
+
+        Assert.True(result.IsSuccess);
+        roles.Verify(repo => repo.AssignPermissionsAsync(It.IsAny<Guid>(), planCodes, It.IsAny<CancellationToken>()), Times.Once);
+        settings.Verify(repo => repo.EnablePermissionsAsync(It.IsAny<Guid>(), planCodes, It.IsAny<CancellationToken>()), Times.Once);
+        roles.Verify(repo => repo.AssignAllPermissionsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        settings.Verify(repo => repo.EnableAllPermissionsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateTenant_WhenDefaultPlanNull_FallsBackToAllPermissions()
+    {
+        var user = new User { Id = Guid.NewGuid(), Email = "owner@test.com", FirstName = "Owner", LastName = "Test", IsActive = true };
+        var users = new Mock<IUserRepository>();
+        users.Setup(repo => repo.GetByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        var tenants = new Mock<ITenantRepository>();
+        var roles = new Mock<IRoleRepository>();
+        var settings = new Mock<ISettingsRepository>();
+        var refreshTokens = new Mock<IRefreshTokenRepository>();
+        var measurementUnits = new Mock<IMeasurementUnitRepository>();
+        var adminPlanClient = new Mock<IAdminPlanClient>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        TestSupport.RunTransaction<Result<TenantSessionResponse>>(unitOfWork);
+
+        adminPlanClient.Setup(client => client.GetDefaultPlanAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync((DefaultPlanResponse?)null);
+
+        var useCase = new CreateTenantUseCase(
+            users.Object,
+            tenants.Object,
+            roles.Object,
+            measurementUnits.Object,
+            settings.Object,
+            refreshTokens.Object,
+            TestSupport.SessionIssuer(refreshTokens, roles: roles),
+            adminPlanClient.Object,
+            new FixedClock(TestSupport.Now),
+            unitOfWork.Object);
+
+        var result = await useCase.ExecuteAsync(user.Id, Guid.NewGuid(), new CreateTenantRequest("Test Org"), default);
+
+        Assert.True(result.IsSuccess);
+        roles.Verify(repo => repo.AssignAllPermissionsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+        settings.Verify(repo => repo.EnableAllPermissionsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Once);
+        roles.Verify(repo => repo.AssignPermissionsAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+        settings.Verify(repo => repo.EnablePermissionsAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static (TenantMembership Membership, Role Role) Membership(User user)
     {
         var tenant = new Tenant { Id = Guid.NewGuid(), Name = "Secret Garden", IsActive = true };

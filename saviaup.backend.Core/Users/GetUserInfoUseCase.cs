@@ -36,7 +36,7 @@ public sealed class GetUserInfoUseCase(
         return Result<UserInfoDto>.Success(new UserInfoDto(
             user.FirstName,
             user.LastName,
-            new ActiveTenantDto(membership.TenantId, membership.Tenant.Name),
+            new ActiveTenantDto(membership.TenantId, membership.Tenant.Name, membership.Tenant.TimeZoneId),
             new RoleDto(membership.RoleId, role.Code, role.Name)));
     }
 }

@@ -11,10 +11,11 @@ public sealed class Expense
     public decimal Amount { get; set; }
     public bool IsCashOut { get; set; }
     public string PaymentMethod { get; set; } = "Efectivo";
-    
+
     public Guid? SupplierId { get; set; }
     public Supplier? Supplier { get; set; }
 
+    public DateOnly? BusinessDate { get; set; }
     public DateTimeOffset ExpenseDate { get; set; }
     public string Status { get; set; } = "ACTIVE"; // ACTIVE, ANNULLED
 

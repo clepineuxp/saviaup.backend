@@ -7,12 +7,12 @@ using SaviaUp.Backend.Domain.Results;
 namespace SaviaUp.Backend.Core.Expenses;
 
 public sealed class GetExpensesUseCase(
-    IExpenseRepository repository) : IGetExpensesUseCase
+    IExpenseRepository repository, IOrganizationTimeZone organizationTimeZone, ITimeZoneService timeZones) : IGetExpensesUseCase
 {
     public async Task<Result<ExpensePageDto>> ExecuteAsync(
         Guid tenantId,
-        DateTimeOffset? fromDate,
-        DateTimeOffset? toDate,
+        DateOnly? fromDate,
+        DateOnly? toDate,
         string? search,
         Guid? supplierId,
         string? status,
@@ -22,6 +22,10 @@ public sealed class GetExpensesUseCase(
         int pageSize,
         CancellationToken cancellationToken)
     {
+        if (fromDate > toDate || toDate == DateOnly.MaxValue) return Result<ExpensePageDto>.Failure(Errors.Validation);
+        var zone = await organizationTimeZone.GetAsync(tenantId, cancellationToken);
+        var fromUtc = fromDate is { } start ? timeZones.StartOfDayUtc(start, zone) : (DateTimeOffset?)null;
+        var toUtc = toDate is { } end ? timeZones.StartOfDayUtc(end.AddDays(1), zone) : (DateTimeOffset?)null;
         var cleanSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
         var cleanStatus = string.IsNullOrWhiteSpace(status) ? null : status.Trim().ToUpperInvariant();
         var cleanPaymentMethod = string.IsNullOrWhiteSpace(paymentMethod) ? null : paymentMethod.Trim();
@@ -29,7 +33,7 @@ public sealed class GetExpensesUseCase(
         var ps = pageSize is < 1 or > 100 ? 20 : pageSize;
 
         var pageData = await repository.GetPageAsync(
-            tenantId, fromDate, toDate, cleanSearch, supplierId, cleanStatus, cleanPaymentMethod, isCashOut, p, ps, cancellationToken);
+            tenantId, fromUtc, toUtc, cleanSearch, supplierId, cleanStatus, cleanPaymentMethod, isCashOut, p, ps, cancellationToken, FromBusinessDate: fromDate, ToBusinessDate: toDate?.AddDays(1));
 
         var dtos = pageData.Items.Select(ExpenseRules.ToDto).ToArray();
         var totalPages = (int)Math.Ceiling(pageData.TotalCount / (double)ps);
@@ -42,7 +46,7 @@ public sealed class CreateExpenseUseCase(
     IExpenseRepository repository,
     ISupplierRepository supplierRepository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork) : ICreateExpenseUseCase
+    IUnitOfWork unitOfWork, IOrganizationTimeZone organizationTimeZone, ITimeZoneService timeZones) : ICreateExpenseUseCase
 {
     public async Task<Result<ExpenseDto>> ExecuteAsync(
         Guid tenantId,
@@ -52,6 +56,8 @@ public sealed class CreateExpenseUseCase(
         CancellationToken cancellationToken)
     {
         var now = clock.UtcNow;
+        var zone = await organizationTimeZone.GetAsync(tenantId, cancellationToken);
+        var businessDate = request.BusinessDate ?? DateOnly.FromDateTime(timeZones.ConvertFromUtc(request.ExpenseDate ?? now, zone).DateTime);
         if (!ExpenseRules.TryPrepare(
                 request.Name,
                 request.Description,
@@ -59,7 +65,7 @@ public sealed class CreateExpenseUseCase(
                 request.IsCashOut,
                 request.PaymentMethod,
                 request.SupplierId,
-                request.ExpenseDate,
+                request.ExpenseDate ?? timeZones.StartOfDayUtc(businessDate, zone),
                 now,
                 out var values))
         {
@@ -89,6 +95,7 @@ public sealed class CreateExpenseUseCase(
             SupplierId = supplier?.Id,
             Supplier = supplier,
             ExpenseDate = values.ExpenseDate,
+            BusinessDate = businessDate,
             Status = "ACTIVE",
             CreatedByUserId = userId,
             CreatedByUserName = userName,
@@ -108,7 +115,7 @@ public sealed class UpdateExpenseUseCase(
     IExpenseRepository repository,
     ISupplierRepository supplierRepository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork) : IUpdateExpenseUseCase
+    IUnitOfWork unitOfWork, IOrganizationTimeZone organizationTimeZone, ITimeZoneService timeZones) : IUpdateExpenseUseCase
 {
     public async Task<Result<ExpenseDto>> ExecuteAsync(
         Guid tenantId,
@@ -119,6 +126,8 @@ public sealed class UpdateExpenseUseCase(
         CancellationToken cancellationToken)
     {
         var now = clock.UtcNow;
+        var zone = await organizationTimeZone.GetAsync(tenantId, cancellationToken);
+        var businessDate = request.BusinessDate ?? DateOnly.FromDateTime(timeZones.ConvertFromUtc(request.ExpenseDate ?? now, zone).DateTime);
         if (!ExpenseRules.TryPrepare(
                 request.Name,
                 request.Description,
@@ -126,7 +135,7 @@ public sealed class UpdateExpenseUseCase(
                 request.IsCashOut,
                 request.PaymentMethod,
                 request.SupplierId,
-                request.ExpenseDate,
+                request.ExpenseDate ?? timeZones.StartOfDayUtc(businessDate, zone),
                 now,
                 out var values))
         {
@@ -157,6 +166,7 @@ public sealed class UpdateExpenseUseCase(
         expense.SupplierId = supplier?.Id;
         expense.Supplier = supplier;
         expense.ExpenseDate = values.ExpenseDate;
+        expense.BusinessDate = businessDate;
         expense.LastModifiedByUserId = userId;
         expense.LastModifiedByUserName = userName;
         expense.UpdatedAt = now;
