@@ -94,6 +94,48 @@ public sealed class OrganizationTimeZoneTests(SaviaUpApiFactory factory) : IClas
     }
 
     [Fact]
+    public async Task CreateExpense_AcceptsBusinessDateWithoutExpenseDate()
+    {
+        using var client = factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        {
+            firstName = "Expense",
+            lastName = "Test",
+            email = $"expense-{Guid.NewGuid():N}@saviaup.test",
+            password = "Secure123!*"
+        });
+        response.EnsureSuccessStatusCode();
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", json.GetProperty("session").GetProperty("accessToken").GetString());
+
+        response = await client.PostAsJsonAsync("/api/tenants", new { name = "Expense endpoint test" });
+        response.EnsureSuccessStatusCode();
+        json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", json.GetProperty("tokens").GetProperty("accessToken").GetString());
+
+        response = await client.PostAsJsonAsync("/api/expenses", new
+        {
+            name = "tomates",
+            description = (string?)null,
+            amount = 20000,
+            isCashOut = true,
+            paymentMethod = "Efectivo",
+            supplierId = (Guid?)null,
+            expenseDate = (DateTimeOffset?)null,
+            businessDate = "2026-09-18"
+        });
+
+        response.EnsureSuccessStatusCode();
+        json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("2026-09-18", json.GetProperty("businessDate").GetString());
+        Assert.Equal(
+            DateTimeOffset.Parse("2026-09-18T05:00:00Z"),
+            json.GetProperty("expenseDate").GetDateTimeOffset());
+    }
+
+    [Fact]
     public async Task ExpenseBusinessDate_IsIndependentOfCreationAndShiftUsesCreationOnly()
     {
         var id = Guid.NewGuid();
@@ -120,6 +162,47 @@ public sealed class OrganizationTimeZoneTests(SaviaUpApiFactory factory) : IClas
         Assert.Equal(40, daily.Items.Sum(e => e.Amount));
         var shift = await repository.GetPageAsync(id, start, end, null, null, "ACTIVE", null, null, 1, 100, default, ByCreatedAt: true);
         Assert.Equal(50, shift.Items.Sum(e => e.Amount));
+    }
+
+    [Fact]
+    public async Task ExpenseConsecutive_RecoversWhenStoredCounterIsBehindExistingExpenses()
+    {
+        var tenantId = Guid.NewGuid();
+        await using var db = new ApplicationDbContext(
+            new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options,
+            new TenantScope(tenantId));
+        db.Expenses.Add(new Expense
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            ConsecutiveNumber = 839,
+            Name = "Existing expense"
+        });
+        db.OrganizationParameters.Add(new OrganizationParameter
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            Key = "expenses.nextConsecutive",
+            Value = "2",
+            ValueType = "integer"
+        });
+        await db.SaveChangesAsync();
+
+        var services = new ServiceCollection();
+        services.AddInfrastructure(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:PlatformDatabase"] = "Host=localhost;Database=unused",
+            ["ConnectionStrings:ApplicationDatabase"] = "Host=localhost;Database=unused"
+        }).Build());
+        services.AddSingleton(db);
+        await using var provider = services.BuildServiceProvider();
+        var repository = provider.GetRequiredService<IExpenseRepository>();
+
+        var consecutive = await repository.GetNextConsecutiveAsync(tenantId, default);
+
+        Assert.Equal(840, consecutive);
+        Assert.Equal("841", db.OrganizationParameters.Single().Value);
     }
 
     [Fact]

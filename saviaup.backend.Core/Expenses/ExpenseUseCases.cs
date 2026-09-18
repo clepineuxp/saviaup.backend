@@ -79,35 +79,38 @@ public sealed class CreateExpenseUseCase(
             if (supplier is null) return Result<ExpenseDto>.Failure(Errors.SupplierNotFound);
         }
 
-        var consecutive = await repository.GetNextConsecutiveAsync(tenantId, cancellationToken);
-
-        var expense = new Expense
+        return await unitOfWork.ExecuteInTransactionAsync(async transactionToken =>
         {
-            Id = Guid.NewGuid(),
-            TenantId = tenantId,
-            ConsecutiveNumber = consecutive,
-            Name = values.Name,
-            NormalizedName = values.NormalizedName,
-            Description = values.Description,
-            Amount = values.Amount,
-            IsCashOut = values.IsCashOut,
-            PaymentMethod = values.PaymentMethod,
-            SupplierId = supplier?.Id,
-            Supplier = supplier,
-            ExpenseDate = values.ExpenseDate,
-            BusinessDate = businessDate,
-            Status = "ACTIVE",
-            CreatedByUserId = userId,
-            CreatedByUserName = userName,
-            LastModifiedByUserId = userId,
-            LastModifiedByUserName = userName,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+            var consecutive = await repository.GetNextConsecutiveAsync(tenantId, transactionToken);
 
-        await repository.AddAsync(expense, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Result<ExpenseDto>.Success(ExpenseRules.ToDto(expense));
+            var expense = new Expense
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                ConsecutiveNumber = consecutive,
+                Name = values.Name,
+                NormalizedName = values.NormalizedName,
+                Description = values.Description,
+                Amount = values.Amount,
+                IsCashOut = values.IsCashOut,
+                PaymentMethod = values.PaymentMethod,
+                SupplierId = supplier?.Id,
+                Supplier = supplier,
+                ExpenseDate = values.ExpenseDate,
+                BusinessDate = businessDate,
+                Status = "ACTIVE",
+                CreatedByUserId = userId,
+                CreatedByUserName = userName,
+                LastModifiedByUserId = userId,
+                LastModifiedByUserName = userName,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            await repository.AddAsync(expense, transactionToken);
+            await unitOfWork.SaveChangesAsync(transactionToken);
+            return Result<ExpenseDto>.Success(ExpenseRules.ToDto(expense));
+        }, cancellationToken);
     }
 }
 
