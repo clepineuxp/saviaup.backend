@@ -14,6 +14,8 @@ public sealed class StatisticsRepository(ApplicationDbContext dbContext, IOrgani
     public async Task<StatisticsDashboardDto> GetDashboardStatisticsAsync(
         Guid tenantId,
         string period,
+        DateOnly? fromDate,
+        DateOnly? toDate,
         bool includeTips,
         DateTimeOffset now,
         CancellationToken cancellationToken)
@@ -21,8 +23,8 @@ public sealed class StatisticsRepository(ApplicationDbContext dbContext, IOrgani
         var zone = await organizationTimeZone.GetAsync(tenantId, cancellationToken);
         var today = DateOnly.FromDateTime(timeZones.ConvertFromUtc(now, zone).DateTime);
         var firstOfMonth = new DateOnly(today.Year, today.Month, 1);
-        var startDay = period == "last_30_days" ? today.AddDays(-29) : firstOfMonth;
-        var endDay = period == "last_30_days" ? today.AddDays(1) : firstOfMonth.AddMonths(1);
+        var startDay = period == "custom_range" ? fromDate!.Value : period == "last_30_days" ? today.AddDays(-29) : firstOfMonth;
+        var endDay = period == "custom_range" ? toDate!.Value.AddDays(1) : period == "last_30_days" ? today.AddDays(1) : firstOfMonth.AddMonths(1);
         var startDate = timeZones.StartOfDayUtc(startDay, zone);
         var endDate = timeZones.StartOfDayUtc(endDay, zone);
         DateOnly LocalDay(DateTimeOffset instant) => DateOnly.FromDateTime(timeZones.ConvertFromUtc(instant, zone).DateTime);
@@ -152,25 +154,29 @@ public sealed class StatisticsRepository(ApplicationDbContext dbContext, IOrgani
 
         // 6-Month Comparison Chart (Sales & Expenses)
         var monthComparisonList = new List<MonthlyComparisonPointDto>();
-        var sixMonthsAgo = firstOfMonth.AddMonths(-5);
-        var sixMonthsAgoUtc = timeZones.StartOfDayUtc(sixMonthsAgo, zone);
-        var historyEnd = timeZones.StartOfDayUtc(firstOfMonth.AddMonths(1), zone);
+        var comparisonStart = period == "custom_range"
+            ? new DateOnly(startDay.Year, startDay.Month, 1)
+            : firstOfMonth.AddMonths(-5);
+        var comparisonEnd = period == "custom_range"
+            ? new DateOnly(endDay.AddDays(-1).Year, endDay.AddDays(-1).Month, 1).AddMonths(1)
+            : firstOfMonth.AddMonths(1);
+        var comparisonStartUtc = timeZones.StartOfDayUtc(comparisonStart, zone);
+        var comparisonEndUtc = timeZones.StartOfDayUtc(comparisonEnd, zone);
 
         var historicalOrders = await dbContext.Orders
             .Where(o => o.TenantId == tenantId &&
                         o.Status == "PAID" &&
-                        o.PaidAt >= sixMonthsAgoUtc && o.PaidAt < historyEnd)
+                        o.PaidAt >= comparisonStartUtc && o.PaidAt < comparisonEndUtc)
             .ToListAsync(cancellationToken);
 
         var historicalExpenses = await dbContext.Expenses
             .Where(e => e.TenantId == tenantId &&
                         e.Status == "ACTIVE" &&
-                        (e.BusinessDate.HasValue ? e.BusinessDate >= sixMonthsAgo && e.BusinessDate < firstOfMonth.AddMonths(1) : e.ExpenseDate >= sixMonthsAgoUtc && e.ExpenseDate < historyEnd))
+                        (e.BusinessDate.HasValue ? e.BusinessDate >= comparisonStart && e.BusinessDate < comparisonEnd : e.ExpenseDate >= comparisonStartUtc && e.ExpenseDate < comparisonEndUtc))
             .ToListAsync(cancellationToken);
 
-        for (var m = 0; m < 6; m++)
+        for (var monthDate = comparisonStart; monthDate < comparisonEnd; monthDate = monthDate.AddMonths(1))
         {
-            var monthDate = sixMonthsAgo.AddMonths(m);
             var mSales = historicalOrders
                 .Where(o => o.PaidAt.HasValue && LocalDay(o.PaidAt.Value).Year == monthDate.Year && LocalDay(o.PaidAt.Value).Month == monthDate.Month)
                 .Sum(o => includeTips ? (o.SubtotalAmount + o.TipAmount) : o.SubtotalAmount);

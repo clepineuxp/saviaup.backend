@@ -20,10 +20,18 @@ public sealed class StatisticsController(
     [RequirePermission(PermissionCodes.OrdersRead)]
     public async Task<ActionResult<StatisticsDashboardDto>> GetStatistics(
         [FromQuery] string? period = "current_month",
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
         [FromQuery] bool? includeTips = false,
         CancellationToken cancellationToken = default)
     {
-        var result = await getStatisticsUseCase.ExecuteAsync(currentUser.TenantId!.Value, period, includeTips, cancellationToken);
+        var result = await getStatisticsUseCase.ExecuteAsync(
+            currentUser.TenantId!.Value,
+            period,
+            fromDate,
+            toDate,
+            includeTips,
+            cancellationToken);
         return this.FromResult(result);
     }
 }

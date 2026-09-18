@@ -61,7 +61,8 @@ public sealed class OrganizationTimeZoneTests(SaviaUpApiFactory factory) : IClas
         var receipts = await new GetBillingReceiptsUseCase(new BillingRepository(app), new Clock(), organization, zones).ExecuteAsync(id, new BillingReceiptQueryRequest(FromLocalDate: day, ToLocalDate: day), default);
         Assert.Equal(2, receipts.Value!.TotalCount);
 
-        var stats = await new StatisticsRepository(app, organization, zones).GetDashboardStatisticsAsync(id, "current_month", false, start, default);
+        var stats = await new StatisticsRepository(app, organization, zones)
+            .GetDashboardStatisticsAsync(id, "custom_range", day, day, false, start, default);
         Assert.Equal(2, stats.SalesTrend.Single(p => p.Date == date).OrdersCount);
         Assert.Equal(20m, stats.SalesTrend.Single(p => p.Date == date).Sales);
     }
@@ -86,6 +87,10 @@ public sealed class OrganizationTimeZoneTests(SaviaUpApiFactory factory) : IClas
         Assert.Equal("America/New_York", info.GetProperty("organization").GetProperty("timeZoneId").GetString());
         var wrongFormat = await client.GetAsync("/api/orders?fromDate=2026-09-18T00:00:00Z");
         Assert.Equal(HttpStatusCode.BadRequest, wrongFormat.StatusCode);
+        var missingRangeEnd = await client.GetAsync("/api/statistics?period=custom_range&fromDate=2026-09-18");
+        Assert.Equal(HttpStatusCode.BadRequest, missingRangeEnd.StatusCode);
+        var customRange = await client.GetAsync("/api/statistics?period=custom_range&fromDate=2026-09-18&toDate=2026-09-18");
+        customRange.EnsureSuccessStatusCode();
     }
 
     [Fact]
