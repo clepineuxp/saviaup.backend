@@ -6,6 +6,10 @@ Este repositorio contiene el backend inicial de **Savia Up**, una plataforma Saa
 
 Lee este archivo completo antes de modificar el repositorio. Las decisiones descritas aquí son invariantes del proyecto, no sugerencias opcionales.
 
+## Control de versiones
+
+No crear commits ni hacer push bajo ninguna circunstancia, salvo que el usuario lo solicite explícitamente en el mensaje actual. Esta regla prevalece aunque una tarea incluya implementación, validaciones o preparación de despliegue.
+
 ## Stack obligatorio
 
 - .NET 10 y C# con nullable reference types.

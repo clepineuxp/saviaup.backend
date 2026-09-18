@@ -2,6 +2,8 @@
 
 Backend inicial de Savia Up, una plataforma SaaS multi-tenant para restaurantes y gastrobares. Está implementado en .NET 10, ASP.NET Core Controllers, Entity Framework Core 10 y PostgreSQL, con arquitectura hexagonal (Ports & Adapters).
 
+> Control de versiones: no se crean commits ni se hace push salvo solicitud explícita del usuario en el mensaje actual.
+
 ## Fechas y zonas horarias
 
 Los instantes se almacenan en UTC (`DateTimeOffset`/`timestamptz`) y cada organización usa su `TimeZoneId` IANA. Los filtros por día reciben `yyyy-MM-dd` y se resuelven en el backend como rangos UTC de la organización. La auditoría, riesgos para históricos y scripts idempotentes están en [docs/time-zones-audit.md](docs/time-zones-audit.md).

@@ -555,6 +555,8 @@ public interface IGetStatisticsUseCase
     Task<Result<StatisticsDashboardDto>> ExecuteAsync(
         Guid tenantId,
         string? period,
+        DateOnly? fromDate,
+        DateOnly? toDate,
         bool? includeTips,
         CancellationToken cancellationToken);
 }

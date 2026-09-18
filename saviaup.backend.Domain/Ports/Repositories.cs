@@ -276,6 +276,8 @@ public interface IStatisticsRepository
     Task<StatisticsDashboardDto> GetDashboardStatisticsAsync(
         Guid tenantId,
         string period,
+        DateOnly? fromDate,
+        DateOnly? toDate,
         bool includeTips,
         DateTimeOffset now,
         CancellationToken cancellationToken);
