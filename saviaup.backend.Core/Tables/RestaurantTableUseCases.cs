@@ -161,7 +161,7 @@ public sealed class GetTableOperationUseCase(
     ICashRegisterShiftRepository shiftRepository,
     IOrderRepository orderRepository,
     IExpenseRepository expenseRepository,
-    IDateTimeProvider clock) : IGetTableOperationUseCase
+    IDateTimeProvider clock, ITimeZoneService timeZones) : IGetTableOperationUseCase
 {
     public async Task<Result<TableOperationSnapshotDto>> ExecuteAsync(
         Guid tenantId,
@@ -179,14 +179,15 @@ public sealed class GetTableOperationUseCase(
             area.Tables.OrderBy(table => table.NormalizedName).Select(TableRules.ToDto).ToArray())).ToArray();
 
         var utcNow = clock.UtcNow.ToUniversalTime();
-        var todayStart = new DateTimeOffset(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, TimeSpan.Zero).AddDays(-1);
-        var todayEnd = new DateTimeOffset(utcNow.Year, utcNow.Month, utcNow.Day, 23, 59, 59, 999, TimeSpan.Zero).AddDays(1);
+        var today = DateOnly.FromDateTime(timeZones.ConvertFromUtc(utcNow, tenant.TimeZoneId).DateTime);
+        var (todayStart, todayEnd) = timeZones.GetUtcRangeForLocalDate(today, tenant.TimeZoneId);
 
         var todayOrdersPage = await orderRepository.GetOrdersPageAsync(tenantId, new OrderQueryRequest
         {
             Page = 1,
             PageSize = 10000,
             Statuses = new[] { "PAID" },
+            ForSettlement = true,
             FromDate = todayStart,
             ToDate = todayEnd
         }, cancellationToken);
@@ -202,8 +203,8 @@ public sealed class GetTableOperationUseCase(
             paymentMethod: null,
             isCashOut: null,
             page: 1,
-            pageSize: 10000,
-            cancellationToken);
+            pageSize: int.MaxValue,
+            cancellationToken, FromBusinessDate: today, ToBusinessDate: today.AddDays(1));
         var todayExpensesTotal = todayExpensesPage.Items.Sum(e => e.Amount);
 
         decimal openShiftExpensesTotal = 0m;
@@ -213,15 +214,15 @@ public sealed class GetTableOperationUseCase(
             var shiftExpensesPage = await expenseRepository.GetPageAsync(
                 tenantId,
                 fromDate: openShift.OpenedAt,
-                toDate: utcNow.AddDays(1),
+                toDate: utcNow,
                 search: null,
                 supplierId: null,
                 status: "ACTIVE",
                 paymentMethod: null,
                 isCashOut: true,
                 page: 1,
-                pageSize: 10000,
-                cancellationToken);
+                pageSize: int.MaxValue,
+                cancellationToken, ByCreatedAt: true);
             openShiftExpensesTotal = shiftExpensesPage.Items.Sum(e => e.Amount);
 
             var shiftOrdersPage = await orderRepository.GetOrdersPageAsync(tenantId, new OrderQueryRequest
@@ -229,8 +230,9 @@ public sealed class GetTableOperationUseCase(
                 Page = 1,
                 PageSize = 10000,
                 Statuses = new[] { "PAID" },
+                ForSettlement = true,
                 FromDate = openShift.OpenedAt,
-                ToDate = utcNow.AddDays(1)
+                ToDate = utcNow
             }, cancellationToken);
             openShiftSalesTotal = shiftOrdersPage.Items.Sum(o => o.TotalAmount);
         }

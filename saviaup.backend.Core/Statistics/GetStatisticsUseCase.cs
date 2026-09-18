@@ -4,7 +4,7 @@ using SaviaUp.Backend.Domain.Results;
 
 namespace SaviaUp.Backend.Core.Statistics;
 
-public sealed class GetStatisticsUseCase(IStatisticsRepository repository) : IGetStatisticsUseCase
+public sealed class GetStatisticsUseCase(IStatisticsRepository repository, IDateTimeProvider clock) : IGetStatisticsUseCase
 {
     public async Task<Result<StatisticsDashboardDto>> ExecuteAsync(
         Guid tenantId,
@@ -21,7 +21,7 @@ public sealed class GetStatisticsUseCase(IStatisticsRepository repository) : IGe
             tenantId,
             normalizedPeriod,
             shouldIncludeTips,
-            DateTimeOffset.UtcNow,
+            clock.UtcNow,
             cancellationToken);
 
         return Result<StatisticsDashboardDto>.Success(data);

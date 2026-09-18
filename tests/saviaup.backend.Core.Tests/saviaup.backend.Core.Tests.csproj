@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\saviaup.backend.Infrastructure\saviaup.backend.Infrastructure.csproj" />
     <ProjectReference Include="..\..\saviaup.backend.Core\saviaup.backend.Core.csproj" />
     <ProjectReference Include="..\..\saviaup.backend.Domain\saviaup.backend.Domain.csproj" />
     <ProjectReference Include="..\..\saviaup.backend.Shared\saviaup.backend.Shared.csproj" />

@@ -19,7 +19,7 @@ public sealed class AccessSettingsUseCase(
     IEmailSender emailSender,
     IOptions<FrontendOptions> frontendOptions,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork) : IAccessSettingsUseCase
+    IUnitOfWork unitOfWork, ITimeZoneService timeZones) : IAccessSettingsUseCase
 {
     public async Task<Result<IReadOnlyCollection<EnabledModulePermissionsDto>>> GetPermissionsAsync(Guid tenantId, CancellationToken cancellationToken)
         => Result<IReadOnlyCollection<EnabledModulePermissionsDto>>.Success(await repository.GetEnabledPermissionCatalogAsync(tenantId, cancellationToken));
@@ -144,9 +144,19 @@ public sealed class AccessSettingsUseCase(
             && !await repository.HasAnotherActiveOwnerAsync(tenantId, membership.Id, clock.UtcNow, cancellationToken))
             return Result<OrganizationUserDto>.Failure(Errors.OrganizationOwnerRequired);
 
+        if (request.DisabledThroughDate == DateOnly.MaxValue)
+            return Result<OrganizationUserDto>.Failure(Errors.Validation);
+
         membership.RoleId = role.Id;
         membership.IsActive = request.IsActive;
-        membership.DisabledUntil = request.IsActive ? null : request.DisabledUntil;
+        var disabledUntil = request.DisabledUntil?.ToUniversalTime();
+        if (request.DisabledThroughDate is { } throughDate)
+        {
+            var tenant = await tenants.GetByIdAsync(tenantId, cancellationToken);
+            if (tenant is null) return Result<OrganizationUserDto>.Failure(Errors.TenantNotFound);
+            disabledUntil = timeZones.StartOfDayUtc(throughDate.AddDays(1), tenant.TimeZoneId);
+        }
+        membership.DisabledUntil = request.IsActive ? null : disabledUntil;
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<OrganizationUserDto>.Success(MapMembership(membership, role.Name));
     }

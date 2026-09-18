@@ -78,7 +78,8 @@ public sealed record OrderQueryRequest(
     IReadOnlyCollection<string>? Statuses = null,
     DateTimeOffset? FromDate = null,
     DateTimeOffset? ToDate = null,
-    Guid? TableId = null);
+    Guid? TableId = null,
+    DateOnly? FromLocalDate = null, DateOnly? ToLocalDate = null, bool ForSettlement = false);
 
 public sealed record CreateOrderItemRequest(
     Guid? ProductId,

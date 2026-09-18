@@ -9,7 +9,7 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
 public sealed class TenantRepository(
     PlatformDbContext platformContext,
-    ApplicationDbContext appContext) : ITenantRepository
+    ApplicationDbContext appContext, IDateTimeProvider clock) : ITenantRepository
 {
     public Task<Tenant?> GetByIdAsync(Guid tenantId, CancellationToken cancellationToken)
         => platformContext.Tenants.AsNoTracking().SingleOrDefaultAsync(tenant => tenant.Id == tenantId, cancellationToken);
@@ -23,8 +23,8 @@ public sealed class TenantRepository(
     {
         var memberships = await platformContext.TenantMemberships
             .AsNoTracking()
-            .Where(m => m.UserId == userId && (m.IsActive || m.DisabledUntil <= DateTimeOffset.UtcNow) && m.Tenant.IsActive)
-            .Select(m => new { m.TenantId, TenantName = m.Tenant.Name, m.RoleId })
+            .Where(m => m.UserId == userId && (m.IsActive || m.DisabledUntil <= clock.UtcNow) && m.Tenant.IsActive)
+            .Select(m => new { m.TenantId, TenantName = m.Tenant.Name, m.Tenant.TimeZoneId, m.RoleId })
             .ToListAsync(cancellationToken);
 
         if (memberships.Count == 0) return [];
@@ -41,7 +41,7 @@ public sealed class TenantRepository(
         {
             if (roles.TryGetValue(m.RoleId, out var roleName))
             {
-                result.Add(new TenantDto(m.TenantId, m.TenantName, m.RoleId, roleName));
+                result.Add(new TenantDto(m.TenantId, m.TenantName, m.RoleId, roleName, m.TimeZoneId));
             }
         }
 

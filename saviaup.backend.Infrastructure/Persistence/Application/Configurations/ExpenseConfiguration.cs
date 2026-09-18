@@ -29,6 +29,8 @@ internal sealed class ExpenseConfiguration : IEntityTypeConfiguration<Expense>
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.Property(x => x.ExpenseDate).IsRequired();
+        builder.Property(x => x.BusinessDate).HasColumnType("date");
+        builder.HasIndex(x => new { x.TenantId, x.BusinessDate });
         builder.Property(x => x.Status).HasMaxLength(40).IsRequired();
 
         builder.Property(x => x.AnnulledReason).HasMaxLength(500);

@@ -6,7 +6,7 @@ using SaviaUp.Backend.Infrastructure.Persistence.Application;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
-public sealed class StatisticsRepository(ApplicationDbContext dbContext) : IStatisticsRepository
+public sealed class StatisticsRepository(ApplicationDbContext dbContext, IOrganizationTimeZone organizationTimeZone, ITimeZoneService timeZones) : IStatisticsRepository
 {
     private static readonly string[] MonthNamesEs =
         ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -18,81 +18,40 @@ public sealed class StatisticsRepository(ApplicationDbContext dbContext) : IStat
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        var utcNow = now.ToUniversalTime();
-        DateTimeOffset startDate;
-        DateTimeOffset endDate;
-
-        if (period == "last_30_days")
-        {
-            startDate = new DateTimeOffset(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, TimeSpan.Zero).AddDays(-29);
-            endDate = new DateTimeOffset(utcNow.Year, utcNow.Month, utcNow.Day, 23, 59, 59, 999, TimeSpan.Zero);
-        }
-        else
-        {
-            // current_month
-            startDate = new DateTimeOffset(utcNow.Year, utcNow.Month, 1, 0, 0, 0, TimeSpan.Zero);
-            var daysInMonth = DateTime.DaysInMonth(utcNow.Year, utcNow.Month);
-            endDate = new DateTimeOffset(utcNow.Year, utcNow.Month, daysInMonth, 23, 59, 59, 999, TimeSpan.Zero);
-        }
+        var zone = await organizationTimeZone.GetAsync(tenantId, cancellationToken);
+        var today = DateOnly.FromDateTime(timeZones.ConvertFromUtc(now, zone).DateTime);
+        var firstOfMonth = new DateOnly(today.Year, today.Month, 1);
+        var startDay = period == "last_30_days" ? today.AddDays(-29) : firstOfMonth;
+        var endDay = period == "last_30_days" ? today.AddDays(1) : firstOfMonth.AddMonths(1);
+        var startDate = timeZones.StartOfDayUtc(startDay, zone);
+        var endDate = timeZones.StartOfDayUtc(endDay, zone);
+        DateOnly LocalDay(DateTimeOffset instant) => DateOnly.FromDateTime(timeZones.ConvertFromUtc(instant, zone).DateTime);
 
         // Fetch completed/paid orders within period range
         var orders = await dbContext.Orders
             .Include(o => o.Items)
             .Where(o => o.TenantId == tenantId &&
                         o.Status == "PAID" &&
-                        o.CreatedAt >= startDate &&
-                        o.CreatedAt <= endDate)
+                        o.PaidAt >= startDate &&
+                        o.PaidAt < endDate)
             .ToListAsync(cancellationToken);
 
         // Fetch active expenses within period range
         var expenses = await dbContext.Expenses
             .Where(e => e.TenantId == tenantId &&
                         e.Status == "ACTIVE" &&
-                        e.ExpenseDate >= startDate &&
-                        e.ExpenseDate <= endDate)
+                        (e.BusinessDate.HasValue ? e.BusinessDate >= startDay && e.BusinessDate < endDay : e.ExpenseDate >= startDate && e.ExpenseDate < endDate))
             .ToListAsync(cancellationToken);
 
-        // Daily trend data points
+        // Group UTC instants by the organization's civil calendar, including DST.
         var trendPoints = new List<DailySalesPointDto>();
-        if (period == "current_month")
+        var ordersByDay = orders.Where(o => o.PaidAt.HasValue).GroupBy(o => LocalDay(o.PaidAt!.Value)).ToDictionary(g => g.Key, g => g.ToList());
+        for (var day = startDay; day < endDay; day = day.AddDays(1))
         {
-            var daysInMonth = DateTime.DaysInMonth(utcNow.Year, utcNow.Month);
-            for (var d = 1; d <= daysInMonth; d++)
-            {
-                var dayDate = new DateTime(utcNow.Year, utcNow.Month, d);
-                var dayOrders = orders.Where(o => o.CreatedAt.Date == dayDate).ToList();
-
-                var sales = dayOrders.Sum(o => o.SubtotalAmount);
-                var tips = dayOrders.Sum(o => o.TipAmount);
-
-                trendPoints.Add(new DailySalesPointDto(
-                    dayDate.ToString("yyyy-MM-dd"),
-                    d.ToString("D2"),
-                    includeTips ? (sales + tips) : sales,
-                    tips,
-                    dayOrders.Count
-                ));
-            }
-        }
-        else
-        {
-            for (var i = 0; i < 30; i++)
-            {
-                var dayDate = startDate.Date.AddDays(i);
-                if (dayDate > utcNow.Date) break;
-
-                var dayOrders = orders.Where(o => o.CreatedAt.Date == dayDate).ToList();
-                var sales = dayOrders.Sum(o => o.SubtotalAmount);
-                var tips = dayOrders.Sum(o => o.TipAmount);
-
-                trendPoints.Add(new DailySalesPointDto(
-                    dayDate.ToString("yyyy-MM-dd"),
-                    dayDate.Day.ToString("D2"),
-                    includeTips ? (sales + tips) : sales,
-                    tips,
-                    dayOrders.Count
-                ));
-            }
+            var dayOrders = ordersByDay.GetValueOrDefault(day) ?? [];
+            var sales = dayOrders.Sum(o => o.SubtotalAmount);
+            var tips = dayOrders.Sum(o => o.TipAmount);
+            trendPoints.Add(new DailySalesPointDto(day.ToString("yyyy-MM-dd"), day.Day.ToString("D2"), includeTips ? sales + tips : sales, tips, dayOrders.Count));
         }
 
         // Summary Calculations
@@ -193,30 +152,31 @@ public sealed class StatisticsRepository(ApplicationDbContext dbContext) : IStat
 
         // 6-Month Comparison Chart (Sales & Expenses)
         var monthComparisonList = new List<MonthlyComparisonPointDto>();
-        var firstOfCurrentMonthUtc = new DateTimeOffset(utcNow.Year, utcNow.Month, 1, 0, 0, 0, TimeSpan.Zero);
-        var sixMonthsAgoUtc = firstOfCurrentMonthUtc.AddMonths(-5);
+        var sixMonthsAgo = firstOfMonth.AddMonths(-5);
+        var sixMonthsAgoUtc = timeZones.StartOfDayUtc(sixMonthsAgo, zone);
+        var historyEnd = timeZones.StartOfDayUtc(firstOfMonth.AddMonths(1), zone);
 
         var historicalOrders = await dbContext.Orders
             .Where(o => o.TenantId == tenantId &&
                         o.Status == "PAID" &&
-                        o.CreatedAt >= sixMonthsAgoUtc)
+                        o.PaidAt >= sixMonthsAgoUtc && o.PaidAt < historyEnd)
             .ToListAsync(cancellationToken);
 
         var historicalExpenses = await dbContext.Expenses
             .Where(e => e.TenantId == tenantId &&
                         e.Status == "ACTIVE" &&
-                        e.ExpenseDate >= sixMonthsAgoUtc)
+                        (e.BusinessDate.HasValue ? e.BusinessDate >= sixMonthsAgo && e.BusinessDate < firstOfMonth.AddMonths(1) : e.ExpenseDate >= sixMonthsAgoUtc && e.ExpenseDate < historyEnd))
             .ToListAsync(cancellationToken);
 
         for (var m = 0; m < 6; m++)
         {
-            var monthDate = sixMonthsAgoUtc.AddMonths(m);
+            var monthDate = sixMonthsAgo.AddMonths(m);
             var mSales = historicalOrders
-                .Where(o => o.CreatedAt.Year == monthDate.Year && o.CreatedAt.Month == monthDate.Month)
+                .Where(o => o.PaidAt.HasValue && LocalDay(o.PaidAt.Value).Year == monthDate.Year && LocalDay(o.PaidAt.Value).Month == monthDate.Month)
                 .Sum(o => includeTips ? (o.SubtotalAmount + o.TipAmount) : o.SubtotalAmount);
 
             var mExpenses = historicalExpenses
-                .Where(e => e.ExpenseDate.Year == monthDate.Year && e.ExpenseDate.Month == monthDate.Month)
+                .Where(e => (e.BusinessDate ?? LocalDay(e.ExpenseDate)).Year == monthDate.Year && (e.BusinessDate ?? LocalDay(e.ExpenseDate)).Month == monthDate.Month)
                 .Sum(e => e.Amount);
 
             monthComparisonList.Add(new MonthlyComparisonPointDto(

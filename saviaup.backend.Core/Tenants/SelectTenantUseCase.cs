@@ -37,7 +37,7 @@ public sealed class SelectTenantUseCase(
             await refreshTokenRepository.RevokeSessionAsync(userId, currentSessionId, now, transactionToken);
             var issued = await sessionIssuer.IssueAsync(user, currentSessionId, membership, transactionToken);
             await unitOfWork.SaveChangesAsync(transactionToken);
-            var tenant = new TenantDto(membership.TenantId, membership.Tenant.Name, membership.RoleId, role.Name);
+            var tenant = new TenantDto(membership.TenantId, membership.Tenant.Name, membership.RoleId, role.Name, membership.Tenant.TimeZoneId);
             return Result<TenantSessionResponse>.Success(new TenantSessionResponse(tenant, SessionIssuer.ToTokenResponse(issued.Session)));
         }, cancellationToken);
     }

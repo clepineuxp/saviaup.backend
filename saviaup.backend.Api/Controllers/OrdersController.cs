@@ -33,12 +33,12 @@ public sealed class OrdersController(
         [FromQuery] int pageSize = 25,
         [FromQuery] string? search = null,
         [FromQuery] string[]? statuses = null,
-        [FromQuery] DateTimeOffset? fromDate = null,
-        [FromQuery] DateTimeOffset? toDate = null,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
         [FromQuery] Guid? tableId = null,
         CancellationToken cancellationToken = default)
     {
-        var req = new OrderQueryRequest(page, pageSize, search, statuses, fromDate, toDate, tableId);
+        var req = new OrderQueryRequest(page, pageSize, search, statuses, TableId: tableId, FromLocalDate: fromDate, ToLocalDate: toDate);
         return this.FromResult(await getOrdersPageUseCase.ExecuteAsync(currentUser.TenantId!.Value, req, cancellationToken));
     }
 
@@ -49,12 +49,12 @@ public sealed class OrdersController(
         [FromQuery] int pageSize = 25,
         [FromQuery] string? search = null,
         [FromQuery] string[]? statuses = null,
-        [FromQuery] DateTimeOffset? fromDate = null,
-        [FromQuery] DateTimeOffset? toDate = null,
+        [FromQuery] DateOnly? fromDate = null,
+        [FromQuery] DateOnly? toDate = null,
         [FromQuery] Guid? tableId = null,
         CancellationToken cancellationToken = default)
     {
-        var req = new OrderQueryRequest(page, pageSize, search, statuses, fromDate, toDate, tableId);
+        var req = new OrderQueryRequest(page, pageSize, search, statuses, TableId: tableId, FromLocalDate: fromDate, ToLocalDate: toDate);
         return this.FromResult(await getOrderItemsPageUseCase.ExecuteAsync(currentUser.TenantId!.Value, req, cancellationToken));
     }
 

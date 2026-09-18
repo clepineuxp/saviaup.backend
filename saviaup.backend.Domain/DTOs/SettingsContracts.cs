@@ -17,7 +17,7 @@ public sealed record OrganizationSettingsDto(
     string? Website,
     bool HasLogo,
     long LogoVersion,
-    bool CanEditDocument);
+    bool CanEditDocument, string TimeZoneId = "America/Bogota");
 
 public sealed record UpdateOrganizationSettingsRequest(
     [Required, MaxLength(120)] string Name,
@@ -30,7 +30,8 @@ public sealed record UpdateOrganizationSettingsRequest(
     [MaxLength(120)] string? State,
     [MaxLength(120)] string? City,
     [MaxLength(50)] string? Phone,
-    [Url, MaxLength(2048)] string? Website);
+    [Url, MaxLength(2048)] string? Website,
+    [MaxLength(100)] string? TimeZoneId = null);
 
 public sealed record UploadOrganizationLogoRequest(byte[] Content, string ContentType, string? FileName);
 public sealed record OrganizationLogoDto(byte[] Content, string ContentType, string FileName);
@@ -106,4 +107,4 @@ public sealed record InviteOrganizationUserRequest(
 public sealed record UpdateOrganizationUserRequest(
     Guid RoleId,
     bool IsActive,
-    DateTimeOffset? DisabledUntil);
+    DateTimeOffset? DisabledUntil, DateOnly? DisabledThroughDate = null);

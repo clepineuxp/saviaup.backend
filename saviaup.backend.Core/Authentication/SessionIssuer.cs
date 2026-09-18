@@ -52,7 +52,7 @@ public sealed class SessionIssuer(
             {
                 role = new RoleDto(membership.RoleId, roleEntity.Code, roleEntity.Name);
             }
-            tenant = new ActiveTenantDto(membership.TenantId, membership.Tenant.Name);
+            tenant = new ActiveTenantDto(membership.TenantId, membership.Tenant.Name, membership.Tenant.TimeZoneId);
         }
 
         var userDto = new UserDto(

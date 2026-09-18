@@ -36,7 +36,7 @@ public sealed class BillingRepository(ApplicationDbContext dbContext) : IBilling
 
         if (request.ToDate.HasValue)
         {
-            query = query.Where(r => r.CreatedAt <= request.ToDate.Value);
+            query = query.Where(r => r.CreatedAt < request.ToDate.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(request.Search))
@@ -105,7 +105,7 @@ public sealed class BillingRepository(ApplicationDbContext dbContext) : IBilling
 
         if (request.ToDate.HasValue)
         {
-            query = query.Where(o => o.CreatedAt <= request.ToDate.Value);
+            query = query.Where(o => o.CreatedAt < request.ToDate.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(request.Search))

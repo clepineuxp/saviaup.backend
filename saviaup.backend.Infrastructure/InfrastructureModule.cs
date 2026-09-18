@@ -28,6 +28,8 @@ public static class InfrastructureModule
         services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(appConnection));
 
         services.AddScoped<ITenantContext, TenantContext>();
+        services.AddSingleton<ITimeZoneService, IanaTimeZoneService>();
+        services.AddScoped<IOrganizationTimeZone, OrganizationTimeZone>();
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<FrontendOptions>(configuration.GetSection(FrontendOptions.SectionName));

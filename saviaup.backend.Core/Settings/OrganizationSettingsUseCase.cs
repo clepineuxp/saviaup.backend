@@ -10,7 +10,7 @@ public sealed class OrganizationSettingsUseCase(
     ISettingsRepository repository,
     IRoleRepository roleRepository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork) : IOrganizationSettingsUseCase
+    IUnitOfWork unitOfWork, ITimeZoneService timeZones) : IOrganizationSettingsUseCase
 {
     private static readonly HashSet<string> LogoTypes = new(StringComparer.OrdinalIgnoreCase) { "image/png", "image/jpeg", "image/webp" };
 
@@ -33,6 +33,9 @@ public sealed class OrganizationSettingsUseCase(
         if (!isOwner && !string.Equals(document, tenant.Document, StringComparison.Ordinal))
             return Result<OrganizationSettingsDto>.Failure(Errors.OrganizationDocumentOwnerOnly);
 
+        if (request.TimeZoneId is not null && !timeZones.IsValid(request.TimeZoneId))
+            return Result<OrganizationSettingsDto>.Failure(Errors.Validation);
+        if (request.TimeZoneId is not null) tenant.TimeZoneId = request.TimeZoneId;
         tenant.Name = SettingsDefaults.Normalize(request.Name);
         tenant.ResponsibleName = Clean(request.ResponsibleName);
         tenant.Document = document;
@@ -82,5 +85,5 @@ public sealed class OrganizationSettingsUseCase(
     private static OrganizationSettingsDto Map(Tenant tenant, bool canEditDocument) => new(
         tenant.Id, tenant.Name, tenant.ResponsibleName, tenant.Document, tenant.ContactName, tenant.Email, tenant.Address,
         tenant.Country, tenant.State, tenant.City, tenant.Phone, tenant.Website, tenant.LogoData is not null,
-        tenant.UpdatedAt.ToUnixTimeMilliseconds(), canEditDocument);
+        tenant.UpdatedAt.ToUnixTimeMilliseconds(), canEditDocument, tenant.TimeZoneId);
 }

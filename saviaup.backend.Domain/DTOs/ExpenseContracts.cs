@@ -23,7 +23,7 @@ public sealed record ExpenseDto(
     string? CreatedByUserName,
     string? LastModifiedByUserName,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt, DateOnly? BusinessDate = null);
 
 public sealed record CreateExpenseRequest(
     [Required, MaxLength(160)] string Name,
@@ -32,7 +32,7 @@ public sealed record CreateExpenseRequest(
     bool IsCashOut,
     [Required, MaxLength(120)] string PaymentMethod,
     Guid? SupplierId,
-    DateTimeOffset? ExpenseDate);
+    DateTimeOffset? ExpenseDate, DateOnly? BusinessDate = null);
 
 public sealed record UpdateExpenseRequest(
     [Required, MaxLength(160)] string Name,
@@ -41,7 +41,7 @@ public sealed record UpdateExpenseRequest(
     bool IsCashOut,
     [Required, MaxLength(120)] string PaymentMethod,
     Guid? SupplierId,
-    DateTimeOffset? ExpenseDate);
+    DateTimeOffset? ExpenseDate, DateOnly? BusinessDate = null);
 
 public sealed record AnnulExpenseRequest(
     [MaxLength(500)] string? Reason);
