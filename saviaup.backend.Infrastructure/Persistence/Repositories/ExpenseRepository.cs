@@ -89,10 +89,27 @@ internal sealed class ExpenseRepository(ApplicationDbContext dbContext, IDateTim
     public async Task<long> GetNextConsecutiveAsync(Guid tenantId, CancellationToken cancellationToken)
     {
         const string parameterKey = "expenses.nextConsecutive";
+
+        if (dbContext.Database.IsNpgsql())
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({tenantId.ToString()}, 0));",
+                cancellationToken);
+        }
+
+        var highestConsecutive = await dbContext.Expenses
+            .Where(x => x.TenantId == tenantId)
+            .MaxAsync(x => (long?)x.ConsecutiveNumber, cancellationToken) ?? 0;
+
         var param = await dbContext.OrganizationParameters
             .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Key == parameterKey, cancellationToken);
 
-        long currentConsecutive = 1;
+        var configuredConsecutive = param is not null
+            && long.TryParse(param.Value, out var parsedValue)
+            && parsedValue > 0
+                ? parsedValue
+                : 1;
+        var currentConsecutive = Math.Max(configuredConsecutive, highestConsecutive + 1);
         var now = clock.UtcNow;
 
         if (param is null)
@@ -102,7 +119,7 @@ internal sealed class ExpenseRepository(ApplicationDbContext dbContext, IDateTim
                 Id = Guid.NewGuid(),
                 TenantId = tenantId,
                 Key = parameterKey,
-                Value = "2",
+                Value = (currentConsecutive + 1).ToString(),
                 ValueType = "integer",
                 CreatedAt = now,
                 UpdatedAt = now
@@ -111,10 +128,6 @@ internal sealed class ExpenseRepository(ApplicationDbContext dbContext, IDateTim
         }
         else
         {
-            if (long.TryParse(param.Value, out var parsedValue) && parsedValue > 0)
-            {
-                currentConsecutive = parsedValue;
-            }
             param.Value = (currentConsecutive + 1).ToString();
             param.UpdatedAt = now;
         }
