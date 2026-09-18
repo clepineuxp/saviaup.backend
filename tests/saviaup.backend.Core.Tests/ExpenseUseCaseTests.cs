@@ -27,6 +27,11 @@ public sealed class ExpenseUseCaseTests
         repository.Setup(x => x.AddAsync(It.IsAny<Expense>(), It.IsAny<CancellationToken>()))
             .Callback<Expense, CancellationToken>((e, _) => persisted = e)
             .Returns(Task.CompletedTask);
+        unitOfWork.Setup(x => x.ExecuteInTransactionAsync(
+                It.IsAny<Func<CancellationToken, Task<Result<ExpenseDto>>>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<Func<CancellationToken, Task<Result<ExpenseDto>>>, CancellationToken>(
+                (action, token) => action(token));
 
         var useCase = new CreateExpenseUseCase(
             repository.Object,
@@ -53,6 +58,46 @@ public sealed class ExpenseUseCaseTests
         Assert.True(persisted.IsCashOut);
         Assert.Equal("ACTIVE", persisted.Status);
         unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateExpense_WithBusinessDate_UsesOrganizationStartOfDay()
+    {
+        var tenantId = Guid.NewGuid();
+        var repository = new Mock<IExpenseRepository>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        Expense? persisted = null;
+
+        repository.Setup(x => x.GetNextConsecutiveAsync(tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(840);
+        repository.Setup(x => x.AddAsync(It.IsAny<Expense>(), It.IsAny<CancellationToken>()))
+            .Callback<Expense, CancellationToken>((expense, _) => persisted = expense)
+            .Returns(Task.CompletedTask);
+        unitOfWork.Setup(x => x.ExecuteInTransactionAsync(
+                It.IsAny<Func<CancellationToken, Task<Result<ExpenseDto>>>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<Func<CancellationToken, Task<Result<ExpenseDto>>>, CancellationToken>(
+                (action, token) => action(token));
+
+        var useCase = new CreateExpenseUseCase(
+            repository.Object,
+            Mock.Of<ISupplierRepository>(),
+            new FixedClock(TestSupport.Now),
+            unitOfWork.Object,
+            new FixedOrganizationTimeZone(),
+            TestSupport.TimeZones());
+
+        var request = new CreateExpenseRequest(
+            "tomates", null, 20000m, true, "Efectivo", null, null, new DateOnly(2026, 9, 18));
+
+        var result = await useCase.ExecuteAsync(
+            tenantId, Guid.NewGuid(), "Test User", request, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(persisted);
+        Assert.Equal(840, persisted.ConsecutiveNumber);
+        Assert.Equal(new DateOnly(2026, 9, 18), persisted.BusinessDate);
+        Assert.Equal(new DateTimeOffset(2026, 9, 18, 5, 0, 0, TimeSpan.Zero), persisted.ExpenseDate);
     }
 
     [Fact]
