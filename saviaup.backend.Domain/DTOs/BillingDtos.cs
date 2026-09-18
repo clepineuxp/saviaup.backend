@@ -5,7 +5,8 @@ public sealed record BillingReceiptQueryRequest(
     int PageSize = 25,
     string? Search = null,
     DateTimeOffset? FromDate = null,
-    DateTimeOffset? ToDate = null);
+    DateTimeOffset? ToDate = null,
+    DateOnly? FromLocalDate = null, DateOnly? ToLocalDate = null);
 
 public sealed record BillingReceiptItemDto(
     Guid ReceiptId,

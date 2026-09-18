@@ -25,6 +25,8 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.HasIndex(o => new { o.TenantId, o.TableId, o.Status });
         builder.HasIndex(o => new { o.TenantId, o.OrderNumber });
+        builder.HasIndex(o => new { o.TenantId, o.CreatedAt });
+        builder.HasIndex(o => new { o.TenantId, o.PaidAt });
 
         builder.HasOne(o => o.Table)
             .WithMany()

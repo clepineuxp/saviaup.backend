@@ -159,8 +159,8 @@ public interface IGetExpensesUseCase
 {
     Task<Result<ExpensePageDto>> ExecuteAsync(
         Guid tenantId,
-        DateTimeOffset? fromDate,
-        DateTimeOffset? toDate,
+        DateOnly? fromDate,
+        DateOnly? toDate,
         string? search,
         Guid? supplierId,
         string? status,

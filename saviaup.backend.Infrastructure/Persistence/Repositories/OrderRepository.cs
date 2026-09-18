@@ -32,13 +32,13 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
         if (request.FromDate.HasValue)
         {
             var fromUtc = request.FromDate.Value.ToUniversalTime();
-            query = query.Where(o => o.CreatedAt >= fromUtc);
+            query = query.Where(o => (request.ForSettlement ? o.PaidAt : o.CreatedAt) >= fromUtc);
         }
 
         if (request.ToDate.HasValue)
         {
             var toUtc = request.ToDate.Value.ToUniversalTime();
-            query = query.Where(o => o.CreatedAt <= toUtc);
+            query = query.Where(o => (request.ForSettlement ? o.PaidAt : o.CreatedAt) < toUtc);
         }
 
         if (!string.IsNullOrWhiteSpace(request.Search))
@@ -55,7 +55,7 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
         var totalCount = await query.CountAsync(cancellationToken);
 
         var page = Math.Max(1, request.Page);
-        var pageSize = Math.Clamp(request.PageSize, 1, 100);
+        var pageSize = request.ForSettlement ? int.MaxValue : Math.Clamp(request.PageSize, 1, 100);
 
         var items = await query
             .OrderByDescending(o => o.CreatedAt)
@@ -139,7 +139,7 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
 
         if (request.ToDate.HasValue)
         {
-            query = query.Where(i => i.CreatedAt <= request.ToDate.Value);
+            query = query.Where(i => i.CreatedAt < request.ToDate.Value);
         }
 
         if (!string.IsNullOrWhiteSpace(request.Search))
@@ -156,7 +156,7 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
         var totalCount = await query.CountAsync(cancellationToken);
 
         var page = Math.Max(1, request.Page);
-        var pageSize = Math.Clamp(request.PageSize, 1, 100);
+        var pageSize = request.ForSettlement ? int.MaxValue : Math.Clamp(request.PageSize, 1, 100);
 
         var items = await query
             .OrderByDescending(i => i.CreatedAt)

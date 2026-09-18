@@ -3,6 +3,7 @@ namespace SaviaUp.Backend.Domain.Entities;
 public sealed class Tenant
 {
     public Guid Id { get; set; }
+    public string TimeZoneId { get; set; } = "America/Bogota";
     public string Name { get; set; } = string.Empty;
     public string? ResponsibleName { get; set; }
     public string? Document { get; set; }

@@ -154,7 +154,7 @@ public interface IExpenseRepository
         bool? isCashOut,
         int page,
         int pageSize,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken, bool ByCreatedAt = false, DateOnly? FromBusinessDate = null, DateOnly? ToBusinessDate = null);
     Task<Expense?> GetByIdAsync(Guid tenantId, Guid expenseId, CancellationToken cancellationToken);
     Task<long> GetNextConsecutiveAsync(Guid tenantId, CancellationToken cancellationToken);
     Task AddAsync(Expense expense, CancellationToken cancellationToken);

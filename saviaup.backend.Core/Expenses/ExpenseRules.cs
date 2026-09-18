@@ -40,7 +40,7 @@ public static class ExpenseRules
         var cleanPaymentMethod = SettingsDefaults.Normalize(paymentMethod);
         if (cleanPaymentMethod.Length is 0 or > 120) return false;
 
-        var finalDate = expenseDate ?? defaultNow;
+        var finalDate = (expenseDate ?? defaultNow).ToUniversalTime();
 
         values = new PreparedExpenseValues(
             cleanName,
@@ -71,7 +71,7 @@ public static class ExpenseRules
         entity.CreatedByUserName,
         entity.LastModifiedByUserName,
         entity.CreatedAt,
-        entity.UpdatedAt);
+        entity.UpdatedAt, entity.BusinessDate);
 
     private static string? CleanOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : SettingsDefaults.Normalize(value);

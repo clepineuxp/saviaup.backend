@@ -24,8 +24,8 @@ public sealed class ExpensesController(
     [HttpGet]
     [RequirePermission(PermissionCodes.ExpensesRead)]
     public async Task<ActionResult<ExpensePageDto>> GetPage(
-        [FromQuery] DateTimeOffset? fromDate,
-        [FromQuery] DateTimeOffset? toDate,
+        [FromQuery] DateOnly? fromDate,
+        [FromQuery] DateOnly? toDate,
         [FromQuery] string? search,
         [FromQuery] Guid? supplierId,
         [FromQuery] string? status,

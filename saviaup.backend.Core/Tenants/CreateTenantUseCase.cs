@@ -88,7 +88,7 @@ public sealed class CreateTenantUseCase(
             await refreshTokenRepository.RevokeSessionAsync(user.Id, currentSessionId, now, transactionToken);
             var issued = await sessionIssuer.IssueAsync(user, currentSessionId, membership, transactionToken);
             await unitOfWork.SaveChangesAsync(transactionToken);
-            var dto = new TenantDto(tenant.Id, tenant.Name, role.Id, role.Name);
+            var dto = new TenantDto(tenant.Id, tenant.Name, role.Id, role.Name, tenant.TimeZoneId);
             return Result<TenantSessionResponse>.Success(new TenantSessionResponse(dto, SessionIssuer.ToTokenResponse(issued.Session)));
         }, cancellationToken);
     }

@@ -32,7 +32,7 @@ public sealed class ExpenseUseCaseTests
             repository.Object,
             supplierRepository.Object,
             new FixedClock(TestSupport.Now),
-            unitOfWork.Object);
+            unitOfWork.Object, new FixedOrganizationTimeZone(), TestSupport.TimeZones());
 
         var request = new CreateExpenseRequest(
             "Compra insumos de aseo",
