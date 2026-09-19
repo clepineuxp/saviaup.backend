@@ -24,11 +24,13 @@ public sealed class CategoriesController(
     [RequirePermission(PermissionCodes.CategoriesRead, PermissionCodes.OrdersCreate, PermissionCodes.OrdersRead, PermissionCodes.TablesOperate, PermissionCodes.TablesRead)]
     public async Task<ActionResult<IReadOnlyCollection<CategoryDto>>> List(
         [FromQuery] bool includeInactive = false,
+        [FromQuery] bool onlyWithProducts = false,
         CancellationToken cancellationToken = default)
         => this.FromResult(await listUseCase.ExecuteAsync(
             currentUser.TenantId!.Value,
             includeInactive,
-            cancellationToken));
+            cancellationToken,
+            onlyWithProducts));
 
     [HttpPost]
     [RequirePermission(PermissionCodes.CategoriesManage)]

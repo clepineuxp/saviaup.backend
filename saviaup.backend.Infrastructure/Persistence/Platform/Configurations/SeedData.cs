@@ -19,7 +19,8 @@ internal static class SeedData
         (Guid.Parse("10000000-0000-0000-0000-000000000009"), "categories", "Categories"),
         (Guid.Parse("10000000-0000-0000-0000-000000000010"), "cash_registers", "Cash Registers"),
         (Guid.Parse("10000000-0000-0000-0000-000000000011"), "expenses", "Expenses"),
-        (Guid.Parse("10000000-0000-0000-0000-000000000012"), "suppliers", "Suppliers")
+        (Guid.Parse("10000000-0000-0000-0000-000000000012"), "suppliers", "Suppliers"),
+        (Guid.Parse("10000000-0000-0000-0000-000000000013"), "digital_menu", "Digital Menu")
     ];
 
     public static readonly DomainModule[] Modules = ModuleDefinitions
@@ -71,7 +72,11 @@ internal static class SeedData
         Permission("20000000-0000-0000-0000-000000000041", 10, PermissionCodes.ExpensesEdit),
         Permission("20000000-0000-0000-0000-000000000042", 10, PermissionCodes.ExpensesAnnul),
         Permission("20000000-0000-0000-0000-000000000043", 11, PermissionCodes.SuppliersRead),
-        Permission("20000000-0000-0000-0000-000000000044", 11, PermissionCodes.SuppliersManage)
+        Permission("20000000-0000-0000-0000-000000000044", 11, PermissionCodes.SuppliersManage),
+        Permission("20000000-0000-0000-0000-000000000045", 12, PermissionCodes.DigitalMenuAccess),
+        Permission("20000000-0000-0000-0000-000000000046", 12, PermissionCodes.DigitalMenuEnable),
+        Permission("20000000-0000-0000-0000-000000000047", 12, PermissionCodes.DigitalMenuStyleManage),
+        Permission("20000000-0000-0000-0000-000000000048", 12, PermissionCodes.DigitalMenuItemsManage)
     ];
 
     private static Permission Permission(string id, int moduleIndex, string code) => new()

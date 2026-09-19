@@ -117,6 +117,29 @@ public sealed class CreateProductUseCase(
             }
         }
 
+        if (request.Variations is not null && request.Variations.Count > 0)
+        {
+            var varIdx = 0;
+            foreach (var v in request.Variations)
+            {
+                var vName = v.Name?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(vName) || v.SalePrice <= 0) continue;
+                product.Variations.Add(new ProductVariation
+                {
+                    Id = v.Id.HasValue && v.Id.Value != Guid.Empty ? v.Id.Value : Guid.NewGuid(),
+                    TenantId = tenantId,
+                    ProductId = productId,
+                    Name = vName,
+                    NormalizedName = vName.ToUpperInvariant(),
+                    SalePrice = v.SalePrice,
+                    Order = v.Order > 0 ? v.Order : varIdx++,
+                    IsActive = v.IsActive,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+        }
+
         await productRepository.AddAsync(product, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         var reloaded = await productRepository.GetByIdAsync(tenantId, productId, cancellationToken);
@@ -223,6 +246,37 @@ public sealed class UpdateProductUseCase(
             if (itemsToAdd.Count > 0)
             {
                 await productRepository.AddRecipeItemsAsync(itemsToAdd, cancellationToken);
+            }
+        }
+
+        if (request.Variations is not null)
+        {
+            await productRepository.DeleteVariationsAsync(tenantId, productId, cancellationToken);
+
+            var varsToAdd = new List<ProductVariation>();
+            var varIdx = 0;
+            foreach (var v in request.Variations)
+            {
+                var vName = v.Name?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(vName) || v.SalePrice <= 0) continue;
+                varsToAdd.Add(new ProductVariation
+                {
+                    Id = v.Id.HasValue && v.Id.Value != Guid.Empty ? v.Id.Value : Guid.NewGuid(),
+                    TenantId = tenantId,
+                    ProductId = product.Id,
+                    Name = vName,
+                    NormalizedName = vName.ToUpperInvariant(),
+                    SalePrice = v.SalePrice,
+                    Order = v.Order > 0 ? v.Order : varIdx++,
+                    IsActive = v.IsActive,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+
+            if (varsToAdd.Count > 0)
+            {
+                await productRepository.AddVariationsAsync(varsToAdd, cancellationToken);
             }
         }
 

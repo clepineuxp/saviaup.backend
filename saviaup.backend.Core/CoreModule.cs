@@ -3,6 +3,7 @@ using SaviaUp.Backend.Core.Authentication;
 using SaviaUp.Backend.Core.Billing;
 using SaviaUp.Backend.Core.CashRegisters;
 using SaviaUp.Backend.Core.Categories;
+using SaviaUp.Backend.Core.DigitalMenu;
 using SaviaUp.Backend.Core.Expenses;
 using SaviaUp.Backend.Core.Images;
 using SaviaUp.Backend.Core.Inventory;
@@ -110,6 +111,7 @@ public static class CoreModule
         services.AddScoped<ICreateExpenseUseCase, CreateExpenseUseCase>();
         services.AddScoped<IUpdateExpenseUseCase, UpdateExpenseUseCase>();
         services.AddScoped<IAnnulExpenseUseCase, AnnulExpenseUseCase>();
+        services.AddScoped<IDigitalMenuUseCase, DigitalMenuUseCase>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<SessionIssuer>();
         services.AddSingleton<PasswordPolicy>();

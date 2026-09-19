@@ -7,6 +7,7 @@ using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Options;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Domain.Results;
+using SaviaUp.Backend.Shared.Constants;
 
 namespace SaviaUp.Backend.Core.Settings;
 
@@ -185,6 +186,15 @@ public sealed class AccessSettingsUseCase(
         var requested = (request.Permissions ?? []).Where(codeValue => !string.IsNullOrWhiteSpace(codeValue)).Distinct(StringComparer.Ordinal).ToArray();
         var enabled = await repository.GetEnabledPermissionCodesAsync(tenantId, cancellationToken);
         if (requested.Except(enabled, StringComparer.Ordinal).Any()) return (Errors.PermissionNotEnabled, []);
+        var digitalMenuPermissions = new[]
+        {
+            PermissionCodes.DigitalMenuEnable,
+            PermissionCodes.DigitalMenuStyleManage,
+            PermissionCodes.DigitalMenuItemsManage
+        };
+        if (requested.Intersect(digitalMenuPermissions, StringComparer.Ordinal).Any()
+            && !requested.Contains(PermissionCodes.DigitalMenuAccess, StringComparer.Ordinal))
+            return (Errors.Validation, []);
         return (null, requested);
     }
 

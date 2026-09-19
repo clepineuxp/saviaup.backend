@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SaviaUp.Backend.Infrastructure.Persistence.Application;
@@ -11,9 +12,11 @@ using SaviaUp.Backend.Infrastructure.Persistence.Application;
 namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260917194157_AddDigitalMenuItemsTable")]
+    partial class AddDigitalMenuItemsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -335,9 +338,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<DateOnly?>("BusinessDate")
-                        .HasColumnType("date");
-
                     b.Property<long>("ConsecutiveNumber")
                         .HasColumnType("bigint");
 
@@ -402,8 +402,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.HasKey("Id");
 
                     b.HasIndex("SupplierId");
-
-                    b.HasIndex("TenantId", "BusinessDate");
 
                     b.HasIndex("TenantId", "ConsecutiveNumber")
                         .IsUnique();
@@ -670,11 +668,7 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 
                     b.HasIndex("TableId");
 
-                    b.HasIndex("TenantId", "CreatedAt");
-
                     b.HasIndex("TenantId", "OrderNumber");
-
-                    b.HasIndex("TenantId", "PaidAt");
 
                     b.HasIndex("TenantId", "TableId", "Status");
 
@@ -832,8 +826,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 
                     b.HasIndex("OrderId");
 
-                    b.HasIndex("TenantId", "CreatedAt");
-
                     b.HasIndex("TenantId", "OrderId");
 
                     b.HasIndex("TenantId", "ReceiptNumber");
@@ -872,11 +864,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .HasColumnType("character varying(20)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("Value")
-                        .IsUnique()
-                        .HasDatabaseName("UX_organization_parameters_digital_menu_slug")
-                        .HasFilter("\"Key\" = 'business.digitalMenuSlug' AND btrim(\"Value\") <> ''");
 
                     b.HasIndex("TenantId", "Key")
                         .IsUnique();
@@ -1064,61 +1051,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.ToTable("product_recipe_items", null, t =>
                         {
                             t.HasCheckConstraint("CK_product_recipe_items_Quantity_Positive", "\"Quantity\" > 0");
-                        });
-                });
-
-            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.ProductVariation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<string>("NormalizedName")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<int>("Order")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0);
-
-                    b.Property<Guid>("ProductId")
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("SalePrice")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ProductId");
-
-                    b.HasIndex("TenantId", "ProductId");
-
-                    b.HasIndex("TenantId", "IsActive", "NormalizedName");
-
-                    b.ToTable("product_variations", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_product_variations_SalePrice_Positive", "\"SalePrice\" > 0");
                         });
                 });
 
@@ -1532,17 +1464,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Navigation("Product");
                 });
 
-            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.ProductVariation", b =>
-                {
-                    b.HasOne("SaviaUp.Backend.Domain.Entities.Product", "Product")
-                        .WithMany("Variations")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Product");
-                });
-
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.RestaurantTable", b =>
                 {
                     b.HasOne("SaviaUp.Backend.Domain.Entities.DiningArea", "DiningArea")
@@ -1597,8 +1518,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Product", b =>
                 {
                     b.Navigation("RecipeItems");
-
-                    b.Navigation("Variations");
                 });
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Role", b =>

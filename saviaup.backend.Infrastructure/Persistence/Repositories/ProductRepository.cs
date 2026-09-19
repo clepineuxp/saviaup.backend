@@ -21,6 +21,7 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
             .Include(product => product.RecipeItems)
                 .ThenInclude(item => item.Ingredient)
                     .ThenInclude(ingredient => ingredient!.MeasurementUnit)
+            .Include(product => product.Variations)
             .Where(product => product.TenantId == tenantId
                 && (request.IncludeInactive || product.IsActive));
         if (request.CategoryId.HasValue)
@@ -30,7 +31,8 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
             var search = request.Search.Trim().ToUpperInvariant();
-            query = query.Where(product => product.NormalizedName.Contains(search));
+            query = query.Where(product => product.NormalizedName.Contains(search)
+                || product.Variations.Any(v => v.IsActive && v.NormalizedName.Contains(search)));
         }
 
         var totalCount = await query.CountAsync(cancellationToken);
@@ -42,20 +44,31 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
         return new PageData<Product>(items, totalCount);
     }
 
+    public async Task<IReadOnlyCollection<Product>> GetAllForTenantAsync(
+        Guid tenantId,
+        bool includeInactive,
+        CancellationToken cancellationToken)
+        => await context.Products.AsNoTracking()
+            .Include(product => product.Variations)
+            .Where(product => product.TenantId == tenantId && (includeInactive || product.IsActive))
+            .OrderBy(product => product.NormalizedName)
+            .ToArrayAsync(cancellationToken);
+
     public Task<Product?> GetByIdAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
         => context.Products.Include(product => product.Category)
             .Include(product => product.ImageStored)
             .Include(product => product.RecipeItems)
                 .ThenInclude(item => item.Ingredient)
                     .ThenInclude(ingredient => ingredient!.MeasurementUnit)
+            .Include(product => product.Variations)
             .SingleOrDefaultAsync(
                 product => product.TenantId == tenantId && product.Id == productId,
                 cancellationToken);
 
     /// <summary>
-    /// Carga el producto SIN RecipeItems en el ChangeTracker.
+    /// Carga el producto SIN RecipeItems ni Variations en el ChangeTracker.
     /// Usar exclusivamente en el path de actualización para evitar conflictos
-    /// de concurrencia cuando se gestionan recetas con ExecuteDeleteAsync.
+    /// de concurrencia cuando se gestionan recetas y variaciones con ExecuteDeleteAsync.
     /// </summary>
     public Task<Product?> GetByIdForUpdateAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
         => context.Products
@@ -76,6 +89,7 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
         return await context.Products.AsNoTracking()
             .Include(product => product.RecipeItems)
                 .ThenInclude(item => item.Ingredient)
+            .Include(product => product.Variations)
             .Where(product => product.TenantId == tenantId && idList.Contains(product.Id))
             .ToArrayAsync(cancellationToken);
     }
@@ -113,6 +127,14 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
 
     public async Task AddRecipeItemsAsync(IEnumerable<ProductRecipeItem> items, CancellationToken cancellationToken)
         => await context.ProductRecipeItems.AddRangeAsync(items, cancellationToken);
+
+    public Task DeleteVariationsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
+        => context.ProductVariations
+            .Where(item => item.TenantId == tenantId && item.ProductId == productId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+    public async Task AddVariationsAsync(IEnumerable<ProductVariation> variations, CancellationToken cancellationToken)
+        => await context.ProductVariations.AddRangeAsync(variations, cancellationToken);
 
     public void Remove(Product product) => context.Products.Remove(product);
 }

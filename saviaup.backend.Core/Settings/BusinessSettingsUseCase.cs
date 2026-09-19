@@ -42,6 +42,7 @@ public sealed class BusinessSettingsUseCase(
             }
         }
         var parameters = (await repository.GetParametersAsync(tenantId, cancellationToken)).ToDictionary(item => item.Key);
+
         var now = clock.UtcNow;
         var values = new Dictionary<string, (string Value, string Type)>
         {
@@ -53,6 +54,7 @@ public sealed class BusinessSettingsUseCase(
             [SettingsDefaults.TipMessage] = (request.TipMessage.Trim(), "string"),
             [SettingsDefaults.SuggestedTipPercentage] = (request.SuggestedTipPercentage.ToString(CultureInfo.InvariantCulture), "integer")
         };
+
         var additions = new List<OrganizationParameter>();
         foreach (var (key, value) in values)
         {
@@ -77,9 +79,13 @@ public sealed class BusinessSettingsUseCase(
     {
         var values = SettingsDefaults.CreateBusinessParameters(Guid.Empty, DateTimeOffset.MinValue).ToDictionary(item => item.Key, item => item.Value);
         foreach (var parameter in parameters) values[parameter.Key] = parameter.Value;
-        return new BusinessSettingsDto(Bool(values[SettingsDefaults.UsesTables]), Bool(values[SettingsDefaults.DeliveryEnabled]),
-            Bool(values[SettingsDefaults.RequiresOpenCashRegister]), Bool(values[SettingsDefaults.EnableCustomSales]),
-            Bool(values[SettingsDefaults.ShowVoluntaryTip]), values[SettingsDefaults.TipMessage],
+        return new BusinessSettingsDto(
+            Bool(values[SettingsDefaults.UsesTables]),
+            Bool(values[SettingsDefaults.DeliveryEnabled]),
+            Bool(values[SettingsDefaults.RequiresOpenCashRegister]),
+            Bool(values[SettingsDefaults.EnableCustomSales]),
+            Bool(values[SettingsDefaults.ShowVoluntaryTip]),
+            values[SettingsDefaults.TipMessage],
             int.TryParse(values[SettingsDefaults.SuggestedTipPercentage], out var percent) ? percent : 10);
     }
 

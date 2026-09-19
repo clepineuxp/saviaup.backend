@@ -52,6 +52,10 @@ public static class LocalizationKeys
     public const string CashRegisterNameAlreadyExists = "cashRegisters.nameAlreadyExists";
     public const string CashRegisterSingleActiveExceeded = "cashRegisters.singleActiveExceeded";
     public const string CashRegisterInUse = "cashRegisters.inUse";
+    public const string DigitalMenuSlugAlreadyExists = "settings.digitalMenu.slugAlreadyExists";
+    public const string DigitalMenuSlugImmutable = "settings.digitalMenu.slugImmutable";
+    public const string DigitalMenuSlugRequired = "settings.digitalMenu.slugRequired";
+    public const string DigitalMenuNotFound = "digitalMenu.notFound";
     public const string Validation = "common.validation";
     public const string InternalError = "common.internalError";
 

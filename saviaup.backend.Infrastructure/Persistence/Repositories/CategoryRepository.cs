@@ -10,13 +10,23 @@ public sealed class CategoryRepository(ApplicationDbContext context) : ICategory
     public async Task<IReadOnlyCollection<Category>> GetForTenantAsync(
         Guid tenantId,
         bool includeInactive,
-        CancellationToken cancellationToken)
-        => await context.Categories
+        CancellationToken cancellationToken,
+        bool onlyWithProducts = false)
+    {
+        var query = context.Categories
             .AsNoTracking()
             .Include(category => category.ImageStored)
-            .Where(category => category.TenantId == tenantId && (includeInactive || category.IsActive))
+            .Where(category => category.TenantId == tenantId && (includeInactive || category.IsActive));
+
+        if (onlyWithProducts)
+        {
+            query = query.Where(category => category.Products.Any(p => p.IsActive));
+        }
+
+        return await query
             .OrderBy(category => category.NormalizedName)
             .ToArrayAsync(cancellationToken);
+    }
 
     public Task<Category?> GetByIdAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken)
         => context.Categories
