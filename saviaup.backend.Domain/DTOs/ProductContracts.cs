@@ -31,6 +31,20 @@ public sealed record ProductRecipeItemRequest(
     [MaxLength(500)] string? Notes,
     int Order = 0);
 
+public sealed record ProductVariationDto(
+    Guid Id,
+    string Name,
+    decimal SalePrice,
+    int Order,
+    bool IsActive);
+
+public sealed record ProductVariationRequest(
+    Guid? Id,
+    [Required, MaxLength(120)] string Name,
+    [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal SalePrice,
+    int Order = 0,
+    bool IsActive = true);
+
 public sealed record ProductDto(
     Guid Id,
     string Type,
@@ -46,7 +60,8 @@ public sealed record ProductDto(
     string? LastModifiedByUserName,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    IReadOnlyCollection<ProductRecipeItemDto> Recipe);
+    IReadOnlyCollection<ProductRecipeItemDto> Recipe,
+    IReadOnlyCollection<ProductVariationDto> Variations);
 
 public sealed record CreateProductRequest(
     string? Type,
@@ -57,7 +72,8 @@ public sealed record CreateProductRequest(
     string? Image,
     [Range(0, int.MaxValue)] int? PreparationTimeMinutes,
     bool IsInventoryTracked,
-    IReadOnlyCollection<ProductRecipeItemRequest>? Recipe = null);
+    IReadOnlyCollection<ProductRecipeItemRequest>? Recipe = null,
+    IReadOnlyCollection<ProductVariationRequest>? Variations = null);
 
 public sealed record UpdateProductRequest(
     string? Type,
@@ -68,6 +84,7 @@ public sealed record UpdateProductRequest(
     string? Image,
     [Range(0, int.MaxValue)] int? PreparationTimeMinutes,
     bool IsInventoryTracked,
-    IReadOnlyCollection<ProductRecipeItemRequest>? Recipe = null);
+    IReadOnlyCollection<ProductRecipeItemRequest>? Recipe = null,
+    IReadOnlyCollection<ProductVariationRequest>? Variations = null);
 
 public sealed record SetProductStatusRequest(bool IsActive);

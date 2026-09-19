@@ -30,6 +30,7 @@ public sealed class ApplicationDbContext(
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<ProductRecipeItem> ProductRecipeItems => Set<ProductRecipeItem>();
+    public DbSet<ProductVariation> ProductVariations => Set<ProductVariation>();
     public DbSet<DigitalMenuItem> DigitalMenuItems => Set<DigitalMenuItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -46,6 +47,7 @@ public sealed class ApplicationDbContext(
         modelBuilder.Entity<InventoryMovement>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<Product>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<ProductRecipeItem>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<ProductVariation>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<DiningArea>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<RestaurantTable>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<CashRegister>().HasQueryFilter(x => x.TenantId == TenantId);

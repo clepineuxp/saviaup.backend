@@ -84,7 +84,19 @@ internal static class ProductRules
             .OrderBy(r => r.Order)
             .ThenBy(r => r.CreatedAt)
             .Select(ToRecipeDto)
+            .ToArray() ?? [],
+        product.Variations?
+            .OrderBy(v => v.Order)
+            .ThenBy(v => v.CreatedAt)
+            .Select(ToVariationDto)
             .ToArray() ?? []);
+
+    public static ProductVariationDto ToVariationDto(ProductVariation item) => new(
+        item.Id,
+        item.Name,
+        item.SalePrice,
+        item.Order,
+        item.IsActive);
 
     public static ProductRecipeItemDto ToRecipeDto(ProductRecipeItem item) => new(
         item.Id,

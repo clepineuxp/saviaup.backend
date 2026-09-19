@@ -9,9 +9,10 @@ public sealed class ListCategoriesUseCase(ICategoryRepository categoryRepository
     public async Task<Result<IReadOnlyCollection<CategoryDto>>> ExecuteAsync(
         Guid tenantId,
         bool includeInactive,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool onlyWithProducts = false)
     {
-        var categories = await categoryRepository.GetForTenantAsync(tenantId, includeInactive, cancellationToken);
+        var categories = await categoryRepository.GetForTenantAsync(tenantId, includeInactive, cancellationToken, onlyWithProducts);
         return Result<IReadOnlyCollection<CategoryDto>>.Success(categories.Select(CategoryRules.ToDto).ToArray());
     }
 }
