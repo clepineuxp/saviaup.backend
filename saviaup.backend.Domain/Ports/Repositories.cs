@@ -47,7 +47,8 @@ public interface ICategoryRepository
     Task<IReadOnlyCollection<Category>> GetForTenantAsync(
         Guid tenantId,
         bool includeInactive,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        bool onlyWithProducts = false);
     Task<Category?> GetByIdAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken);
     Task<Category?> GetByIdAsNoTrackingAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken);
     Task<bool> NameExistsAsync(
@@ -127,6 +128,8 @@ public interface IProductRepository
     Task AddAsync(Product product, CancellationToken cancellationToken);
     Task DeleteRecipeItemsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
     Task AddRecipeItemsAsync(IEnumerable<ProductRecipeItem> items, CancellationToken cancellationToken);
+    Task DeleteVariationsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
+    Task AddVariationsAsync(IEnumerable<ProductVariation> variations, CancellationToken cancellationToken);
     void Remove(Product product);
 }
 

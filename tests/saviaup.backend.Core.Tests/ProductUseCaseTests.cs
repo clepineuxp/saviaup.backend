@@ -221,4 +221,88 @@ public sealed class ProductUseCaseTests
             UpdatedAt = TestSupport.Now
         };
     }
+
+    [Fact]
+    public async Task CreateProduct_PersistsVariationsCorrectly()
+    {
+        var tenantId = Guid.NewGuid();
+        var category = Category(tenantId);
+        var categories = new Mock<ICategoryRepository>();
+        var products = new Mock<IProductRepository>();
+        Product? persisted = null;
+        categories.Setup(value => value.GetByIdAsync(tenantId, category.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(category);
+        products.Setup(value => value.AddAsync(It.IsAny<Product>(), It.IsAny<CancellationToken>()))
+            .Callback<Product, CancellationToken>((value, _) => persisted = value)
+            .Returns(Task.CompletedTask);
+        var unitOfWork = UnitOfWork();
+        var useCase = new CreateProductUseCase(
+            products.Object, categories.Object, new FixedClock(TestSupport.Now), unitOfWork.Object);
+
+        var variations = new List<ProductVariationRequest>
+        {
+            new(null, "Copa", 5000m, 1, true),
+            new(null, "Botella", 40000m, 2, true)
+        };
+
+        var result = await useCase.ExecuteAsync(
+            tenantId,
+            Guid.NewGuid(),
+            "admin@saviaup.test",
+            new CreateProductRequest(
+                "NORMAL", "Ron Viejo de Caldas", category.Id, 5000m, null, null, null, false, null, variations),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(persisted);
+        Assert.Equal(2, persisted.Variations.Count);
+        Assert.Contains(persisted.Variations, v => v.Name == "Copa" && v.SalePrice == 5000m && v.NormalizedName == "COPA");
+        Assert.Contains(persisted.Variations, v => v.Name == "Botella" && v.SalePrice == 40000m && v.NormalizedName == "BOTELLA");
+        Assert.Equal(2, result.Value!.Variations.Count);
+    }
+
+    [Fact]
+    public async Task UpdateProduct_ReplacesVariationsCorrectly()
+    {
+        var tenantId = Guid.NewGuid();
+        var category = Category(tenantId);
+        var existing = Product(tenantId);
+        var categories = new Mock<ICategoryRepository>();
+        var products = new Mock<IProductRepository>();
+        IEnumerable<ProductVariation>? addedVariations = null;
+
+        categories.Setup(value => value.GetByIdAsNoTrackingAsync(tenantId, category.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(category);
+        products.Setup(value => value.GetByIdForUpdateAsync(tenantId, existing.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+        products.Setup(value => value.DeleteVariationsAsync(tenantId, existing.Id, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        products.Setup(value => value.AddVariationsAsync(It.IsAny<IEnumerable<ProductVariation>>(), It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<ProductVariation>, CancellationToken>((vars, _) => addedVariations = vars)
+            .Returns(Task.CompletedTask);
+        var unitOfWork = UnitOfWork();
+        var useCase = new UpdateProductUseCase(
+            products.Object, categories.Object, new FixedClock(TestSupport.Now), unitOfWork.Object);
+
+        var newVariations = new List<ProductVariationRequest>
+        {
+            new(null, "Media", 22000m, 1, true)
+        };
+
+        var result = await useCase.ExecuteAsync(
+            tenantId,
+            existing.Id,
+            Guid.NewGuid(),
+            "admin@saviaup.test",
+            new UpdateProductRequest(
+                "NORMAL", "Ron Viejo de Caldas Actualizado", category.Id, 22000m, null, null, null, false, null, newVariations),
+            default);
+
+        Assert.True(result.IsSuccess);
+        products.Verify(v => v.DeleteVariationsAsync(tenantId, existing.Id, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.NotNull(addedVariations);
+        Assert.Single(addedVariations);
+        Assert.Equal("Media", addedVariations.First().Name);
+        Assert.Equal(22000m, addedVariations.First().SalePrice);
+    }
 }

@@ -73,7 +73,8 @@ public interface IListCategoriesUseCase
     Task<Result<IReadOnlyCollection<CategoryDto>>> ExecuteAsync(
         Guid tenantId,
         bool includeInactive,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        bool onlyWithProducts = false);
 }
 
 public interface ICreateCategoryUseCase
