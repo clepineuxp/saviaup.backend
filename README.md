@@ -185,6 +185,11 @@ GET    /api/billing/receipts?page=1&pageSize=25&search=&fromDate=&toDate=
 GET    /api/billing/orders?page=1&pageSize=25&search=&fromDate=&toDate=
 GET    /api/billing/receipts/{id}
 
+GET  /api/digital-menu/config
+PUT  /api/digital-menu/parameters
+PUT  /api/digital-menu/style
+PUT  /api/digital-menu/items
+
 GET    /api/images/{id}
 
 GET    /api/settings/organization
@@ -268,13 +273,14 @@ Los endpoints de tenants y `/users/me` requieren usuario y sesión válidos, per
       "code": "configuration",
       "name": "Configuración",
       "order": 5,
-      "isGrouped": false,
+      "isGrouped": true,
       "modules": [
-        { "id": "...", "code": "settings", "name": "Configuración", "order": 1 }
+        { "id": "...", "code": "settings", "name": "Configuración", "order": 1 },
+        { "id": "...", "code": "digital_menu", "name": "Menú digital", "order": 2 }
       ],
       "options": [
-        { "code": "tables.manage", "moduleCode": "tables", "requiredPermissionCode": "tables.manage", "order": 2 },
-        { "code": "cash-registers.manage", "moduleCode": "cash_registers", "requiredPermissionCode": "cash-registers.manage", "order": 3 }
+        { "code": "tables.manage", "moduleCode": "tables", "requiredPermissionCode": "tables.manage", "order": 3 },
+        { "code": "cash-registers.manage", "moduleCode": "cash_registers", "requiredPermissionCode": "cash-registers.manage", "order": 4 }
       ]
     }
   ],
@@ -291,10 +297,14 @@ Orden actual:
 2 Operación: Cajas, Comandas, Estadísticas, Facturación
 3 Inventario: Productos, Categorías, Inventario, Cocina
 4 Gastos: Gastos, Proveedores
-5 Configuración: Configuración (con opciones directas para administrar salas/mesas y cajas)
+5 Configuración: Configuración, Menú digital (con opciones directas para administrar salas/mesas y cajas)
 ```
 
 La fuente de verdad es `Core/Navigation/NavigationCatalog.cs`. Cada módulo nuevo debe declarar sección/subcategoría y orden, además de seed, permisos, migración, copies y pruebas. El contrato incluye `options` para crecer con accesos administrativos respaldados por permisos `.manage`.
+
+### Menú digital y permisos
+
+El módulo `digital_menu` requiere `digital-menu.access` para aparecer en la navegación y consultar su configuración. Las mutaciones requieren también un permiso específico: `digital-menu.enable` para habilitar o deshabilitar el menú y administrar el slug, `digital-menu.style.manage` para estilo y plantillas, y `digital-menu.items.manage` para productos y categorías. Al asignar cualquiera de los permisos específicos a un rol, el permiso de acceso es obligatorio.
 
 ## Categorías
 

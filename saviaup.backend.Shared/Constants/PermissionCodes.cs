@@ -46,6 +46,10 @@ public static class PermissionCodes
     public const string ExpensesCreate = "expenses.create";
     public const string ExpensesEdit = "expenses.edit";
     public const string ExpensesAnnul = "expenses.annul";
+    public const string DigitalMenuAccess = "digital-menu.access";
+    public const string DigitalMenuEnable = "digital-menu.enable";
+    public const string DigitalMenuStyleManage = "digital-menu.style.manage";
+    public const string DigitalMenuItemsManage = "digital-menu.items.manage";
 
     public static readonly IReadOnlyCollection<string> All =
     [
@@ -63,6 +67,7 @@ public static class PermissionCodes
         SettingsRolesRead, SettingsRolesManage,
         CashRegistersRead, CashRegistersOperate, CashRegistersManage,
         SuppliersRead, SuppliersManage,
-        ExpensesRead, ExpensesCreate, ExpensesEdit, ExpensesAnnul
+        ExpensesRead, ExpensesCreate, ExpensesEdit, ExpensesAnnul,
+        DigitalMenuAccess, DigitalMenuEnable, DigitalMenuStyleManage, DigitalMenuItemsManage
     ];
 }
