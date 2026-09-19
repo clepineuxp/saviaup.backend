@@ -58,4 +58,8 @@ internal static class Errors
     public static readonly Error ExpenseNotFound = new(ErrorCodes.ExpenseNotFound, LocalizationKeys.Validation, ErrorType.NotFound);
     public static readonly Error ExpenseAlreadyAnnulled = new(ErrorCodes.ExpenseAlreadyAnnulled, LocalizationKeys.Validation, ErrorType.Conflict);
     public static readonly Error ExpenseConsecutiveCannotBeDecreased = new(ErrorCodes.ExpenseConsecutiveCannotBeDecreased, LocalizationKeys.Validation, ErrorType.Validation);
+    public static readonly Error DigitalMenuSlugAlreadyExists = new(ErrorCodes.DigitalMenuSlugAlreadyExists, LocalizationKeys.DigitalMenuSlugAlreadyExists, ErrorType.Conflict);
+    public static readonly Error DigitalMenuSlugImmutable = new(ErrorCodes.DigitalMenuSlugImmutable, LocalizationKeys.DigitalMenuSlugImmutable, ErrorType.Conflict);
+    public static readonly Error DigitalMenuSlugRequired = new(ErrorCodes.DigitalMenuSlugRequired, LocalizationKeys.DigitalMenuSlugRequired, ErrorType.Validation);
+    public static readonly Error DigitalMenuNotFound = new(ErrorCodes.DigitalMenuNotFound, LocalizationKeys.DigitalMenuNotFound, ErrorType.NotFound);
 }

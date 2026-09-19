@@ -1,16 +1,22 @@
 using SaviaUp.Backend.Domain.Entities;
+using SaviaUp.Backend.Shared.Constants;
 
 namespace SaviaUp.Backend.Core.Settings;
 
 public static class SettingsDefaults
 {
-    public const string UsesTables = "business.usesTables";
-    public const string DeliveryEnabled = "business.deliveryEnabled";
-    public const string RequiresOpenCashRegister = "business.requiresOpenCashRegister";
-    public const string EnableCustomSales = "business.enableCustomSales";
-    public const string ShowVoluntaryTip = "business.showVoluntaryTip";
-    public const string TipMessage = "business.tipMessage";
-    public const string SuggestedTipPercentage = "business.suggestedTipPercentage";
+    public const string UsesTables = OrganizationParameterKeys.UsesTables;
+    public const string DeliveryEnabled = OrganizationParameterKeys.DeliveryEnabled;
+    public const string RequiresOpenCashRegister = OrganizationParameterKeys.RequiresOpenCashRegister;
+    public const string EnableCustomSales = OrganizationParameterKeys.EnableCustomSales;
+    public const string ShowVoluntaryTip = OrganizationParameterKeys.ShowVoluntaryTip;
+    public const string TipMessage = OrganizationParameterKeys.TipMessage;
+    public const string SuggestedTipPercentage = OrganizationParameterKeys.SuggestedTipPercentage;
+    public const string EnableDigitalMenu = OrganizationParameterKeys.EnableDigitalMenu;
+    public const string DigitalMenuSlug = OrganizationParameterKeys.DigitalMenuSlug;
+    public const string DigitalMenuStyle = OrganizationParameterKeys.DigitalMenuStyle;
+
+    public const string DefaultMenuStyleJson = "{\"templateId\":\"bistro\",\"primaryColor\":\"#10b981\",\"accentColor\":\"#f59e0b\",\"backgroundColor\":\"#ffffff\",\"textColor\":\"#0f172a\",\"selectedButtonTextColor\":\"#ffffff\",\"fontFamily\":\"Inter\",\"welcomeMessage\":\"¡Bienvenidos! Descubre nuestra selección de platos.\",\"showImages\":true,\"headerAlignment\":\"left\",\"infoPlacement\":\"header\",\"logoPlacement\":\"header\"}";
 
     public static IReadOnlyCollection<OrganizationParameter> CreateBusinessParameters(Guid tenantId, DateTimeOffset now) =>
     [
@@ -20,7 +26,10 @@ public static class SettingsDefaults
         Parameter(tenantId, EnableCustomSales, "false", "boolean", now),
         Parameter(tenantId, ShowVoluntaryTip, "true", "boolean", now),
         Parameter(tenantId, TipMessage, "Servicio Voluntario", "string", now),
-        Parameter(tenantId, SuggestedTipPercentage, "10", "integer", now)
+        Parameter(tenantId, SuggestedTipPercentage, "10", "integer", now),
+        Parameter(tenantId, EnableDigitalMenu, "false", "boolean", now),
+        Parameter(tenantId, DigitalMenuSlug, "", "string", now),
+        Parameter(tenantId, DigitalMenuStyle, DefaultMenuStyleJson, "json", now)
     ];
 
     public static IReadOnlyCollection<PaymentMethod> CreatePaymentMethods(Guid tenantId, DateTimeOffset now) =>

@@ -14,5 +14,9 @@ public sealed class OrganizationParameterConfiguration : IEntityTypeConfiguratio
         builder.Property(parameter => parameter.Value).HasMaxLength(2000).IsRequired();
         builder.Property(parameter => parameter.ValueType).HasMaxLength(20).IsRequired();
         builder.HasIndex(parameter => new { parameter.TenantId, parameter.Key }).IsUnique();
+        builder.HasIndex(parameter => parameter.Value)
+            .HasDatabaseName("UX_organization_parameters_digital_menu_slug")
+            .IsUnique()
+            .HasFilter("\"Key\" = 'business.digitalMenuSlug' AND btrim(\"Value\") <> ''");
     }
 }

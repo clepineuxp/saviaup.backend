@@ -56,6 +56,10 @@ public static class ErrorCodes
     public const string ExpenseAlreadyAnnulled = "EXPENSE_ALREADY_ANNULLED";
     public const string ExpenseConsecutiveCannotBeDecreased = "EXPENSE_CONSECUTIVE_CANNOT_BE_DECREASED";
     public const string PermissionNotEnabled = "PERMISSION_NOT_ENABLED";
+    public const string DigitalMenuSlugAlreadyExists = "DIGITAL_MENU_SLUG_ALREADY_EXISTS";
+    public const string DigitalMenuSlugImmutable = "DIGITAL_MENU_SLUG_IMMUTABLE";
+    public const string DigitalMenuSlugRequired = "DIGITAL_MENU_SLUG_REQUIRED";
+    public const string DigitalMenuNotFound = "DIGITAL_MENU_NOT_FOUND";
     public const string Validation = "VALIDATION_ERROR";
     public const string Internal = "INTERNAL_ERROR";
 }

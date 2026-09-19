@@ -30,6 +30,7 @@ public sealed class ApplicationDbContext(
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<ProductRecipeItem> ProductRecipeItems => Set<ProductRecipeItem>();
+    public DbSet<DigitalMenuItem> DigitalMenuItems => Set<DigitalMenuItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +58,7 @@ public sealed class ApplicationDbContext(
         modelBuilder.Entity<Supplier>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<Expense>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<RolePermission>().HasQueryFilter(x => x.Role.TenantId == TenantId);
+        modelBuilder.Entity<DigitalMenuItem>().HasQueryFilter(x => x.TenantId == TenantId);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
