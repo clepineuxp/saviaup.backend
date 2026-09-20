@@ -80,6 +80,8 @@ public sealed class PrintingUseCaseTests
         var settings = new Mock<ISettingsRepository>();
         settings.Setup(x => x.GetParametersAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(
             [new OrganizationParameter { Key = SettingsDefaults.EnableOrderPrintZones, Value = "true" }]);
+        repository.Setup(x => x.GetDefaultDestinationAsync(tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PrintingDestination?)null);
 
         var notifications = await new PrintJobFactory(repository.Object, settings.Object).CreateForOrderItemsAsync(
             tenantId, order, [item], Guid.NewGuid(), Now, CancellationToken.None);
@@ -117,6 +119,43 @@ public sealed class PrintingUseCaseTests
         repository.Verify(x => x.ResolveDestinationsAsync(
             It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
         repository.Verify(x => x.AddJobsAsync(It.IsAny<IEnumerable<PrintJob>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task JobFactory_UsesTheDefaultPrinter_WhenNoProductOrCategoryRouteExists()
+    {
+        var tenantId = Guid.NewGuid();
+        var agentId = Guid.NewGuid();
+        var locationId = Guid.NewGuid();
+        var printerId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var repository = new Mock<IPrintingRepository>();
+        repository.Setup(x => x.ResolveDestinationsAsync(tenantId, It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, IReadOnlyCollection<PrintingDestination>>());
+        repository.Setup(x => x.GetDefaultDestinationAsync(tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new PrintingDestination(locationId, agentId, null, "Impresora predeterminada: Cocina", [printerId]));
+        List<PrintJob>? saved = null;
+        repository.Setup(x => x.AddJobsAsync(It.IsAny<IEnumerable<PrintJob>>(), It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<PrintJob>, CancellationToken>((jobs, _) => saved = jobs.ToList())
+            .Returns(Task.CompletedTask);
+        var settings = new Mock<ISettingsRepository>();
+        settings.Setup(x => x.GetParametersAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(
+            [new OrganizationParameter { Key = SettingsDefaults.EnableOrderPrintZones, Value = "true" }]);
+
+        await new PrintJobFactory(repository.Object, settings.Object).CreateForOrderItemsAsync(
+            tenantId,
+            new Order { Id = Guid.NewGuid(), TenantId = tenantId, OrderNumber = 9, CreatedByUserName = "Ana" },
+            [
+                new OrderItem { Id = Guid.NewGuid(), ProductId = productId, ProductName = "Hamburguesa", Quantity = 1 },
+                new OrderItem { Id = Guid.NewGuid(), ProductName = "Venta libre", Quantity = 1 }
+            ],
+            Guid.NewGuid(), Now, CancellationToken.None);
+
+        var job = Assert.Single(saved!);
+        Assert.Equal(printerId, job.PrinterId);
+        Assert.Null(job.PrintingZoneId);
+        using var payload = JsonDocument.Parse(job.PayloadJson);
+        Assert.Equal(2, payload.RootElement.GetProperty("items").GetArrayLength());
     }
 
     [Fact]

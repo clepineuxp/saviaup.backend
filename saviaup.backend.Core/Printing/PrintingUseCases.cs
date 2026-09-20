@@ -120,31 +120,34 @@ public sealed class PrintJobFactory(
         if (!bool.TryParse(parameter?.Value, out var enabled) || !enabled) return [];
         var productIds = newItems.Where(x => x.ProductId.HasValue).Select(x => x.ProductId!.Value).Distinct().ToArray();
         var routes = await printingRepository.ResolveDestinationsAsync(tenantId, productIds, cancellationToken);
-        var buckets = new Dictionary<(Guid AgentId, Guid LocationId, Guid ZoneId, string ZoneName), List<OrderItem>>();
+        var defaultDestination = await printingRepository.GetDefaultDestinationAsync(tenantId, cancellationToken);
+        var buckets = new Dictionary<(Guid AgentId, Guid LocationId, Guid? ZoneId, string ZoneName), (PrintingDestination Destination, List<OrderItem> Items)>();
 
-        foreach (var item in newItems.Where(x => x.ProductId.HasValue))
+        foreach (var item in newItems)
         {
-            if (!routes.TryGetValue(item.ProductId!.Value, out var destinations)) continue;
+            var destinations = item.ProductId.HasValue && routes.TryGetValue(item.ProductId.Value, out var routed)
+                ? routed
+                : defaultDestination is null ? [] : [defaultDestination];
             foreach (var destination in destinations)
             {
                 var key = (destination.AgentId, destination.LocationId, destination.ZoneId, destination.ZoneName);
-                if (!buckets.TryGetValue(key, out var items)) buckets[key] = items = [];
-                items.Add(item);
+                if (!buckets.TryGetValue(key, out var bucket))
+                    buckets[key] = bucket = (destination, []);
+                bucket.Items.Add(item);
             }
         }
 
         var jobs = new List<PrintJob>();
         foreach (var bucket in buckets)
         {
-            var destination = routes.Values.SelectMany(x => x)
-                .First(x => x.AgentId == bucket.Key.AgentId && x.ZoneId == bucket.Key.ZoneId);
+            var destination = bucket.Value.Destination;
             var payload = new KitchenOrderPrintPayload(
                 "KitchenOrder",
                 $"CMD-{order.OrderNumber:D6}",
                 order.Table?.Name,
                 order.LastModifiedByUserName ?? order.CreatedByUserName,
                 now,
-                bucket.Value.Select(x => new KitchenOrderPrintItem(x.Quantity, x.ProductName, [], x.Notes)).ToArray(),
+                bucket.Value.Items.Select(x => new KitchenOrderPrintItem(x.Quantity, x.ProductName, [], x.Notes)).ToArray(),
                 order.Observations,
                 false);
             var json = JsonSerializer.Serialize(payload, JsonOptions);

@@ -100,6 +100,33 @@ public sealed class PrintingApiTests(SaviaUpApiFactory factory) : IClassFixture<
     }
 
     [Fact]
+    public async Task DefaultPrinter_UsesTheFirstActiveConfiguration_AndPromotesTheNextOneWhenRemoved()
+    {
+        var tenantId = Guid.NewGuid();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"printing-default-{Guid.NewGuid():N}")
+            .Options;
+        await using var database = new ApplicationDbContext(options, new FixedTenantContext(tenantId));
+        var now = DateTimeOffset.UtcNow;
+        var location = new Location { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Principal", NormalizedName = "PRINCIPAL", IsActive = true, CreatedAt = now, UpdatedAt = now };
+        var agent = new PrintAgent { Id = Guid.NewGuid(), TenantId = tenantId, LocationId = location.Id, Name = "PC Cocina", DeviceIdentifier = "device-default", Hostname = "HOST", OperatingSystem = "Windows", Version = "1", Status = PrintAgentStatuses.Online, Enabled = true, CreatedAt = now, UpdatedAt = now };
+        var first = Printer("Cocina", tenantId, location.Id, agent.Id, now);
+        var second = Printer("Barra", tenantId, location.Id, agent.Id, now.AddMinutes(1));
+        database.AddRange(location, agent, first, second);
+        await database.SaveChangesAsync();
+        var repository = new PrintingRepository(database);
+
+        var initial = await repository.GetDefaultDestinationAsync(tenantId, CancellationToken.None);
+        Assert.Equal(first.Id, Assert.Single(initial!.PrinterIds));
+
+        database.Remove(first);
+        await database.SaveChangesAsync();
+        var promoted = await repository.GetDefaultDestinationAsync(tenantId, CancellationToken.None);
+
+        Assert.Equal(second.Id, Assert.Single(promoted!.PrinterIds));
+    }
+
+    [Fact]
     public async Task AgentReportsWindowsPrinters_AndAdministratorCanSelectFromAvailableList()
     {
         var tenant = await CreateTenantAndPairAgentAsync("Printer discovery");

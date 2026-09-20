@@ -361,6 +361,7 @@ public interface IPrintingRepository
         CancellationToken cancellationToken);
     Task<bool> ZoneHasJobsAsync(Guid tenantId, Guid zoneId, CancellationToken cancellationToken);
     void RemoveZone(PrintingZone zone);
+    Task<PrintingDestination?> GetDefaultDestinationAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<IReadOnlyDictionary<Guid, IReadOnlyCollection<PrintingDestination>>> ResolveDestinationsAsync(
         Guid tenantId,
         IReadOnlyCollection<Guid> productIds,

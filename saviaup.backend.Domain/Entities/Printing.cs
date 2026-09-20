@@ -179,7 +179,7 @@ public sealed class PrintJob
     public Guid LocationId { get; set; }
     public Guid PrintAgentId { get; set; }
     public Guid PrinterId { get; set; }
-    public Guid PrintingZoneId { get; set; }
+    public Guid? PrintingZoneId { get; set; }
     public string SourceType { get; set; } = string.Empty;
     public Guid SourceId { get; set; }
     public string DocumentType { get; set; } = string.Empty;

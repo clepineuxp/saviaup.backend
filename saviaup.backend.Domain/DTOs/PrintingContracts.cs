@@ -134,7 +134,7 @@ public sealed record PrintJobDto(
     string? PrinterIpAddress,
     int? PrinterPort,
     int PaperWidth,
-    Guid PrintingZoneId,
+    Guid? PrintingZoneId,
     string ZoneName,
     string SourceType,
     Guid SourceId,
@@ -219,7 +219,7 @@ public sealed record KitchenOrderPrintPayload(
 public sealed record PrintingDestination(
     Guid LocationId,
     Guid AgentId,
-    Guid ZoneId,
+    Guid? ZoneId,
     string ZoneName,
     IReadOnlyCollection<Guid> PrinterIds);
 

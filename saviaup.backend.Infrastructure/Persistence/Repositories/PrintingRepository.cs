@@ -140,8 +140,9 @@ public sealed class PrintingRepository(ApplicationDbContext dbContext) : IPrinti
     public Task AddPrinterAsync(Printer printer, CancellationToken cancellationToken)
         => dbContext.Printers.AddAsync(printer, cancellationToken).AsTask();
 
-    public Task<bool> PrinterIsInUseAsync(Guid tenantId, Guid printerId, CancellationToken cancellationToken)
-        => dbContext.PrintingZonePrinters.AnyAsync(x => x.TenantId == tenantId && x.PrinterId == printerId, cancellationToken);
+    public async Task<bool> PrinterIsInUseAsync(Guid tenantId, Guid printerId, CancellationToken cancellationToken)
+        => await dbContext.PrintingZonePrinters.AnyAsync(x => x.TenantId == tenantId && x.PrinterId == printerId, cancellationToken)
+           || await dbContext.PrintJobs.AnyAsync(x => x.TenantId == tenantId && x.PrinterId == printerId, cancellationToken);
 
     public void RemovePrinter(Printer printer) => dbContext.Printers.Remove(printer);
 
@@ -190,6 +191,20 @@ public sealed class PrintingRepository(ApplicationDbContext dbContext) : IPrinti
     public Task<bool> ZoneHasJobsAsync(Guid tenantId, Guid zoneId, CancellationToken cancellationToken)
         => dbContext.PrintJobs.AnyAsync(x => x.TenantId == tenantId && x.PrintingZoneId == zoneId, cancellationToken);
 
+    public async Task<PrintingDestination?> GetDefaultDestinationAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        var printer = await dbContext.Printers.AsNoTracking()
+            .Include(x => x.PrintAgent)
+            .Where(x => x.TenantId == tenantId && x.Enabled && x.PrintAgent != null && x.PrintAgent.Enabled)
+            .OrderBy(x => x.CreatedAt)
+            .ThenBy(x => x.Id)
+            .Select(x => new { x.LocationId, x.PrintAgentId, x.Id, x.Name })
+            .FirstOrDefaultAsync(cancellationToken);
+        return printer is null
+            ? null
+            : new PrintingDestination(printer.LocationId, printer.PrintAgentId, null, $"Impresora predeterminada: {printer.Name}", [printer.Id]);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyCollection<PrintingDestination>>> ResolveDestinationsAsync(
         Guid tenantId,
         IReadOnlyCollection<Guid> productIds,
@@ -226,6 +241,8 @@ public sealed class PrintingRepository(ApplicationDbContext dbContext) : IPrinti
             var selectedIds = explicitRoutes.Where(x => x.ProductId == product.Id).Select(x => x.PrintingZoneId).Distinct().ToArray();
             if (selectedIds.Length == 0)
                 selectedIds = categoryRoutes.Where(x => x.CategoryId == product.CategoryId).Select(x => x.PrintingZoneId).Distinct().ToArray();
+
+            if (selectedIds.Length == 0) continue;
 
             result[product.Id] = selectedIds
                 .Where(zoneMap.ContainsKey)

@@ -173,7 +173,7 @@ public sealed class PrintJobConfiguration : IEntityTypeConfiguration<PrintJob>
         builder.HasOne(x => x.Location).WithMany().HasForeignKey(x => x.LocationId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.PrintAgent).WithMany().HasForeignKey(x => x.PrintAgentId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(x => x.Printer).WithMany().HasForeignKey(x => x.PrinterId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne(x => x.PrintingZone).WithMany().HasForeignKey(x => x.PrintingZoneId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(x => x.PrintingZone).WithMany().HasForeignKey(x => x.PrintingZoneId).OnDelete(DeleteBehavior.Restrict).IsRequired(false);
         builder.HasOne(x => x.OriginalPrintJob).WithMany().HasForeignKey(x => x.OriginalPrintJobId).OnDelete(DeleteBehavior.Restrict);
     }
 }
