@@ -35,12 +35,19 @@ public sealed class OrderUseCaseTests
         tenantRepo.Setup(r => r.GetByIdAsync(_tenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(tenant);
 
+        var printJobFactory = new Mock<IPrintJobFactory>();
+        printJobFactory.Setup(x => x.CreateForOrderItemsAsync(
+                It.IsAny<Guid>(), It.IsAny<Order>(), It.IsAny<IReadOnlyCollection<OrderItem>>(),
+                It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<PrintJobNotification>());
         var useCase = new AddTableOrderItemsUseCase(
             orderRepo.Object,
             tableRepo.Object,
             tenantRepo.Object,
             Mock.Of<ICashRegisterShiftRepository>(),
             Mock.Of<ITableRealtimeNotifier>(),
+            printJobFactory.Object,
+            Mock.Of<IPrintingRealtimeNotifier>(),
             new FixedClock(TestSupport.Now),
             Mock.Of<IUnitOfWork>());
 

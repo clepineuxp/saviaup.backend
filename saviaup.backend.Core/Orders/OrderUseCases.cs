@@ -128,6 +128,8 @@ public sealed class AddTableOrderItemsUseCase(
     ITenantRepository tenantRepository,
     ICashRegisterShiftRepository shiftRepository,
     ITableRealtimeNotifier realtime,
+    IPrintJobFactory printJobFactory,
+    IPrintingRealtimeNotifier printingRealtime,
     IDateTimeProvider clock,
     IUnitOfWork unitOfWork) : IAddTableOrderItemsUseCase
 {
@@ -189,6 +191,7 @@ public sealed class AddTableOrderItemsUseCase(
             order.UpdatedAt = now;
         }
 
+        var newItems = new List<OrderItem>();
         foreach (var reqItem in request.Items)
         {
             var item = new OrderItem
@@ -209,6 +212,7 @@ public sealed class AddTableOrderItemsUseCase(
                 UpdatedAt = now
             };
             order.Items.Add(item);
+            newItems.Add(item);
             await orderRepository.AddItemAsync(item, cancellationToken);
         }
 
@@ -216,10 +220,15 @@ public sealed class AddTableOrderItemsUseCase(
         table.ActiveOrderTotal = order.TotalAmount;
         table.UpdatedAt = now;
 
+        order.Table ??= table;
+        var printNotifications = await printJobFactory.CreateForOrderItemsAsync(
+            tenantId, order, newItems, userId, now, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         var tableDto = TableRules.ToDto(table);
         await realtime.StatusChangedAsync(tenantId, new TableStatusChangedEvent(tableDto), cancellationToken);
         await realtime.OrderUpdatedAsync(tenantId, new TableOrderUpdatedEvent(table.Id, order.Id, order.TotalAmount, now), cancellationToken);
+        foreach (var notification in printNotifications)
+            await printingRealtime.JobAvailableAsync(notification.AgentId, notification.PrintJobId, cancellationToken);
 
         return Result<OrderDto>.Success(OrderRules.ToDto(order));
     }

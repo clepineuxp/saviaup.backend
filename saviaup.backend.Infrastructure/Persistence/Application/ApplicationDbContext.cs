@@ -32,6 +32,17 @@ public sealed class ApplicationDbContext(
     public DbSet<ProductRecipeItem> ProductRecipeItems => Set<ProductRecipeItem>();
     public DbSet<ProductVariation> ProductVariations => Set<ProductVariation>();
     public DbSet<DigitalMenuItem> DigitalMenuItems => Set<DigitalMenuItem>();
+    public DbSet<Location> Locations => Set<Location>();
+    public DbSet<PrintAgent> PrintAgents => Set<PrintAgent>();
+    public DbSet<PrintAgentCredential> PrintAgentCredentials => Set<PrintAgentCredential>();
+    public DbSet<PrintAgentPairingCode> PrintAgentPairingCodes => Set<PrintAgentPairingCode>();
+    public DbSet<PrintAgentDiscoveredPrinter> PrintAgentDiscoveredPrinters => Set<PrintAgentDiscoveredPrinter>();
+    public DbSet<Printer> Printers => Set<Printer>();
+    public DbSet<PrintingZone> PrintingZones => Set<PrintingZone>();
+    public DbSet<PrintingZonePrinter> PrintingZonePrinters => Set<PrintingZonePrinter>();
+    public DbSet<CategoryPrintingRoute> CategoryPrintingRoutes => Set<CategoryPrintingRoute>();
+    public DbSet<ProductPrintingRoute> ProductPrintingRoutes => Set<ProductPrintingRoute>();
+    public DbSet<PrintJob> PrintJobs => Set<PrintJob>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -61,6 +72,17 @@ public sealed class ApplicationDbContext(
         modelBuilder.Entity<Expense>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<RolePermission>().HasQueryFilter(x => x.Role.TenantId == TenantId);
         modelBuilder.Entity<DigitalMenuItem>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<Location>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<PrintAgent>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<PrintAgentCredential>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<PrintAgentPairingCode>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<PrintAgentDiscoveredPrinter>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<Printer>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<PrintingZone>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<PrintingZonePrinter>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<CategoryPrintingRoute>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<ProductPrintingRoute>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<PrintJob>().HasQueryFilter(x => x.TenantId == TenantId);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

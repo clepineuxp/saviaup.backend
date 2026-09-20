@@ -36,6 +36,7 @@ public static class InfrastructureModule
         services.Configure<PasswordPolicyOptions>(configuration.GetSection(PasswordPolicyOptions.SectionName));
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
         services.Configure<AdminApiOptions>(configuration.GetSection(AdminApiOptions.SectionName));
+        services.Configure<PrintingOptions>(configuration.GetSection(PrintingOptions.SectionName));
 
         services.AddHttpClient<IAdminPlanClient, SaviaUp.Backend.Infrastructure.Clients.AdminPlanClient>((serviceProvider, client) =>
         {
@@ -67,6 +68,7 @@ public static class InfrastructureModule
         services.AddScoped<IStoredImageRepository, StoredImageRepository>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
         services.AddScoped<IExpenseRepository, ExpenseRepository>();
+        services.AddScoped<IPrintingRepository, PrintingRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();

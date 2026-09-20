@@ -46,11 +46,12 @@ internal static class NavigationCatalog
         new("configuration", 5,
             [
                 new("settings", 1),
-                new("digital_menu", 2)
+                new("digital_menu", 2),
+                new("printing", 3)
             ],
             [
-                new("tables.manage", "tables", "tables.manage", 3),
-                new("cash-registers.manage", "cash_registers", "cash-registers.manage", 4)
+                new("tables.manage", "tables", "tables.manage", 4),
+                new("cash-registers.manage", "cash_registers", "cash-registers.manage", 5)
             ])
     ];
 

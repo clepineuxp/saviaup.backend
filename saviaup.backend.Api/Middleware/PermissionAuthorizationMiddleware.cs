@@ -24,6 +24,12 @@ public sealed class PermissionAuthorizationMiddleware(RequestDelegate next)
             return;
         }
 
+        if (endpoint?.Metadata.GetMetadata<RequirePrintAgentAttribute>() is not null)
+        {
+            await next(context);
+            return;
+        }
+
         var permissions = endpoint?.Metadata.GetOrderedMetadata<RequirePermissionAttribute>() ?? [];
         var requiresTenant = endpoint?.Metadata.GetMetadata<RequireTenantAttribute>() is not null || permissions.Count > 0;
         var requiresAuthentication = endpoint?.Metadata.GetMetadata<IAuthorizeData>() is not null || requiresTenant;

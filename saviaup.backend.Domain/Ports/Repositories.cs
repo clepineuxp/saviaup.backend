@@ -324,6 +324,54 @@ public interface IDigitalMenuRepository
     Task<PublicDigitalMenuDto?> GetPublicMenuAsync(string slug, CancellationToken cancellationToken);
 }
 
+public interface IPrintingRepository
+{
+    Task<Location> GetOrCreateDefaultLocationAsync(Guid tenantId, DateTimeOffset now, CancellationToken cancellationToken);
+    Task<Location?> GetLocationAsync(Guid tenantId, Guid locationId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<Location>> GetLocationsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<PrintAgent>> GetAgentsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<PrintAgent?> GetAgentAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken);
+    Task<PrintAgent?> GetAgentForUpdateAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken);
+    Task<PrintAgent?> GetAgentByDeviceAsync(Guid tenantId, Guid locationId, string deviceIdentifier, CancellationToken cancellationToken);
+    Task AddAgentAsync(PrintAgent agent, CancellationToken cancellationToken);
+    Task AddCredentialAsync(PrintAgentCredential credential, CancellationToken cancellationToken);
+    Task RevokeCredentialsAsync(Guid tenantId, Guid agentId, DateTimeOffset revokedAt, CancellationToken cancellationToken);
+    Task<AuthenticatedPrintAgent?> AuthenticateAgentAsync(string tokenHash, DateTimeOffset now, CancellationToken cancellationToken);
+    Task AddPairingCodeAsync(PrintAgentPairingCode code, CancellationToken cancellationToken);
+    Task<PrintAgentPairingCode?> GetPairingCodeByHashAsync(string codeHash, CancellationToken cancellationToken);
+    Task<bool> TryConsumePairingCodeAsync(Guid pairingCodeId, DateTimeOffset consumedAt, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<Printer>> GetPrintersAsync(Guid tenantId, Guid? agentId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<PrintAgentDiscoveredPrinter>> GetDiscoveredPrintersAsync(
+        Guid tenantId, Guid agentId, bool tracking, CancellationToken cancellationToken);
+    Task AddDiscoveredPrinterAsync(PrintAgentDiscoveredPrinter printer, CancellationToken cancellationToken);
+    Task<Printer?> GetPrinterAsync(Guid tenantId, Guid printerId, CancellationToken cancellationToken);
+    Task AddPrinterAsync(Printer printer, CancellationToken cancellationToken);
+    Task<bool> PrinterIsInUseAsync(Guid tenantId, Guid printerId, CancellationToken cancellationToken);
+    void RemovePrinter(Printer printer);
+    Task<IReadOnlyCollection<PrintingZone>> GetZonesAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<PrintingZone?> GetZoneAsync(Guid tenantId, Guid zoneId, CancellationToken cancellationToken);
+    Task<bool> ZoneNameExistsAsync(Guid tenantId, Guid locationId, string normalizedName, Guid? excludedId, CancellationToken cancellationToken);
+    Task AddZoneAsync(PrintingZone zone, CancellationToken cancellationToken);
+    Task ReplaceZoneLinksAsync(
+        Guid tenantId,
+        Guid zoneId,
+        IReadOnlyCollection<Guid> printerIds,
+        IReadOnlyCollection<Guid> categoryIds,
+        IReadOnlyCollection<Guid> productIds,
+        CancellationToken cancellationToken);
+    Task<bool> ZoneHasJobsAsync(Guid tenantId, Guid zoneId, CancellationToken cancellationToken);
+    void RemoveZone(PrintingZone zone);
+    Task<IReadOnlyDictionary<Guid, IReadOnlyCollection<PrintingDestination>>> ResolveDestinationsAsync(
+        Guid tenantId,
+        IReadOnlyCollection<Guid> productIds,
+        CancellationToken cancellationToken);
+    Task AddJobsAsync(IEnumerable<PrintJob> jobs, CancellationToken cancellationToken);
+    Task<PageData<PrintJob>> GetJobsPageAsync(Guid tenantId, PrintJobQueryRequest request, CancellationToken cancellationToken);
+    Task<PrintJob?> GetJobAsync(Guid tenantId, Guid jobId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<PrintJob>> GetPendingJobsAsync(Guid tenantId, Guid agentId, int limit, CancellationToken cancellationToken);
+    Task CancelOpenJobsForAgentAsync(Guid tenantId, Guid agentId, DateTimeOffset now, CancellationToken cancellationToken);
+}
+
 public interface IUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

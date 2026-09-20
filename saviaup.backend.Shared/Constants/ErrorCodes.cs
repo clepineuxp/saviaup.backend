@@ -2,6 +2,15 @@ namespace SaviaUp.Backend.Shared.Constants;
 
 public static class ErrorCodes
 {
+    public const string PrintingLocationNotFound = "PRINTING_LOCATION_NOT_FOUND";
+    public const string PrintAgentNotFound = "PRINT_AGENT_NOT_FOUND";
+    public const string PrintAgentPairingInvalid = "PRINT_AGENT_PAIRING_INVALID";
+    public const string PrintAgentCredentialInvalid = "PRINT_AGENT_CREDENTIAL_INVALID";
+    public const string PrinterNotFound = "PRINTER_NOT_FOUND";
+    public const string PrintingZoneNotFound = "PRINTING_ZONE_NOT_FOUND";
+    public const string PrintingZoneAlreadyExists = "PRINTING_ZONE_ALREADY_EXISTS";
+    public const string PrintJobNotFound = "PRINT_JOB_NOT_FOUND";
+    public const string PrintJobInvalidStatus = "PRINT_JOB_INVALID_STATUS";
     public const string InvalidCredentials = "AUTH_INVALID_CREDENTIALS";
     public const string Unauthenticated = "AUTH_UNAUTHENTICATED";
     public const string Forbidden = "AUTH_FORBIDDEN";
