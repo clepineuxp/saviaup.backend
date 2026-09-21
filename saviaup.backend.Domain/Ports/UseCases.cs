@@ -622,7 +622,7 @@ public interface IPrintingAdministrationUseCase
     Task<Result<PrintingConfigurationDto>> GetConfigurationAsync(CancellationToken cancellationToken);
     Task<Result<PrintingRoutingOptionsDto>> GetRoutingOptionsAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<Result<PairingCodeDto>> CreatePairingCodeAsync(Guid tenantId, Guid userId, CreatePairingCodeRequest request, CancellationToken cancellationToken);
-    Task<Result<IReadOnlyCollection<DiscoveredPrintAgentDto>>> ListDiscoveredAgentsAsync(string? sourceIpAddress, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<DiscoveredPrintAgentDto>>> ListDiscoveredAgentsAsync(Guid tenantId, string? sourceIpAddress, CancellationToken cancellationToken);
     Task<Result<PrintAgentDto>> LinkDiscoveredAgentAsync(Guid tenantId, LinkDiscoveredPrintAgentRequest request, string? sourceIpAddress, CancellationToken cancellationToken);
     Task<Result<IReadOnlyCollection<PrintAgentDto>>> ListAgentsAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<Result<PrintAgentDto>> GetAgentAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken);

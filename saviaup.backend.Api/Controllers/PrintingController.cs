@@ -45,7 +45,7 @@ public sealed class PrintingController(
     [RequirePermission(PermissionCodes.PrintingAgentsManage)]
     public async Task<ActionResult<IReadOnlyCollection<DiscoveredPrintAgentDto>>> GetDiscoveredAgents(CancellationToken cancellationToken)
         => this.FromResult(await useCase.ListDiscoveredAgentsAsync(
-            ClientNetworkAddress.From(HttpContext), cancellationToken));
+            currentUser.TenantId!.Value, ClientNetworkAddress.From(HttpContext), cancellationToken));
 
     [HttpPost("agents/link-discovered")]
     [RequirePermission(PermissionCodes.PrintingAgentsManage)]

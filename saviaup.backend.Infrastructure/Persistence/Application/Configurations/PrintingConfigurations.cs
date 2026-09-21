@@ -32,7 +32,7 @@ public sealed class PrintAgentConfiguration : IEntityTypeConfiguration<PrintAgen
         builder.Property(x => x.Version).HasMaxLength(50).IsRequired();
         builder.Property(x => x.Status).HasMaxLength(20).IsRequired();
         builder.Property(x => x.LocalIpAddress).HasMaxLength(64);
-        builder.HasIndex(x => new { x.TenantId, x.LocationId, x.DeviceIdentifier }).IsUnique();
+        builder.HasIndex(x => new { x.TenantId, x.DeviceIdentifier }).IsUnique();
         builder.HasIndex(x => new { x.TenantId, x.Enabled, x.LastSeenAt });
         builder.HasOne(x => x.Location).WithMany(x => x.PrintAgents).HasForeignKey(x => x.LocationId).OnDelete(DeleteBehavior.Restrict);
     }

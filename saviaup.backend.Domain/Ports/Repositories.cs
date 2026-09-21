@@ -332,7 +332,7 @@ public interface IPrintingRepository
     Task<IReadOnlyCollection<PrintAgent>> GetAgentsAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<PrintAgent?> GetAgentAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken);
     Task<PrintAgent?> GetAgentForUpdateAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken);
-    Task<PrintAgent?> GetAgentByDeviceAsync(Guid tenantId, Guid locationId, string deviceIdentifier, CancellationToken cancellationToken);
+    Task<PrintAgent?> GetAgentByDeviceAsync(Guid tenantId, string deviceIdentifier, CancellationToken cancellationToken);
     Task AddAgentAsync(PrintAgent agent, CancellationToken cancellationToken);
     Task AddCredentialAsync(PrintAgentCredential credential, CancellationToken cancellationToken);
     Task RevokeCredentialsAsync(Guid tenantId, Guid agentId, DateTimeOffset revokedAt, CancellationToken cancellationToken);
@@ -345,6 +345,7 @@ public interface IPrintingRepository
         Guid tenantId, Guid agentId, bool tracking, CancellationToken cancellationToken);
     Task AddDiscoveredPrinterAsync(PrintAgentDiscoveredPrinter printer, CancellationToken cancellationToken);
     Task<Printer?> GetPrinterAsync(Guid tenantId, Guid printerId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<Printer>> GetDisabledPrintersForUpdateAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken);
     Task AddPrinterAsync(Printer printer, CancellationToken cancellationToken);
     Task<bool> PrinterIsInUseAsync(Guid tenantId, Guid printerId, CancellationToken cancellationToken);
     void RemovePrinter(Printer printer);

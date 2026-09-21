@@ -48,9 +48,9 @@ public sealed class PrintingRepository(ApplicationDbContext dbContext) : IPrinti
         => dbContext.PrintAgents.Include(x => x.Location).Include(x => x.Printers)
             .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Id == agentId, cancellationToken);
 
-    public Task<PrintAgent?> GetAgentByDeviceAsync(Guid tenantId, Guid locationId, string deviceIdentifier, CancellationToken cancellationToken)
+    public Task<PrintAgent?> GetAgentByDeviceAsync(Guid tenantId, string deviceIdentifier, CancellationToken cancellationToken)
         => dbContext.PrintAgents.IgnoreQueryFilters().FirstOrDefaultAsync(
-            x => x.TenantId == tenantId && x.LocationId == locationId && x.DeviceIdentifier == deviceIdentifier,
+            x => x.TenantId == tenantId && x.DeviceIdentifier == deviceIdentifier,
             cancellationToken);
 
     public Task AddAgentAsync(PrintAgent agent, CancellationToken cancellationToken)
@@ -136,6 +136,14 @@ public sealed class PrintingRepository(ApplicationDbContext dbContext) : IPrinti
 
     public Task<Printer?> GetPrinterAsync(Guid tenantId, Guid printerId, CancellationToken cancellationToken)
         => dbContext.Printers.FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Id == printerId, cancellationToken);
+
+    public async Task<IReadOnlyCollection<Printer>> GetDisabledPrintersForUpdateAsync(
+        Guid tenantId,
+        Guid agentId,
+        CancellationToken cancellationToken)
+        => await dbContext.Printers
+            .Where(x => x.TenantId == tenantId && x.PrintAgentId == agentId && !x.Enabled)
+            .ToListAsync(cancellationToken);
 
     public Task AddPrinterAsync(Printer printer, CancellationToken cancellationToken)
         => dbContext.Printers.AddAsync(printer, cancellationToken).AsTask();
