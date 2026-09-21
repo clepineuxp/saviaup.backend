@@ -48,3 +48,27 @@ public interface ITableRealtimeNotifier
     Task StatusChangedAsync(Guid tenantId, TableStatusChangedEvent notification, CancellationToken cancellationToken);
     Task OrderUpdatedAsync(Guid tenantId, TableOrderUpdatedEvent notification, CancellationToken cancellationToken);
 }
+
+public interface IPrintAgentContext
+{
+    bool IsAuthenticated { get; }
+    Guid? AgentId { get; }
+    Guid? TenantId { get; }
+    Guid? LocationId { get; }
+}
+
+public interface IPrintingRealtimeNotifier
+{
+    Task JobAvailableAsync(Guid agentId, Guid printJobId, CancellationToken cancellationToken);
+    Task JobCancelledAsync(Guid agentId, Guid printJobId, CancellationToken cancellationToken);
+    Task PrinterDiscoveryRequestedAsync(Guid agentId, CancellationToken cancellationToken);
+}
+
+public interface IUnpairedPrintAgentRegistry
+{
+    Task RegisterAsync(string connectionId, DiscoverPrintAgentRequest request, CancellationToken cancellationToken);
+    Task UnregisterAsync(string connectionId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<DiscoveredPrintAgentDto>> ListAsync(CancellationToken cancellationToken);
+    Task<DiscoveredPrintAgentDto?> FindAsync(Guid discoveryId, CancellationToken cancellationToken);
+    Task<bool> DeliverPairingAsync(Guid discoveryId, PairPrintAgentResponse response, CancellationToken cancellationToken);
+}

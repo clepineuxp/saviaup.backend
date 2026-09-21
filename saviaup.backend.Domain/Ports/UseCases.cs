@@ -1,4 +1,5 @@
 using SaviaUp.Backend.Domain.DTOs;
+using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Results;
 
 namespace SaviaUp.Backend.Domain.Ports;
@@ -613,4 +614,55 @@ public interface IDigitalMenuUseCase
     Task<Result> UpdateItemsAsync(Guid tenantId, SaveDigitalMenuItemsRequest request, Guid? userId, string? userName, CancellationToken cancellationToken);
     Task<Result> UpdateStyleAsync(Guid tenantId, DigitalMenuStyleDto request, CancellationToken cancellationToken);
     Task<Result<PublicDigitalMenuDto>> GetPublicMenuAsync(string slug, CancellationToken cancellationToken);
+}
+
+public interface IPrintingAdministrationUseCase
+{
+    Task<Result<IReadOnlyCollection<PrintingLocationDto>>> ListLocationsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<PrintingConfigurationDto>> GetConfigurationAsync(CancellationToken cancellationToken);
+    Task<Result<PrintingRoutingOptionsDto>> GetRoutingOptionsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<PairingCodeDto>> CreatePairingCodeAsync(Guid tenantId, Guid userId, CreatePairingCodeRequest request, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<DiscoveredPrintAgentDto>>> ListDiscoveredAgentsAsync(CancellationToken cancellationToken);
+    Task<Result<PrintAgentDto>> LinkDiscoveredAgentAsync(Guid tenantId, LinkDiscoveredPrintAgentRequest request, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<PrintAgentDto>>> ListAgentsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<PrintAgentDto>> GetAgentAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken);
+    Task<Result<PrintAgentDto>> UpdateAgentAsync(Guid tenantId, Guid agentId, UpdatePrintAgentRequest request, CancellationToken cancellationToken);
+    Task<Result> DeleteAgentAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<PrinterDto>>> ListPrintersAsync(Guid tenantId, Guid? agentId, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<AvailablePrinterDto>>> ListAvailablePrintersAsync(
+        Guid tenantId, Guid agentId, CancellationToken cancellationToken);
+    Task<Result> RequestPrinterDiscoveryAsync(Guid tenantId, Guid agentId, CancellationToken cancellationToken);
+    Task<Result<PrinterDto>> CreatePrinterAsync(Guid tenantId, SavePrinterRequest request, CancellationToken cancellationToken);
+    Task<Result<PrinterDto>> UpdatePrinterAsync(Guid tenantId, Guid printerId, SavePrinterRequest request, CancellationToken cancellationToken);
+    Task<Result> DeletePrinterAsync(Guid tenantId, Guid printerId, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<PrintingZoneDto>>> ListZonesAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<PrintingZoneDto>> CreateZoneAsync(Guid tenantId, SavePrintingZoneRequest request, CancellationToken cancellationToken);
+    Task<Result<PrintingZoneDto>> UpdateZoneAsync(Guid tenantId, Guid zoneId, SavePrintingZoneRequest request, CancellationToken cancellationToken);
+    Task<Result> DeleteZoneAsync(Guid tenantId, Guid zoneId, CancellationToken cancellationToken);
+    Task<Result<PrintJobPageDto>> ListJobsAsync(Guid tenantId, PrintJobQueryRequest request, CancellationToken cancellationToken);
+    Task<Result<PrintJobDto>> GetJobAsync(Guid tenantId, Guid jobId, CancellationToken cancellationToken);
+    Task<Result<PrintJobDto>> CancelJobAsync(Guid tenantId, Guid jobId, CancellationToken cancellationToken);
+    Task<Result<PrintJobDto>> RetryJobAsync(Guid tenantId, Guid jobId, CancellationToken cancellationToken);
+    Task<Result<PrintJobDto>> ReprintJobAsync(Guid tenantId, Guid jobId, Guid userId, CancellationToken cancellationToken);
+    Task<Result<PrintJobDto>> CreateTestJobAsync(Guid tenantId, Guid agentId, Guid printerId, Guid userId, CancellationToken cancellationToken);
+}
+
+public interface IPrintAgentUseCase
+{
+    Task<Result<PairPrintAgentResponse>> PairAsync(PairPrintAgentRequest request, CancellationToken cancellationToken);
+    Task<Result> HeartbeatAsync(Guid tenantId, Guid agentId, PrintAgentHeartbeatRequest request, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<AvailablePrinterDto>>> SyncPrintersAsync(Guid tenantId, Guid agentId, SyncDiscoveredPrintersRequest request, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<PrintJobDto>>> GetPendingJobsAsync(Guid tenantId, Guid agentId, int limit, CancellationToken cancellationToken);
+    Task<Result<PrintJobDto>> UpdateJobStatusAsync(Guid tenantId, Guid agentId, Guid jobId, PrintJobStatusRequest request, CancellationToken cancellationToken);
+}
+
+public interface IPrintJobFactory
+{
+    Task<IReadOnlyCollection<PrintJobNotification>> CreateForOrderItemsAsync(
+        Guid tenantId,
+        Order order,
+        IReadOnlyCollection<OrderItem> newItems,
+        Guid userId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
 }

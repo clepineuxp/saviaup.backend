@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SaviaUp.Backend.Infrastructure.Persistence.Application;
@@ -11,9 +12,11 @@ using SaviaUp.Backend.Infrastructure.Persistence.Application;
 namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260919140443_AddPrintingManagement")]
+    partial class AddPrintingManagement
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1094,51 +1097,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.ToTable("print_agent_credentials", (string)null);
                 });
 
-            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgentDiscoveredPrinter", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsAvailable")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsDefault")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTimeOffset>("LastSeenAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("LocationId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(260)
-                        .HasColumnType("character varying(260)");
-
-                    b.Property<string>("NormalizedName")
-                        .IsRequired()
-                        .HasMaxLength(260)
-                        .HasColumnType("character varying(260)");
-
-                    b.Property<Guid>("PrintAgentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PrintAgentId");
-
-                    b.HasIndex("TenantId", "PrintAgentId", "IsAvailable");
-
-                    b.HasIndex("TenantId", "PrintAgentId", "NormalizedName")
-                        .IsUnique();
-
-                    b.ToTable("print_agent_discovered_printers", (string)null);
-                });
-
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgentPairingCode", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1235,7 +1193,7 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Property<DateTimeOffset?>("PrintingAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid?>("PrintingZoneId")
+                    b.Property<Guid>("PrintingZoneId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTimeOffset>("QueuedAt")
@@ -2048,17 +2006,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Navigation("PrintAgent");
                 });
 
-            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgentDiscoveredPrinter", b =>
-                {
-                    b.HasOne("SaviaUp.Backend.Domain.Entities.PrintAgent", "PrintAgent")
-                        .WithMany("DiscoveredPrinters")
-                        .HasForeignKey("PrintAgentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PrintAgent");
-                });
-
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgentPairingCode", b =>
                 {
                     b.HasOne("SaviaUp.Backend.Domain.Entities.Location", "Location")
@@ -2098,7 +2045,8 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.HasOne("SaviaUp.Backend.Domain.Entities.PrintingZone", "PrintingZone")
                         .WithMany()
                         .HasForeignKey("PrintingZoneId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Location");
 
@@ -2293,8 +2241,6 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgent", b =>
                 {
                     b.Navigation("Credentials");
-
-                    b.Navigation("DiscoveredPrinters");
 
                     b.Navigation("Printers");
 

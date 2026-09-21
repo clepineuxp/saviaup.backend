@@ -36,19 +36,21 @@ saviaup.backend.Infrastructure  adapters de PostgreSQL, JWT, hashing, email y ti
 Nunca guardes una cadena PostgreSQL, clave JWT o credencial SMTP en Git. Para desarrollo local usa .NET User Secrets:
 
 ```powershell
-dotnet user-secrets set "ConnectionStrings:SaviaUp" "Host=localhost;Port=5432;Database=saviaup;Username=usuario;Password=clave" --project saviaup.backend.Api
+dotnet user-secrets set "ConnectionStrings:PlatformDatabase" "Host=localhost;Port=5432;Database=saviaup_platform;Username=usuario;Password=clave" --project saviaup.backend.Api
+dotnet user-secrets set "ConnectionStrings:ApplicationDatabase" "Host=localhost;Port=5432;Database=saviaup_application;Username=usuario;Password=clave" --project saviaup.backend.Api
 dotnet user-secrets set "Jwt:SigningKey" "una-clave-local-aleatoria-de-al-menos-32-bytes" --project saviaup.backend.Api
 dotnet user-secrets list --project saviaup.backend.Api
 ```
 
-API e Infrastructure comparten el mismo `UserSecretsId`. El host usa ese almacén al ejecutar en Development y `SaviaUpDbContextFactory` lo usa directamente durante `dotnet ef`, de modo que las migraciones no dependen de una cadena escrita en `appsettings`. El factory prioriza `ConnectionStrings__SaviaUp` sobre User Secrets y falla de forma explícita si ninguna fuente está configurada.
+API e Infrastructure comparten el mismo `UserSecretsId`. El host usa ese almacén al ejecutar en Development y los factories lo usan directamente durante `dotnet ef`, de modo que las migraciones no dependen de cadenas escritas en `appsettings`. Los factories priorizan `ConnectionStrings__PlatformDatabase` y `ConnectionStrings__ApplicationDatabase` sobre User Secrets y fallan de forma explícita si falta su conexión.
 
 `appsettings.json` y `appsettings.Development.json` mantienen vacíos los campos sensibles. El `secrets.json` real reside fuera del repositorio bajo el almacén del perfil de usuario; no debe copiarse a esta solución.
 
 Como alternativa para CI, producción o una sesión temporal, se admiten variables de entorno:
 
 ```text
-ConnectionStrings__SaviaUp
+ConnectionStrings__PlatformDatabase
+ConnectionStrings__ApplicationDatabase
 Jwt__SigningKey
 Jwt__Issuer
 Jwt__Audience
@@ -58,6 +60,12 @@ Email__Mode                 Development | Smtp
 Email__Host / Port / Username / Password / FromAddress
 Frontend__BaseUrl
 Cors__AllowedOrigins__0
+Printing__AgentDownloadUrl
+Printing__PairingCodeExpirationMinutes
+Printing__DeviceTokenExpirationDays
+Printing__HeartbeatIntervalSeconds
+Printing__OfflineTimeoutSeconds
+Printing__HeartbeatPersistenceSeconds
 ```
 
 `appsettings.Development.json` usa correo de desarrollo: no envía mensajes y nunca registra el token ni el enlace completo.
@@ -67,7 +75,8 @@ Cors__AllowedOrigins__0
 ```powershell
 dotnet tool restore
 dotnet restore
-dotnet tool run dotnet-ef database update --project saviaup.backend.Infrastructure --startup-project saviaup.backend.Api
+dotnet tool run dotnet-ef database update --context PlatformDbContext --project saviaup.backend.Infrastructure --startup-project saviaup.backend.Api
+dotnet tool run dotnet-ef database update --context ApplicationDbContext --project saviaup.backend.Infrastructure --startup-project saviaup.backend.Api
 dotnet run --project saviaup.backend.Api
 ```
 
@@ -83,6 +92,9 @@ product_recipe_items, dining_areas, restaurant_tables, orders,
 order_items, order_receipts, cash_registers, cash_register_shifts,
 cash_register_shift_movements, expenses, suppliers, stored_images,
 organization_parameters, payment_methods, tenant_permissions, tenant_invitations
+locations, print_agents, print_agent_credentials, print_agent_pairing_codes,
+print_agent_discovered_printers, printers, printing_zones, printing_zone_printers, category_printing_routes,
+product_printing_routes, print_jobs
 ```
 
 Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`, nombres normalizados de categoría/unidad por tenant, códigos de permisos, relación role/permission y hashes de tokens. Las relaciones sensibles usan eliminación `Restrict`. El seed contiene únicamente módulos y permisos globales. Las migraciones crean y actualizan la infraestructura multi-tenant completa, turnos de caja, salas y mesas, comandas, recetas de productos, facturación, estadísticas, gastos y proveedores.
@@ -93,11 +105,12 @@ Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`
 Copy-Item .env.example .env
 # Reemplaza JWT_SIGNING_KEY en .env
 docker compose up -d postgres
-dotnet tool run dotnet-ef database update --project saviaup.backend.Infrastructure --startup-project saviaup.backend.Api
+dotnet tool run dotnet-ef database update --context PlatformDbContext --project saviaup.backend.Infrastructure --startup-project saviaup.backend.Api
+dotnet tool run dotnet-ef database update --context ApplicationDbContext --project saviaup.backend.Infrastructure --startup-project saviaup.backend.Api
 docker compose up --build api
 ```
 
-Para aplicar la migración contra el contenedor desde el host, conserva el puerto 5432 y configura `ConnectionStrings__SaviaUp` como se indica arriba.
+Para aplicar las migraciones contra el contenedor desde el host, conserva el puerto 5432 y configura ambas cadenas como se indica arriba.
 
 ## Endpoints
 
@@ -192,6 +205,26 @@ PUT  /api/digital-menu/items
 
 GET    /api/images/{id}
 
+GET/POST/PUT/DELETE /api/printing/agents[/...]
+GET                   /api/printing/agents/discovered
+POST                  /api/printing/agents/link-discovered
+GET                   /api/printing/agents/{id}/available-printers
+POST                  /api/printing/agents/{id}/discover-printers
+GET/POST/PUT/DELETE /api/printing/printers[/...]
+GET/POST/PUT/DELETE /api/printing/zones[/...]
+GET                  /api/printing/routing-options
+GET                  /api/printing/jobs
+POST                 /api/printing/jobs/{id}/retry
+POST                 /api/printing/jobs/{id}/reprint
+
+POST /api/printing/agent/pair
+POST /api/printing/agent/heartbeat
+POST /api/printing/agent/printers/sync
+GET  /api/printing/agent/jobs/pending
+POST /api/printing/agent/jobs/{id}/status
+HUB  /hubs/printing
+HUB  /hubs/printing-discovery
+
 GET    /api/settings/organization
 PUT    /api/settings/organization
 GET    /api/settings/access/permissions
@@ -203,6 +236,16 @@ GET  /health
 ```
 
 Los endpoints de tenants y `/users/me` requieren usuario y sesión válidos, pero funcionan sin tenant activo. `/api/users/me/info` y `/api/modules/available` requieren un token contextualizado con tenant y rol activos. Los futuros endpoints operativos pueden combinar `[RequireTenant]` y `[RequirePermission(PermissionCodes.X)]`.
+
+## Impresión automática
+
+El backend conserva la cola durable en PostgreSQL y SignalR solo avisa que hay trabajo disponible. Un agente Windows se vincula mediante un código de un solo uso; el servidor guarda únicamente hashes SHA-256 de sus credenciales. Cada agente puede atender varias zonas y cada zona varias impresoras. La ruta específica de producto prevalece sobre la ruta de categoría.
+
+Desde la configuración se puede solicitar al agente que vuelva a consultar las colas instaladas en Windows. El backend envía la solicitud por el grupo SignalR autenticado del agente y conserva el resultado en `print_agent_discovered_printers`. Este inventario es independiente de `printers`: descubrir una cola nunca la configura ni le asigna permisos; el registro de configuración se crea únicamente cuando el administrador selecciona una opción y guarda el formulario.
+
+Los ítems nuevos de una comanda y sus trabajos de impresión se guardan en la misma transacción de la base de datos de aplicación. Al instalarse sin credencial, el agente anuncia de forma transitoria su equipo por `/hubs/printing-discovery`; la interfaz lista esos equipos y un administrador lo vincula a una sede sin editar `appsettings` ni ingresar códigos. El backend entrega la credencial solo por esa conexión y el agente la protege con DPAPI. Una vez vinculado, consulta trabajos pendientes, mantiene una cola local SQLite idempotente y reporta los estados `PROCESSING`, `PRINTED` o `FAILED`. Reintentar reutiliza el trabajo fallido; reimprimir crea un trabajo auditado nuevo con referencia al original.
+
+Configura `Printing:AgentDownloadUrl` con la URL del instalador publicado. Los límites de vigencia, heartbeat y detección offline se controlan con las demás opciones `Printing`. El servicio Windows y su instalación se documentan en `saviaup.print-agent/install.MD`; la arquitectura completa está en `saviaup.print-agent/ARCHITECTURE.md`.
 
 ### Contexto visible y navegación
 

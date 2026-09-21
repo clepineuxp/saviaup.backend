@@ -2,6 +2,15 @@ namespace SaviaUp.Backend.Shared.Localization;
 
 public static class LocalizationKeys
 {
+    public const string PrintingLocationNotFound = "printing.locations.notFound";
+    public const string PrintAgentNotFound = "printing.agents.notFound";
+    public const string PrintAgentPairingInvalid = "printing.agents.pairingInvalid";
+    public const string PrintAgentCredentialInvalid = "printing.agents.credentialInvalid";
+    public const string PrinterNotFound = "printing.printers.notFound";
+    public const string PrintingZoneNotFound = "printing.zones.notFound";
+    public const string PrintingZoneAlreadyExists = "printing.zones.alreadyExists";
+    public const string PrintJobNotFound = "printing.jobs.notFound";
+    public const string PrintJobInvalidStatus = "printing.jobs.invalidStatus";
     public const string InvalidCredentials = "auth.invalidCredentials";
     public const string Unauthenticated = "auth.unauthenticated";
     public const string Forbidden = "auth.forbidden";
