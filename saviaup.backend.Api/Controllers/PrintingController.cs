@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaviaUp.Backend.Api.Attributes;
+using SaviaUp.Backend.Api.Configuration;
 using SaviaUp.Backend.Api.Extensions;
 using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Ports;
@@ -43,14 +44,16 @@ public sealed class PrintingController(
     [HttpGet("agents/discovered")]
     [RequirePermission(PermissionCodes.PrintingAgentsManage)]
     public async Task<ActionResult<IReadOnlyCollection<DiscoveredPrintAgentDto>>> GetDiscoveredAgents(CancellationToken cancellationToken)
-        => this.FromResult(await useCase.ListDiscoveredAgentsAsync(cancellationToken));
+        => this.FromResult(await useCase.ListDiscoveredAgentsAsync(
+            ClientNetworkAddress.From(HttpContext), cancellationToken));
 
     [HttpPost("agents/link-discovered")]
     [RequirePermission(PermissionCodes.PrintingAgentsManage)]
     public async Task<ActionResult<PrintAgentDto>> LinkDiscoveredAgent(
         [FromBody] LinkDiscoveredPrintAgentRequest request,
         CancellationToken cancellationToken)
-        => this.FromResult(await useCase.LinkDiscoveredAgentAsync(currentUser.TenantId!.Value, request, cancellationToken));
+        => this.FromResult(await useCase.LinkDiscoveredAgentAsync(
+            currentUser.TenantId!.Value, request, ClientNetworkAddress.From(HttpContext), cancellationToken));
 
     [HttpGet("agents")]
     [RequirePermission(PermissionCodes.PrintingAgentsRead, PermissionCodes.PrintingAgentsManage, PermissionCodes.PrintingZonesRead,

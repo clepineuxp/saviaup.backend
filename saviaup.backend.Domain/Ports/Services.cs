@@ -66,9 +66,9 @@ public interface IPrintingRealtimeNotifier
 
 public interface IUnpairedPrintAgentRegistry
 {
-    Task RegisterAsync(string connectionId, DiscoverPrintAgentRequest request, CancellationToken cancellationToken);
+    Task RegisterAsync(string connectionId, DiscoverPrintAgentRequest request, string? sourceIpAddress, CancellationToken cancellationToken);
     Task UnregisterAsync(string connectionId, CancellationToken cancellationToken);
-    Task<IReadOnlyCollection<DiscoveredPrintAgentDto>> ListAsync(CancellationToken cancellationToken);
-    Task<DiscoveredPrintAgentDto?> FindAsync(Guid discoveryId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<DiscoveredPrintAgentDto>> ListAsync(string? sourceIpAddress, CancellationToken cancellationToken);
+    Task<DiscoveredPrintAgentDto?> FindAsync(Guid discoveryId, string? sourceIpAddress, CancellationToken cancellationToken);
     Task<bool> DeliverPairingAsync(Guid discoveryId, PairPrintAgentResponse response, CancellationToken cancellationToken);
 }
