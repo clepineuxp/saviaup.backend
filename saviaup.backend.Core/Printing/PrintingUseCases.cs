@@ -250,16 +250,18 @@ public sealed class PrintingAdministrationUseCase(
     }
 
     public async Task<Result<IReadOnlyCollection<DiscoveredPrintAgentDto>>> ListDiscoveredAgentsAsync(
+        string? sourceIpAddress,
         CancellationToken cancellationToken)
         => Result<IReadOnlyCollection<DiscoveredPrintAgentDto>>.Success(
-            await discoveryRegistry.ListAsync(cancellationToken));
+            await discoveryRegistry.ListAsync(sourceIpAddress, cancellationToken));
 
     public async Task<Result<PrintAgentDto>> LinkDiscoveredAgentAsync(
         Guid tenantId,
         LinkDiscoveredPrintAgentRequest request,
+        string? sourceIpAddress,
         CancellationToken cancellationToken)
     {
-        var discovered = await discoveryRegistry.FindAsync(request.DiscoveryId, cancellationToken);
+        var discovered = await discoveryRegistry.FindAsync(request.DiscoveryId, sourceIpAddress, cancellationToken);
         if (discovered is null) return Result<PrintAgentDto>.Failure(Errors.PrintAgentPairingInvalid);
 
         var now = clock.UtcNow;
