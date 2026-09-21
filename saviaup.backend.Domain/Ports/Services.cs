@@ -60,6 +60,7 @@ public interface IPrintAgentContext
 public interface IPrintingRealtimeNotifier
 {
     Task JobAvailableAsync(Guid agentId, Guid printJobId, CancellationToken cancellationToken);
+    Task JobCancelledAsync(Guid agentId, Guid printJobId, CancellationToken cancellationToken);
     Task PrinterDiscoveryRequestedAsync(Guid agentId, CancellationToken cancellationToken);
 }
 

@@ -83,7 +83,7 @@ public static class PrintingRules
         job.Printer?.Port,
         job.Printer?.PaperWidth ?? 80,
         job.PrintingZoneId,
-        job.PrintingZone?.Name ?? string.Empty,
+        job.PrintingZone?.Name ?? (job.SourceType == "TEST" ? "Prueba directa" : "Impresora predeterminada"),
         job.SourceType,
         job.SourceId,
         job.DocumentType,
@@ -182,6 +182,7 @@ public sealed class PrintingAdministrationUseCase(
     IPrintingRepository repository,
     ICategoryRepository categoryRepository,
     IProductRepository productRepository,
+    ITenantRepository tenantRepository,
     ITokenGenerator tokenGenerator,
     IDateTimeProvider clock,
     IPrintingRealtimeNotifier realtime,
@@ -542,6 +543,21 @@ public sealed class PrintingAdministrationUseCase(
         return job is null ? Result<PrintJobDto>.Failure(Errors.PrintJobNotFound) : Result<PrintJobDto>.Success(PrintingRules.ToDto(job));
     }
 
+    public async Task<Result<PrintJobDto>> CancelJobAsync(Guid tenantId, Guid jobId, CancellationToken cancellationToken)
+    {
+        var job = await repository.GetJobAsync(tenantId, jobId, cancellationToken);
+        if (job is null) return Result<PrintJobDto>.Failure(Errors.PrintJobNotFound);
+        if (job.Status is PrintJobStatuses.Printed or PrintJobStatuses.Cancelled)
+            return Result<PrintJobDto>.Failure(Errors.PrintJobInvalidStatus);
+
+        job.Status = PrintJobStatuses.Cancelled;
+        job.FailedAt = null;
+        job.LastError = null;
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await realtime.JobCancelledAsync(job.PrintAgentId, job.Id, cancellationToken);
+        return Result<PrintJobDto>.Success(PrintingRules.ToDto(job));
+    }
+
     public async Task<Result<PrintJobDto>> RetryJobAsync(Guid tenantId, Guid jobId, CancellationToken cancellationToken)
     {
         var job = await repository.GetJobAsync(tenantId, jobId, cancellationToken);
@@ -599,13 +615,14 @@ public sealed class PrintingAdministrationUseCase(
     {
         var agent = await repository.GetAgentAsync(tenantId, agentId, cancellationToken);
         var printer = await repository.GetPrinterAsync(tenantId, printerId, cancellationToken);
-        if (agent is null) return Result<PrintJobDto>.Failure(Errors.PrintAgentNotFound);
-        if (printer is null || printer.PrintAgentId != agentId) return Result<PrintJobDto>.Failure(Errors.PrinterNotFound);
-        var zone = (await repository.GetZonesAsync(tenantId, cancellationToken)).FirstOrDefault(x => x.PrintAgentId == agentId && x.PrinterLinks.Any(link => link.PrinterId == printerId));
-        if (zone is null) return Result<PrintJobDto>.Failure(Errors.PrintingZoneNotFound);
+        if (agent is null || !agent.Enabled) return Result<PrintJobDto>.Failure(Errors.PrintAgentNotFound);
+        if (printer is null || !printer.Enabled || printer.PrintAgentId != agentId) return Result<PrintJobDto>.Failure(Errors.PrinterNotFound);
+        var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+        if (tenant is null) return Result<PrintJobDto>.Failure(Errors.TenantNotFound);
         var now = clock.UtcNow;
-        var payload = new KitchenOrderPrintPayload("TestPage", "PRUEBA", null, "Savia Up", now,
-            [new KitchenOrderPrintItem(1, "Impresión de prueba", [], "Conexión configurada correctamente")], null, false);
+        var payload = new KitchenOrderPrintPayload(
+            "TEST_PRINT", "PRUEBA", null, "Savia Up", now, [], null, false,
+            printer.Name, tenant.Name, "Prueba de impresión de Savia Up");
         var job = new PrintJob
         {
             Id = Guid.NewGuid(),
@@ -613,10 +630,10 @@ public sealed class PrintingAdministrationUseCase(
             LocationId = agent.LocationId,
             PrintAgentId = agentId,
             PrinterId = printerId,
-            PrintingZoneId = zone.Id,
+            PrintingZoneId = null,
             SourceType = "TEST",
             SourceId = Guid.NewGuid(),
-            DocumentType = "TEST_PAGE",
+            DocumentType = "TEST_PRINT",
             PayloadJson = JsonSerializer.Serialize(payload, JsonOptions),
             Status = PrintJobStatuses.Pending,
             CreatedAt = now,
@@ -624,8 +641,7 @@ public sealed class PrintingAdministrationUseCase(
             CreatedByUserId = userId,
             Location = agent.Location,
             PrintAgent = agent,
-            Printer = printer,
-            PrintingZone = zone
+            Printer = printer
         };
         await repository.AddJobsAsync([job], cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);

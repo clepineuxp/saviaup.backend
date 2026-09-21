@@ -641,6 +641,7 @@ public interface IPrintingAdministrationUseCase
     Task<Result> DeleteZoneAsync(Guid tenantId, Guid zoneId, CancellationToken cancellationToken);
     Task<Result<PrintJobPageDto>> ListJobsAsync(Guid tenantId, PrintJobQueryRequest request, CancellationToken cancellationToken);
     Task<Result<PrintJobDto>> GetJobAsync(Guid tenantId, Guid jobId, CancellationToken cancellationToken);
+    Task<Result<PrintJobDto>> CancelJobAsync(Guid tenantId, Guid jobId, CancellationToken cancellationToken);
     Task<Result<PrintJobDto>> RetryJobAsync(Guid tenantId, Guid jobId, CancellationToken cancellationToken);
     Task<Result<PrintJobDto>> ReprintJobAsync(Guid tenantId, Guid jobId, Guid userId, CancellationToken cancellationToken);
     Task<Result<PrintJobDto>> CreateTestJobAsync(Guid tenantId, Guid agentId, Guid printerId, Guid userId, CancellationToken cancellationToken);

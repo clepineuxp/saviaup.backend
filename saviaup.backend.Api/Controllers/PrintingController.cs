@@ -157,6 +157,11 @@ public sealed class PrintingController(
     public async Task<ActionResult<PrintJobDto>> GetJob(Guid jobId, CancellationToken cancellationToken)
         => this.FromResult(await useCase.GetJobAsync(currentUser.TenantId!.Value, jobId, cancellationToken));
 
+    [HttpPost("jobs/{jobId:guid}/cancel")]
+    [RequirePermission(PermissionCodes.PrintingQueueRetry)]
+    public async Task<ActionResult<PrintJobDto>> CancelJob(Guid jobId, CancellationToken cancellationToken)
+        => this.FromResult(await useCase.CancelJobAsync(currentUser.TenantId!.Value, jobId, cancellationToken));
+
     [HttpPost("jobs/{jobId:guid}/retry")]
     [RequirePermission(PermissionCodes.PrintingQueueRetry)]
     public async Task<ActionResult<PrintJobDto>> RetryJob(Guid jobId, CancellationToken cancellationToken)

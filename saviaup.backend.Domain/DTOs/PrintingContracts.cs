@@ -214,7 +214,10 @@ public sealed record KitchenOrderPrintPayload(
     DateTimeOffset CreatedAt,
     IReadOnlyCollection<KitchenOrderPrintItem> Items,
     string? Notes,
-    bool IsReprint);
+    bool IsReprint,
+    string? PrinterName = null,
+    string? OrganizationName = null,
+    string? FooterMessage = null);
 
 public sealed record PrintingDestination(
     Guid LocationId,

@@ -26,6 +26,10 @@ public sealed class PrintingRealtimeNotifier(IHubContext<PrintingHub> hub) : IPr
         => hub.Clients.Group(PrintingHub.AgentGroup(agentId))
             .SendAsync("OnPrintJobAvailable", new { printJobId }, cancellationToken);
 
+    public Task JobCancelledAsync(Guid agentId, Guid printJobId, CancellationToken cancellationToken)
+        => hub.Clients.Group(PrintingHub.AgentGroup(agentId))
+            .SendAsync("OnPrintJobCancelled", new { printJobId }, cancellationToken);
+
     public Task PrinterDiscoveryRequestedAsync(Guid agentId, CancellationToken cancellationToken)
         => hub.Clients.Group(PrintingHub.AgentGroup(agentId))
             .SendAsync("OnPrinterDiscoveryRequested", cancellationToken);

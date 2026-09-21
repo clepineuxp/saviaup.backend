@@ -283,6 +283,81 @@ public sealed class PrintingUseCaseTests
         realtime.Verify(x => x.JobAvailableAsync(job.PrintAgentId, job.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Theory]
+    [InlineData(PrintJobStatuses.Pending)]
+    [InlineData(PrintJobStatuses.Processing)]
+    [InlineData(PrintJobStatuses.Failed)]
+    public async Task CancelJob_CancelsEveryUnfinishedJob(string status)
+    {
+        var tenantId = Guid.NewGuid();
+        var job = Job(tenantId, status);
+        var repository = new Mock<IPrintingRepository>();
+        repository.Setup(x => x.GetJobAsync(tenantId, job.Id, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        var realtime = new Mock<IPrintingRealtimeNotifier>();
+        realtime.Setup(x => x.JobCancelledAsync(job.PrintAgentId, job.Id, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var result = await Administration(repository, realtime).CancelJobAsync(tenantId, job.Id, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(PrintJobStatuses.Cancelled, job.Status);
+        Assert.Null(job.FailedAt);
+        Assert.Null(job.LastError);
+        realtime.Verify(x => x.JobCancelledAsync(job.PrintAgentId, job.Id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(PrintJobStatuses.Printed)]
+    [InlineData(PrintJobStatuses.Cancelled)]
+    public async Task CancelJob_RejectsTerminalJobs(string status)
+    {
+        var tenantId = Guid.NewGuid();
+        var job = Job(tenantId, status);
+        var repository = new Mock<IPrintingRepository>();
+        repository.Setup(x => x.GetJobAsync(tenantId, job.Id, It.IsAny<CancellationToken>())).ReturnsAsync(job);
+        var realtime = new Mock<IPrintingRealtimeNotifier>();
+
+        var result = await Administration(repository, realtime).CancelJobAsync(tenantId, job.Id, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(status, job.Status);
+        realtime.Verify(x => x.JobCancelledAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task TestPrint_CreatesDirectQueueJobWithoutZone()
+    {
+        var tenantId = Guid.NewGuid();
+        var location = new Location { Id = Guid.NewGuid(), TenantId = tenantId, Name = "Principal" };
+        var agent = new PrintAgent { Id = Guid.NewGuid(), TenantId = tenantId, LocationId = location.Id, Location = location, Name = "PC Caja", Enabled = true };
+        var printer = new Printer { Id = Guid.NewGuid(), TenantId = tenantId, LocationId = location.Id, PrintAgentId = agent.Id, Name = "Cocina Epson", Enabled = true, Location = location, PrintAgent = agent };
+        var repository = new Mock<IPrintingRepository>();
+        repository.Setup(x => x.GetAgentAsync(tenantId, agent.Id, It.IsAny<CancellationToken>())).ReturnsAsync(agent);
+        repository.Setup(x => x.GetPrinterAsync(tenantId, printer.Id, It.IsAny<CancellationToken>())).ReturnsAsync(printer);
+        PrintJob? created = null;
+        repository.Setup(x => x.AddJobsAsync(It.IsAny<IEnumerable<PrintJob>>(), It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<PrintJob>, CancellationToken>((jobs, _) => created = jobs.Single())
+            .Returns(Task.CompletedTask);
+        var tenantRepository = new Mock<ITenantRepository>();
+        tenantRepository.Setup(x => x.GetByIdAsync(tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Tenant { Id = tenantId, Name = "Restaurante Savia" });
+        var realtime = new Mock<IPrintingRealtimeNotifier>();
+        realtime.Setup(x => x.JobAvailableAsync(agent.Id, It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+
+        var result = await Administration(repository, realtime, tenantRepository.Object)
+            .CreateTestJobAsync(tenantId, agent.Id, printer.Id, Guid.NewGuid(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(created);
+        Assert.Equal("TEST", created.SourceType);
+        Assert.Equal("TEST_PRINT", created.DocumentType);
+        Assert.Null(created.PrintingZoneId);
+        using var payload = JsonDocument.Parse(created.PayloadJson);
+        Assert.Equal("Cocina Epson", payload.RootElement.GetProperty("printerName").GetString());
+        Assert.Equal("Restaurante Savia", payload.RootElement.GetProperty("organizationName").GetString());
+        Assert.Equal("Prueba de impresión de Savia Up", payload.RootElement.GetProperty("footerMessage").GetString());
+        realtime.Verify(x => x.JobAvailableAsync(agent.Id, created.Id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Fact]
     public async Task Reprint_CreatesAuditedJob_AndPreservesOriginal()
     {
@@ -339,9 +414,10 @@ public sealed class PrintingUseCaseTests
 
     private static PrintingAdministrationUseCase Administration(
         Mock<IPrintingRepository> repository,
-        Mock<IPrintingRealtimeNotifier> realtime)
+        Mock<IPrintingRealtimeNotifier> realtime,
+        ITenantRepository? tenantRepository = null)
         => new(repository.Object, Mock.Of<ICategoryRepository>(), Mock.Of<IProductRepository>(),
-            Mock.Of<ITokenGenerator>(), Clock(), realtime.Object, Mock.Of<IUnpairedPrintAgentRegistry>(), Mock.Of<IOrganizationTimeZone>(),
+            tenantRepository ?? Mock.Of<ITenantRepository>(), Mock.Of<ITokenGenerator>(), Clock(), realtime.Object, Mock.Of<IUnpairedPrintAgentRegistry>(), Mock.Of<IOrganizationTimeZone>(),
             Mock.Of<ITimeZoneService>(), Options.Create(new PrintingOptions()), UnitOfWork().Object);
 
     private static Mock<IUnitOfWork> UnitOfWork()
