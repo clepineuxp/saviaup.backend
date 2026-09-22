@@ -11,7 +11,8 @@ public sealed class CreateCategoryUseCase(
     ICategoryRepository categoryRepository,
     IDateTimeProvider dateTimeProvider,
     IUnitOfWork unitOfWork,
-    IStoredImageRepository? imageRepository = null) : ICreateCategoryUseCase
+    IStoredImageRepository? imageRepository = null,
+    ITableRealtimeNotifier? realtime = null) : ICreateCategoryUseCase
 {
     public async Task<Result<CategoryDto>> ExecuteAsync(
         Guid tenantId,
@@ -70,6 +71,8 @@ public sealed class CreateCategoryUseCase(
         };
         await categoryRepository.AddAsync(category, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (realtime is not null)
+            await realtime.SalesDataInvalidatedAsync(tenantId, new(["categories", "products"], now), cancellationToken);
         return Result<CategoryDto>.Success(CategoryRules.ToDto(category));
     }
 }

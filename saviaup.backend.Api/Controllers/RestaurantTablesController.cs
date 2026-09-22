@@ -18,6 +18,8 @@ public sealed class RestaurantTablesController(
     IUpdateRestaurantTableUseCase updateUseCase,
     IDeleteRestaurantTableUseCase deleteUseCase,
     IGetTableOperationUseCase operationUseCase,
+    IGetTableSalesContextUseCase salesContextUseCase,
+    IOrganizationSettingsUseCase organization,
     ISetTableOperationUseCase setOperationUseCase,
     IUpdateTableOrderUseCase updateOrderUseCase,
     ICurrentUserContext currentUser) : ControllerBase
@@ -33,6 +35,22 @@ public sealed class RestaurantTablesController(
     [RequirePermission(PermissionCodes.TablesRead)]
     public async Task<ActionResult<TableOperationSnapshotDto>> Operation(CancellationToken cancellationToken)
         => this.FromResult(await operationUseCase.ExecuteAsync(currentUser.TenantId!.Value, cancellationToken));
+
+    [HttpGet("sales-context")]
+    [RequirePermission(PermissionCodes.TablesRead, PermissionCodes.TablesManage)]
+    public async Task<ActionResult<TableSalesContextDto>> SalesContext(CancellationToken cancellationToken)
+        => this.FromResult(await salesContextUseCase.ExecuteAsync(
+            currentUser.TenantId!.Value,
+            currentUser.RoleId!.Value,
+            cancellationToken));
+
+    [HttpGet("sales-logo")]
+    [RequirePermission(PermissionCodes.TablesRead, PermissionCodes.TablesManage)]
+    public async Task<ActionResult> SalesLogo(CancellationToken cancellationToken)
+    {
+        var result = await organization.GetLogoAsync(currentUser.TenantId!.Value, cancellationToken);
+        return result.IsSuccess ? File(result.Value!.Content, result.Value.ContentType, result.Value.FileName) : this.Error(result.Error!);
+    }
 
     [HttpPost]
     [RequirePermission(PermissionCodes.TablesManage)]
