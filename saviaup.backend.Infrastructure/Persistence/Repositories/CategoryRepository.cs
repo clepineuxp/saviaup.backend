@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Infrastructure.Persistence.Application;
@@ -54,6 +55,18 @@ public sealed class CategoryRepository(ApplicationDbContext context) : ICategory
                 && (!excludedCategoryId.HasValue || category.Id != excludedCategoryId.Value),
             cancellationToken);
 
+    public async Task<IReadOnlyCollection<CategoryUsageCounts>> GetUsageCountsForTenantAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken)
+        => await UsageCountsQuery(tenantId).ToArrayAsync(cancellationToken);
+
+    public Task<CategoryUsageCounts?> GetUsageCountsAsync(
+        Guid tenantId,
+        Guid categoryId,
+        CancellationToken cancellationToken)
+        => UsageCountsQuery(tenantId)
+            .SingleOrDefaultAsync(counts => counts.CategoryId == categoryId, cancellationToken);
+
     public async Task AddAsync(Category category, CancellationToken cancellationToken)
         => await context.Categories.AddAsync(category, cancellationToken);
 
@@ -66,4 +79,14 @@ public sealed class CategoryRepository(ApplicationDbContext context) : ICategory
                 cancellationToken);
 
     public void Remove(Category category) => context.Categories.Remove(category);
+
+    private IQueryable<CategoryUsageCounts> UsageCountsQuery(Guid tenantId)
+        => context.Categories
+            .AsNoTracking()
+            .Where(category => category.TenantId == tenantId)
+            .Select(category => new CategoryUsageCounts(
+                category.Id,
+                category.Products.Count(),
+                category.Products.SelectMany(product => product.Variations).Count(),
+                category.Ingredients.Count()));
 }

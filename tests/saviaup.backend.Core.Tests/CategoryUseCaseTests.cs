@@ -291,15 +291,27 @@ public sealed class CategoryUseCaseTests
     {
         var tenantId = Guid.NewGuid();
         var repository = new Mock<ICategoryRepository>();
+        var activeCategory = Category(tenantId);
+        var inactiveCategory = Category(tenantId, isActive: false);
         repository.Setup(value => value.GetForTenantAsync(tenantId, true, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([Category(tenantId), Category(tenantId, isActive: false)]);
+            .ReturnsAsync([activeCategory, inactiveCategory]);
+        repository.Setup(value => value.GetUsageCountsForTenantAsync(tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new CategoryUsageCounts(activeCategory.Id, 3, 5, 2),
+                new CategoryUsageCounts(inactiveCategory.Id, 1, 0, 4)
+            ]);
         var useCase = new ListCategoriesUseCase(repository.Object);
 
         var result = await useCase.ExecuteAsync(tenantId, true, default);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(2, result.Value!.Count);
+        Assert.Equal((3, 5, 2), (
+            result.Value.First().ProductCount,
+            result.Value.First().VariationCount,
+            result.Value.First().IngredientCount));
         repository.Verify(value => value.GetForTenantAsync(tenantId, true, It.IsAny<CancellationToken>()), Times.Once);
+        repository.Verify(value => value.GetUsageCountsForTenantAsync(tenantId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static Mock<IUnitOfWork> UnitOfWork()

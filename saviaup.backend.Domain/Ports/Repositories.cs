@@ -56,6 +56,13 @@ public interface ICategoryRepository
         string normalizedName,
         Guid? excludedCategoryId,
         CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<CategoryUsageCounts>> GetUsageCountsForTenantAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken);
+    Task<CategoryUsageCounts?> GetUsageCountsAsync(
+        Guid tenantId,
+        Guid categoryId,
+        CancellationToken cancellationToken);
     Task AddAsync(Category category, CancellationToken cancellationToken);
     Task<bool> IsInUseAsync(Guid tenantId, Guid categoryId, CancellationToken cancellationToken);
     void Remove(Category category);
