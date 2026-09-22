@@ -16,8 +16,10 @@ public sealed class DigitalMenuRepository(
     PlatformDbContext platformContext,
     ApplicationDbContext appContext) : IDigitalMenuRepository
 {
-    private const int PublicImageMaxSize = 960;
-    private const int PublicImageQuality = 74;
+    private const int PublicImageMaxSize = 640;
+    private const int PublicImageCompactSize = 480;
+    private const int PublicImageThumbnailSize = 360;
+    private const int PublicImageTargetBytes = 64 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public async Task<IReadOnlyCollection<DigitalMenuItem>> GetItemsAsync(Guid tenantId, CancellationToken cancellationToken)
@@ -429,20 +431,23 @@ public sealed class DigitalMenuRepository(
         {
             using var image = Image.Load(source);
             image.Mutate(operation => operation.AutoOrient());
-            if (image.Width > PublicImageMaxSize || image.Height > PublicImageMaxSize)
+            ResizeToFit(image, PublicImageMaxSize);
+
+            var encoded = EncodeWebp(image, quality: 58);
+
+            if (encoded.Length > PublicImageTargetBytes)
             {
-                image.Mutate(operation => operation.Resize(new ResizeOptions
-                {
-                    Mode = ResizeMode.Max,
-                    Size = new Size(PublicImageMaxSize, PublicImageMaxSize)
-                }));
+                ResizeToFit(image, PublicImageCompactSize);
+                encoded = EncodeWebp(image, quality: 45);
             }
 
-            using var output = new MemoryStream();
-            image.Save(output, new WebpEncoder { Quality = PublicImageQuality });
-            return new OptimizedPublicImage(
-                output.ToArray(),
-                "image/webp");
+            if (encoded.Length > PublicImageTargetBytes)
+            {
+                ResizeToFit(image, PublicImageThumbnailSize);
+                encoded = EncodeWebp(image, quality: 38);
+            }
+
+            return new OptimizedPublicImage(encoded, "image/webp");
         }
         catch (UnknownImageFormatException)
         {
@@ -460,6 +465,31 @@ public sealed class DigitalMenuRepository(
         => new(
             source,
             string.IsNullOrWhiteSpace(sourceContentType) ? "application/octet-stream" : sourceContentType);
+
+    private static void ResizeToFit(Image image, int maximumSize)
+    {
+        if (image.Width <= maximumSize && image.Height <= maximumSize) return;
+
+        image.Mutate(operation => operation.Resize(new ResizeOptions
+        {
+            Mode = ResizeMode.Max,
+            Size = new Size(maximumSize, maximumSize)
+        }));
+    }
+
+    private static byte[] EncodeWebp(Image image, int quality)
+    {
+        using var output = new MemoryStream();
+        image.Save(output, new WebpEncoder
+        {
+            FileFormat = WebpFileFormatType.Lossy,
+            Quality = quality,
+            Method = WebpEncodingMethod.Level4,
+            SkipMetadata = true,
+            UseAlphaCompression = true
+        });
+        return output.ToArray();
+    }
 
     private sealed record OptimizedPublicImage(byte[] Content, string ContentType);
 }
