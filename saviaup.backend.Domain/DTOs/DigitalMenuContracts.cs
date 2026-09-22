@@ -88,7 +88,11 @@ public sealed record PublicDigitalMenuDto(
     DigitalMenuStyleDto Style,
     IReadOnlyCollection<PublicCategoryDto> Categories);
 
-public sealed record PublicDigitalMenuImageDto(
-    byte[] Content,
-    string ContentType,
-    long Version);
+public sealed record PublicDigitalMenuProductImageDto(
+    Guid ProductId,
+    string? Image);
+
+public sealed record PublicDigitalMenuCategoryImagesDto(
+    Guid CategoryId,
+    string? CategoryImage,
+    IReadOnlyCollection<PublicDigitalMenuProductImageDto> Products);

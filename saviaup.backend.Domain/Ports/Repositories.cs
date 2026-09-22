@@ -333,8 +333,10 @@ public interface IDigitalMenuRepository
     Task<IReadOnlyCollection<DigitalMenuItem>> GetItemsAsync(Guid tenantId, CancellationToken cancellationToken);
     Task ReplaceItemsAsync(Guid tenantId, IEnumerable<DigitalMenuItem> items, CancellationToken cancellationToken);
     Task<PublicDigitalMenuDto?> GetPublicMenuAsync(string slug, CancellationToken cancellationToken);
-    Task<PublicDigitalMenuImageDto?> GetPublicMenuImageAsync(string slug, Guid imageId, CancellationToken cancellationToken);
-    Task<PublicDigitalMenuImageDto?> GetPublicMenuLogoAsync(string slug, CancellationToken cancellationToken);
+    Task<PublicDigitalMenuCategoryImagesDto?> GetPublicMenuCategoryImagesAsync(
+        string slug,
+        Guid categoryId,
+        CancellationToken cancellationToken);
 }
 
 public interface IPrintingRepository
