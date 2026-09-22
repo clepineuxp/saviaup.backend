@@ -29,7 +29,7 @@ internal static class NavigationCatalog
                 new("billing", 4)
             ],
             []),
-        new("inventory", 3,
+        new("inventory", 4,
             [
                 new("products", 1),
                 new("categories", 2),
@@ -37,7 +37,7 @@ internal static class NavigationCatalog
                 new("kitchen", 4)
             ],
             []),
-        new("expenses", 4,
+        new("expenses", 3,
             [
                 new("expenses", 1),
                 new("suppliers", 2)
