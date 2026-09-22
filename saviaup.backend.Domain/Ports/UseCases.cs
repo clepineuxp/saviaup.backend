@@ -629,8 +629,10 @@ public interface IDigitalMenuUseCase
     Task<Result> UpdateItemsAsync(Guid tenantId, SaveDigitalMenuItemsRequest request, Guid? userId, string? userName, CancellationToken cancellationToken);
     Task<Result> UpdateStyleAsync(Guid tenantId, DigitalMenuStyleDto request, CancellationToken cancellationToken);
     Task<Result<PublicDigitalMenuDto>> GetPublicMenuAsync(string slug, CancellationToken cancellationToken);
-    Task<Result<PublicDigitalMenuImageDto>> GetPublicMenuImageAsync(string slug, Guid imageId, CancellationToken cancellationToken);
-    Task<Result<PublicDigitalMenuImageDto>> GetPublicMenuLogoAsync(string slug, CancellationToken cancellationToken);
+    Task<Result<PublicDigitalMenuCategoryImagesDto>> GetPublicMenuCategoryImagesAsync(
+        string slug,
+        Guid categoryId,
+        CancellationToken cancellationToken);
 }
 
 public interface IPrintingAdministrationUseCase

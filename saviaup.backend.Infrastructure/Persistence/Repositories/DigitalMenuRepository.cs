@@ -77,6 +77,8 @@ public sealed class DigitalMenuRepository(
                 item.Id,
                 item.Name,
                 HasLogo = item.LogoData != null && item.LogoData.Length > 0,
+                item.LogoData,
+                item.LogoContentType,
                 item.Phone,
                 item.Address,
                 item.Website,
@@ -131,20 +133,6 @@ public sealed class DigitalMenuRepository(
                         variation.SalePrice,
                         variation.SortOrder))
                     .ToArray());
-
-        var storedImages = await appContext.StoredImages
-            .AsNoTracking()
-            .IgnoreQueryFilters()
-            .Where(image => image.TenantId == tenantId
-                && (image.Module == "products" || image.Module == "categories"))
-            .OrderByDescending(image => image.UpdatedAt)
-            .Select(image => new PublicImageReference(image.Id, image.Module, image.EntityId))
-            .ToListAsync(cancellationToken);
-        var imagesById = storedImages.ToDictionary(image => image.Id);
-        var imagesByEntity = storedImages
-            .Where(image => !string.IsNullOrWhiteSpace(image.EntityId))
-            .GroupBy(image => (Module: image.Module.ToUpperInvariant(), EntityId: image.EntityId!))
-            .ToDictionary(group => group.Key, group => group.First());
 
         var menuItems = await appContext.DigitalMenuItems
             .AsNoTracking()
@@ -205,7 +193,7 @@ public sealed class DigitalMenuRepository(
                     x.Product.Description,
                     x.Product.SalePrice,
                     x.Product.ImageRef,
-                    ResolveImageUrl(normalizedSlug, x.Product.ImageRef, "products", x.Product.Id, imagesById, imagesByEntity),
+                    Image: null,
                     x.SortOrder,
                     variationsByProductId.GetValueOrDefault(x.Product.Id, [])
                 ))
@@ -217,7 +205,7 @@ public sealed class DigitalMenuRepository(
                 category.Name,
                 category.Description,
                 category.ImageRef,
-                ResolveImageUrl(normalizedSlug, category.ImageRef, "categories", category.Id, imagesById, imagesByEntity),
+                Image: null,
                 categoryOrder,
                 categoryProducts
             ));
@@ -232,8 +220,8 @@ public sealed class DigitalMenuRepository(
             TenantId: tenant.Id,
             OrganizationName: tenant.Name,
             HasLogo: tenant.HasLogo,
-            Logo: tenant.HasLogo
-                ? $"/api/public/menu/{Uri.EscapeDataString(normalizedSlug)}/logo?v={tenant.UpdatedAt.ToUnixTimeMilliseconds()}"
+            Logo: tenant.HasLogo && tenant.LogoData is { Length: > 0 }
+                ? ToOptimizedDataUrl(tenant.LogoData, tenant.LogoContentType)
                 : null,
             LogoVersion: tenant.UpdatedAt.ToUnixTimeMilliseconds(),
             Phone: tenant.Phone,
@@ -244,50 +232,99 @@ public sealed class DigitalMenuRepository(
         );
     }
 
-    public async Task<PublicDigitalMenuImageDto?> GetPublicMenuImageAsync(
+    public async Task<PublicDigitalMenuCategoryImagesDto?> GetPublicMenuCategoryImagesAsync(
         string slug,
-        Guid imageId,
+        Guid categoryId,
         CancellationToken cancellationToken)
     {
         var tenantId = await GetPublishedTenantIdAsync(slug, cancellationToken);
         if (!tenantId.HasValue) return null;
 
-        var storedImage = await appContext.StoredImages
+        var category = await appContext.Categories
             .AsNoTracking()
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(
-                image => image.TenantId == tenantId.Value
-                    && image.Id == imageId
-                    && (image.Module == "products" || image.Module == "categories"),
-                cancellationToken);
-
-        if (storedImage is null || !await IsImagePublishedAsync(tenantId.Value, storedImage, cancellationToken))
-        {
-            return null;
-        }
-
-        var content = DecodeStoredImage(storedImage.Base64Content);
-        return content is null
-            ? null
-            : OptimizePublicImage(content, storedImage.ContentType, storedImage.UpdatedAt);
-    }
-
-    public async Task<PublicDigitalMenuImageDto?> GetPublicMenuLogoAsync(
-        string slug,
-        CancellationToken cancellationToken)
-    {
-        var tenantId = await GetPublishedTenantIdAsync(slug, cancellationToken);
-        if (!tenantId.HasValue) return null;
-
-        var tenant = await platformContext.Tenants
-            .AsNoTracking()
-            .Where(item => item.Id == tenantId.Value && item.IsActive && item.LogoData != null)
-            .Select(item => new { item.LogoData, item.LogoContentType, item.UpdatedAt })
+            .Where(item => item.TenantId == tenantId.Value
+                && item.Id == categoryId
+                && item.IsActive)
+            .Select(item => new { item.Id, item.ImageRef })
             .FirstOrDefaultAsync(cancellationToken);
 
-        return tenant?.LogoData is { Length: > 0 }
-            ? OptimizePublicImage(tenant.LogoData, tenant.LogoContentType, tenant.UpdatedAt)
-            : null;
+        if (category is null) return null;
+
+        var menuItems = await appContext.DigitalMenuItems
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(item => item.TenantId == tenantId.Value)
+            .ToListAsync(cancellationToken);
+
+        var categoryConfig = menuItems.FirstOrDefault(item =>
+            string.Equals(item.ItemType, "CATEGORY", StringComparison.OrdinalIgnoreCase)
+            && item.TargetId == categoryId);
+        if (categoryConfig is { IsActive: false }) return null;
+
+        var productConfigs = menuItems
+            .Where(item => string.Equals(item.ItemType, "PRODUCT", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(item => item.TargetId);
+
+        var products = (await appContext.Products
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(product => product.TenantId == tenantId.Value
+                && product.CategoryId == categoryId
+                && product.IsActive)
+            .Select(product => new { product.Id, product.ImageRef })
+            .ToListAsync(cancellationToken))
+            .Where(product => !productConfigs.TryGetValue(product.Id, out var config) || config.IsActive)
+            .ToArray();
+
+        var referencedImageIds = products
+            .Select(product => product.ImageRef)
+            .Append(category.ImageRef)
+            .Where(imageId => imageId.HasValue)
+            .Select(imageId => imageId!.Value)
+            .ToHashSet();
+        var entityIds = products
+            .Select(product => product.Id.ToString())
+            .Append(categoryId.ToString())
+            .ToArray();
+
+        var storedImages = await appContext.StoredImages
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(image => image.TenantId == tenantId.Value
+                && (image.Module == "products" || image.Module == "categories")
+                && (referencedImageIds.Contains(image.Id)
+                    || (image.EntityId != null && entityIds.Contains(image.EntityId))))
+            .OrderByDescending(image => image.UpdatedAt)
+            .ToListAsync(cancellationToken);
+
+        var imagesById = storedImages.ToDictionary(image => image.Id);
+        var imagesByEntity = storedImages
+            .Where(image => !string.IsNullOrWhiteSpace(image.EntityId))
+            .GroupBy(image => (Module: image.Module.ToUpperInvariant(), EntityId: image.EntityId!))
+            .ToDictionary(group => group.Key, group => group.First());
+
+        var categoryImage = ResolveStoredImage(
+            category.ImageRef,
+            "categories",
+            categoryId,
+            imagesById,
+            imagesByEntity);
+        var productImages = products
+            .Select(product => new PublicDigitalMenuProductImageDto(
+                product.Id,
+                ToOptimizedDataUrl(ResolveStoredImage(
+                    product.ImageRef,
+                    "products",
+                    product.Id,
+                    imagesById,
+                    imagesByEntity))))
+            .ToArray();
+
+        return new PublicDigitalMenuCategoryImagesDto(
+            categoryId,
+            ToOptimizedDataUrl(categoryImage),
+            productImages);
     }
 
     private static DigitalMenuStyleDto ParseStyle(string? json)
@@ -303,21 +340,19 @@ public sealed class DigitalMenuRepository(
         }
     }
 
-    private static string? ResolveImageUrl(
-        string slug,
+    private static StoredImage? ResolveStoredImage(
         Guid? imageRef,
         string module,
         Guid entityId,
-        IReadOnlyDictionary<Guid, PublicImageReference> imagesById,
-        IReadOnlyDictionary<(string Module, string EntityId), PublicImageReference> imagesByEntity)
+        IReadOnlyDictionary<Guid, StoredImage> imagesById,
+        IReadOnlyDictionary<(string Module, string EntityId), StoredImage> imagesByEntity)
     {
-        var resolvedId = imageRef.HasValue && imagesById.ContainsKey(imageRef.Value)
-            ? imageRef
-            : imagesByEntity.GetValueOrDefault((module.ToUpperInvariant(), entityId.ToString()))?.Id;
+        if (imageRef.HasValue && imagesById.TryGetValue(imageRef.Value, out var referencedImage))
+        {
+            return referencedImage;
+        }
 
-        return resolvedId.HasValue
-            ? $"/api/public/menu/{Uri.EscapeDataString(slug)}/images/{resolvedId.Value:D}"
-            : null;
+        return imagesByEntity.GetValueOrDefault((module.ToUpperInvariant(), entityId.ToString()));
     }
 
     private async Task<Guid?> GetPublishedTenantIdAsync(string slug, CancellationToken cancellationToken)
@@ -351,64 +386,6 @@ public sealed class DigitalMenuRepository(
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    private async Task<bool> IsImagePublishedAsync(
-        Guid tenantId,
-        StoredImage image,
-        CancellationToken cancellationToken)
-    {
-        _ = Guid.TryParse(image.EntityId, out var entityId);
-
-        if (string.Equals(image.Module, "products", StringComparison.OrdinalIgnoreCase))
-        {
-            var product = await appContext.Products
-                .AsNoTracking()
-                .IgnoreQueryFilters()
-                .Where(product => product.TenantId == tenantId
-                    && product.IsActive
-                    && (product.ImageRef == image.Id || (product.ImageRef == null && product.Id == entityId)))
-                .Select(product => new { product.Id, product.CategoryId })
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (product is null) return false;
-
-            var categoryIsPublished = await appContext.Categories
-                .AsNoTracking()
-                .IgnoreQueryFilters()
-                .AnyAsync(category => category.TenantId == tenantId
-                    && category.Id == product.CategoryId
-                    && category.IsActive, cancellationToken);
-
-            if (!categoryIsPublished) return false;
-
-            return !await appContext.DigitalMenuItems
-                .AsNoTracking()
-                .IgnoreQueryFilters()
-                .AnyAsync(item => item.TenantId == tenantId
-                    && !item.IsActive
-                    && ((item.ItemType == "PRODUCT" && item.TargetId == product.Id)
-                        || (item.ItemType == "CATEGORY" && item.TargetId == product.CategoryId)), cancellationToken);
-        }
-
-        if (!string.Equals(image.Module, "categories", StringComparison.OrdinalIgnoreCase)) return false;
-
-        var categoryId = await appContext.Categories
-            .AsNoTracking()
-            .IgnoreQueryFilters()
-            .Where(category => category.TenantId == tenantId
-                && category.IsActive
-                && (category.ImageRef == image.Id || (category.ImageRef == null && category.Id == entityId)))
-            .Select(category => (Guid?)category.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return categoryId.HasValue && !await appContext.DigitalMenuItems
-            .AsNoTracking()
-            .IgnoreQueryFilters()
-            .AnyAsync(item => item.TenantId == tenantId
-                && item.ItemType == "CATEGORY"
-                && item.TargetId == categoryId.Value
-                && !item.IsActive, cancellationToken);
-    }
-
     private static byte[]? DecodeStoredImage(string content)
     {
         if (string.IsNullOrWhiteSpace(content)) return null;
@@ -427,10 +404,26 @@ public sealed class DigitalMenuRepository(
         }
     }
 
-    private static PublicDigitalMenuImageDto OptimizePublicImage(
+    private static string? ToOptimizedDataUrl(StoredImage? image)
+    {
+        if (image is null) return null;
+        var content = DecodeStoredImage(image.Base64Content);
+        return content is null
+            ? null
+            : ToOptimizedDataUrl(content, image.ContentType);
+    }
+
+    private static string ToOptimizedDataUrl(
         byte[] source,
-        string? sourceContentType,
-        DateTimeOffset updatedAt)
+        string? sourceContentType)
+    {
+        var optimized = OptimizePublicImage(source, sourceContentType);
+        return $"data:{optimized.ContentType};base64,{Convert.ToBase64String(optimized.Content)}";
+    }
+
+    private static OptimizedPublicImage OptimizePublicImage(
+        byte[] source,
+        string? sourceContentType)
     {
         try
         {
@@ -447,29 +440,26 @@ public sealed class DigitalMenuRepository(
 
             using var output = new MemoryStream();
             image.Save(output, new WebpEncoder { Quality = PublicImageQuality });
-            return new PublicDigitalMenuImageDto(
+            return new OptimizedPublicImage(
                 output.ToArray(),
-                "image/webp",
-                updatedAt.ToUnixTimeMilliseconds());
+                "image/webp");
         }
         catch (UnknownImageFormatException)
         {
-            return OriginalPublicImage(source, sourceContentType, updatedAt);
+            return OriginalPublicImage(source, sourceContentType);
         }
         catch (InvalidImageContentException)
         {
-            return OriginalPublicImage(source, sourceContentType, updatedAt);
+            return OriginalPublicImage(source, sourceContentType);
         }
     }
 
-    private static PublicDigitalMenuImageDto OriginalPublicImage(
+    private static OptimizedPublicImage OriginalPublicImage(
         byte[] source,
-        string? sourceContentType,
-        DateTimeOffset updatedAt)
+        string? sourceContentType)
         => new(
             source,
-            string.IsNullOrWhiteSpace(sourceContentType) ? "application/octet-stream" : sourceContentType,
-            updatedAt.ToUnixTimeMilliseconds());
+            string.IsNullOrWhiteSpace(sourceContentType) ? "application/octet-stream" : sourceContentType);
 
-    private sealed record PublicImageReference(Guid Id, string Module, string? EntityId);
+    private sealed record OptimizedPublicImage(byte[] Content, string ContentType);
 }

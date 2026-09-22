@@ -293,25 +293,18 @@ public sealed class DigitalMenuUseCase(
         return Result<PublicDigitalMenuDto>.Success(menu);
     }
 
-    public async Task<Result<PublicDigitalMenuImageDto>> GetPublicMenuImageAsync(
+    public async Task<Result<PublicDigitalMenuCategoryImagesDto>> GetPublicMenuCategoryImagesAsync(
         string slug,
-        Guid imageId,
+        Guid categoryId,
         CancellationToken cancellationToken)
     {
-        var image = await digitalMenuRepository.GetPublicMenuImageAsync(slug, imageId, cancellationToken);
-        return image is null
-            ? Result<PublicDigitalMenuImageDto>.Failure(Errors.DigitalMenuNotFound)
-            : Result<PublicDigitalMenuImageDto>.Success(image);
-    }
-
-    public async Task<Result<PublicDigitalMenuImageDto>> GetPublicMenuLogoAsync(
-        string slug,
-        CancellationToken cancellationToken)
-    {
-        var image = await digitalMenuRepository.GetPublicMenuLogoAsync(slug, cancellationToken);
-        return image is null
-            ? Result<PublicDigitalMenuImageDto>.Failure(Errors.DigitalMenuNotFound)
-            : Result<PublicDigitalMenuImageDto>.Success(image);
+        var images = await digitalMenuRepository.GetPublicMenuCategoryImagesAsync(
+            slug,
+            categoryId,
+            cancellationToken);
+        return images is null
+            ? Result<PublicDigitalMenuCategoryImagesDto>.Failure(Errors.DigitalMenuNotFound)
+            : Result<PublicDigitalMenuCategoryImagesDto>.Success(images);
     }
 
     private static DigitalMenuStyleDto ParseStyle(string? json)
