@@ -43,7 +43,8 @@ public sealed record BusinessSettingsDto(
     bool EnableCustomSales,
     bool ShowVoluntaryTip,
     string TipMessage,
-    int SuggestedTipPercentage);
+    int SuggestedTipPercentage,
+    bool EnableOrderPrintZones = false);
 
 public sealed record UpdateBusinessSettingsRequest(
     bool UsesTables,
@@ -52,7 +53,8 @@ public sealed record UpdateBusinessSettingsRequest(
     bool EnableCustomSales,
     bool ShowVoluntaryTip,
     [Required, MaxLength(200)] string TipMessage,
-    [Range(0, 100)] int SuggestedTipPercentage);
+    [Range(0, 100)] int SuggestedTipPercentage,
+    bool EnableOrderPrintZones = false);
 
 public sealed record PaymentMethodDto(
     Guid Id,

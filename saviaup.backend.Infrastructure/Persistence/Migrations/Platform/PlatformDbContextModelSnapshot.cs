@@ -139,6 +139,13 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Platform
                             Code = "digital_menu",
                             IsActive = true,
                             Name = "Digital Menu"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000014"),
+                            Code = "printing",
+                            IsActive = true,
+                            Name = "Printing"
                         });
                 });
 
@@ -541,6 +548,55 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Platform
                             Code = "digital-menu.items.manage",
                             Description = "digital-menu.items.manage",
                             ModuleId = new Guid("10000000-0000-0000-0000-000000000013")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000049"),
+                            Code = "printing.agents.read",
+                            Description = "printing.agents.read",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000014")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000050"),
+                            Code = "printing.agents.manage",
+                            Description = "printing.agents.manage",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000014")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000051"),
+                            Code = "printing.zones.read",
+                            Description = "printing.zones.read",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000014")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000052"),
+                            Code = "printing.zones.manage",
+                            Description = "printing.zones.manage",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000014")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000053"),
+                            Code = "printing.queue.read",
+                            Description = "printing.queue.read",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000014")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000054"),
+                            Code = "printing.queue.retry",
+                            Description = "printing.queue.retry",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000014")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000055"),
+                            Code = "printing.queue.reprint",
+                            Description = "printing.queue.reprint",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000014")
                         });
                 });
 

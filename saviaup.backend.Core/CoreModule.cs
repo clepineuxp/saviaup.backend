@@ -10,6 +10,7 @@ using SaviaUp.Backend.Core.Inventory;
 using SaviaUp.Backend.Core.Navigation;
 using SaviaUp.Backend.Core.Orders;
 using SaviaUp.Backend.Core.Products;
+using SaviaUp.Backend.Core.Printing;
 using SaviaUp.Backend.Core.Security;
 using SaviaUp.Backend.Core.Settings;
 using SaviaUp.Backend.Core.Statistics;
@@ -113,6 +114,9 @@ public static class CoreModule
         services.AddScoped<IUpdateExpenseUseCase, UpdateExpenseUseCase>();
         services.AddScoped<IAnnulExpenseUseCase, AnnulExpenseUseCase>();
         services.AddScoped<IDigitalMenuUseCase, DigitalMenuUseCase>();
+        services.AddScoped<IPrintingAdministrationUseCase, PrintingAdministrationUseCase>();
+        services.AddScoped<IPrintAgentUseCase, PrintAgentUseCase>();
+        services.AddScoped<IPrintJobFactory, PrintJobFactory>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<SessionIssuer>();
         services.AddSingleton<PasswordPolicy>();

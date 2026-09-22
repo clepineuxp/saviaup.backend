@@ -13,6 +13,12 @@ public sealed class ListCategoriesUseCase(ICategoryRepository categoryRepository
         bool onlyWithProducts = false)
     {
         var categories = await categoryRepository.GetForTenantAsync(tenantId, includeInactive, cancellationToken, onlyWithProducts);
-        return Result<IReadOnlyCollection<CategoryDto>>.Success(categories.Select(CategoryRules.ToDto).ToArray());
+        var usageByCategoryId = (await categoryRepository.GetUsageCountsForTenantAsync(tenantId, cancellationToken))
+            .ToDictionary(counts => counts.CategoryId);
+        return Result<IReadOnlyCollection<CategoryDto>>.Success(categories
+            .Select(category => CategoryRules.ToDto(
+                category,
+                usageByCategoryId.GetValueOrDefault(category.Id)))
+            .ToArray());
     }
 }

@@ -1,13 +1,16 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using SaviaUp.Backend.Api.Configuration;
+using SaviaUp.Backend.Api.Authentication;
 using SaviaUp.Backend.Api.Health;
 using SaviaUp.Backend.Api.Hubs;
 using SaviaUp.Backend.Api.Middleware;
@@ -27,8 +30,16 @@ public static class ApiModule
 
     public static IServiceCollection AddApi(this IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            options.ForwardLimit = 1;
+            options.KnownIPNetworks.Clear();
+            options.KnownProxies.Clear();
+        });
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserContext, CurrentUserContext>();
+        services.AddScoped<IPrintAgentContext, PrintAgentContext>();
         services.AddControllers().ConfigureApiBehaviorOptions(options =>
         {
             options.InvalidModelStateResponseFactory = context =>
@@ -52,7 +63,10 @@ public static class ApiModule
             .Validate(options => !string.IsNullOrWhiteSpace(options.Issuer) && !string.IsNullOrWhiteSpace(options.Audience), "Jwt issuer and audience are required.")
             .ValidateOnStart();
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer();
+            .AddJwtBearer()
+            .AddScheme<AuthenticationSchemeOptions, PrintAgentAuthenticationHandler>(
+                PrintAgentAuthenticationDefaults.Scheme,
+                _ => { });
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
             .Configure<IOptions<JwtOptions>>((options, configuredJwt) =>
             {
@@ -104,6 +118,8 @@ public static class ApiModule
         }));
         services.AddSignalR();
         services.AddScoped<ITableRealtimeNotifier, TableRealtimeNotifier>();
+        services.AddScoped<IPrintingRealtimeNotifier, PrintingRealtimeNotifier>();
+        services.AddSingleton<IUnpairedPrintAgentRegistry, UnpairedPrintAgentRegistry>();
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -143,6 +159,7 @@ public static class ApiModule
 
     public static WebApplication UseApi(this WebApplication app)
     {
+        app.UseForwardedHeaders();
         app.UseMiddleware<GlobalExceptionMiddleware>();
         app.UseMiddleware<CorrelationIdMiddleware>();
         if (app.Environment.IsProduction()) app.UseHttpsRedirection();
@@ -158,6 +175,8 @@ public static class ApiModule
         }
         app.MapControllers();
         app.MapHub<TablesHub>("/hubs/tables");
+        app.MapHub<PrintingHub>("/hubs/printing");
+        app.MapHub<PrintAgentDiscoveryHub>("/hubs/printing-discovery");
         app.MapHealthChecks("/health", new HealthCheckOptions { AllowCachingResponses = false });
         app.MapHealthChecks("/healthz", new HealthCheckOptions { AllowCachingResponses = false });
         return app;

@@ -50,6 +50,13 @@ public static class PermissionCodes
     public const string DigitalMenuEnable = "digital-menu.enable";
     public const string DigitalMenuStyleManage = "digital-menu.style.manage";
     public const string DigitalMenuItemsManage = "digital-menu.items.manage";
+    public const string PrintingAgentsRead = "printing.agents.read";
+    public const string PrintingAgentsManage = "printing.agents.manage";
+    public const string PrintingZonesRead = "printing.zones.read";
+    public const string PrintingZonesManage = "printing.zones.manage";
+    public const string PrintingQueueRead = "printing.queue.read";
+    public const string PrintingQueueRetry = "printing.queue.retry";
+    public const string PrintingQueueReprint = "printing.queue.reprint";
 
     public static readonly IReadOnlyCollection<string> All =
     [
@@ -68,6 +75,9 @@ public static class PermissionCodes
         CashRegistersRead, CashRegistersOperate, CashRegistersManage,
         SuppliersRead, SuppliersManage,
         ExpensesRead, ExpensesCreate, ExpensesEdit, ExpensesAnnul,
-        DigitalMenuAccess, DigitalMenuEnable, DigitalMenuStyleManage, DigitalMenuItemsManage
+        DigitalMenuAccess, DigitalMenuEnable, DigitalMenuStyleManage, DigitalMenuItemsManage,
+        PrintingAgentsRead, PrintingAgentsManage,
+        PrintingZonesRead, PrintingZonesManage,
+        PrintingQueueRead, PrintingQueueRetry, PrintingQueueReprint
     ];
 }

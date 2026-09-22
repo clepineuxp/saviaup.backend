@@ -53,7 +53,7 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         var modulesJson = await modules.Content.ReadFromJsonAsync<JsonElement>();
         var sections = modulesJson.GetProperty("sections").EnumerateArray().ToArray();
         Assert.Equal(5, sections.Length);
-        Assert.Equal(12, sections.Sum(section => section.GetProperty("modules").GetArrayLength()));
+        Assert.Equal(14, sections.Sum(section => section.GetProperty("modules").GetArrayLength()));
         var options = sections.SelectMany(section => section.GetProperty("options").EnumerateArray()).ToArray();
         Assert.Equal(2, options.Length);
         Assert.Contains(options, option => option.GetProperty("code").GetString() == "tables.manage");
@@ -90,6 +90,9 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         Assert.Contains("tables.operate", currentPermissions);
         Assert.Contains("settings.organization.manage", currentPermissions);
         Assert.Contains("settings.roles.manage", currentPermissions);
+        Assert.Contains("printing.agents.manage", currentPermissions);
+        Assert.Contains("printing.zones.manage", currentPermissions);
+        Assert.Contains("printing.queue.reprint", currentPermissions);
 
         var organization = await client.GetAsync("/api/settings/organization");
         Assert.Equal(HttpStatusCode.OK, organization.StatusCode);

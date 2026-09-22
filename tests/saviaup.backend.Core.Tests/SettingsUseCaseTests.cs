@@ -57,15 +57,17 @@ public sealed class SettingsUseCaseTests
         repository.Setup(value => value.GetTenantForUpdateAsync(tenant.Id, It.IsAny<CancellationToken>())).ReturnsAsync(tenant);
         repository.Setup(value => value.GetParametersAsync(tenant.Id, It.IsAny<CancellationToken>())).ReturnsAsync(parameters);
         repository.Setup(value => value.GetEnabledPermissionCodesAsync(tenant.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([PermissionCodes.CashRegistersManage]);
+            .ReturnsAsync([PermissionCodes.CashRegistersManage, PermissionCodes.PrintingZonesManage]);
         var useCase = new BusinessSettingsUseCase(repository.Object, Mock.Of<ICashRegisterShiftRepository>(), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
 
-        var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, true, true, "Propina voluntaria", 12), default);
+        var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, true, true, "Propina voluntaria", 12, true), default);
 
         Assert.True(result.IsSuccess);
         Assert.True(tenant.RequiresOpenCashRegister);
         Assert.True(result.Value!.EnableCustomSales);
+        Assert.True(result.Value.EnableOrderPrintZones);
         Assert.Equal("12", parameters.Single(item => item.Key == SettingsDefaults.SuggestedTipPercentage).Value);
+        Assert.Equal("true", parameters.Single(item => item.Key == SettingsDefaults.EnableOrderPrintZones).Value);
     }
 
     [Fact]
@@ -80,12 +82,14 @@ public sealed class SettingsUseCaseTests
             .ReturnsAsync([PermissionCodes.TablesRead]);
         var useCase = new BusinessSettingsUseCase(repository.Object, Mock.Of<ICashRegisterShiftRepository>(), new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
 
-        var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, false, true, "Propina voluntaria", 10), default);
+        var result = await useCase.UpdateAsync(tenant.Id, new UpdateBusinessSettingsRequest(true, true, true, false, true, "Propina voluntaria", 10, true), default);
 
         Assert.True(result.IsSuccess);
         Assert.False(tenant.RequiresOpenCashRegister);
         Assert.False(result.Value!.RequiresOpenCashRegister);
         Assert.False(result.Value!.EnableCustomSales);
+        Assert.False(result.Value.EnableOrderPrintZones);
+        Assert.Equal("false", parameters.Single(item => item.Key == SettingsDefaults.EnableOrderPrintZones).Value);
     }
 
     [Fact]

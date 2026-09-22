@@ -41,7 +41,7 @@ internal static class CategoryRules
         return isValid;
     }
 
-    public static CategoryDto ToDto(Category category) => new(
+    public static CategoryDto ToDto(Category category, CategoryUsageCounts? usageCounts = null) => new(
         category.Id,
         category.Name,
         category.Description,
@@ -49,7 +49,10 @@ internal static class CategoryRules
         category.IsInventoryTracked,
         category.IsActive,
         category.CreatedAt,
-        category.UpdatedAt);
+        category.UpdatedAt,
+        usageCounts?.ProductCount ?? 0,
+        usageCounts?.VariationCount ?? 0,
+        usageCounts?.IngredientCount ?? 0);
 
     private static string CleanName(string? value)
         => string.Join(' ', (value ?? string.Empty).Normalize(NormalizationForm.FormKC).Split(

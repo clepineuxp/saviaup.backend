@@ -13,6 +13,7 @@ public sealed class CreateTenantUseCase(
     ITenantRepository tenantRepository,
     IRoleRepository roleRepository,
     IMeasurementUnitRepository measurementUnitRepository,
+    IPrintingRepository printingRepository,
     ISettingsRepository settingsRepository,
     IRefreshTokenRepository refreshTokenRepository,
     SessionIssuer sessionIssuer,
@@ -83,6 +84,7 @@ public sealed class CreateTenantUseCase(
             foreach (var paymentMethod in SettingsDefaults.CreatePaymentMethods(tenant.Id, now))
                 await settingsRepository.AddPaymentMethodAsync(paymentMethod, transactionToken);
             await measurementUnitRepository.AddDefaultsAsync(tenant.Id, now, transactionToken);
+            await printingRepository.GetOrCreateDefaultLocationAsync(tenant.Id, now, transactionToken);
             user.LastTenantId = tenant.Id;
             user.UpdatedAt = now;
             await refreshTokenRepository.RevokeSessionAsync(user.Id, currentSessionId, now, transactionToken);

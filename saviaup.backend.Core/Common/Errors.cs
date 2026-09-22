@@ -6,6 +6,15 @@ namespace SaviaUp.Backend.Core.Common;
 
 internal static class Errors
 {
+    public static readonly Error PrintingLocationNotFound = new(ErrorCodes.PrintingLocationNotFound, LocalizationKeys.PrintingLocationNotFound, ErrorType.NotFound);
+    public static readonly Error PrintAgentNotFound = new(ErrorCodes.PrintAgentNotFound, LocalizationKeys.PrintAgentNotFound, ErrorType.NotFound);
+    public static readonly Error PrintAgentPairingInvalid = new(ErrorCodes.PrintAgentPairingInvalid, LocalizationKeys.PrintAgentPairingInvalid, ErrorType.Unauthenticated);
+    public static readonly Error PrintAgentCredentialInvalid = new(ErrorCodes.PrintAgentCredentialInvalid, LocalizationKeys.PrintAgentCredentialInvalid, ErrorType.Unauthenticated);
+    public static readonly Error PrinterNotFound = new(ErrorCodes.PrinterNotFound, LocalizationKeys.PrinterNotFound, ErrorType.NotFound);
+    public static readonly Error PrintingZoneNotFound = new(ErrorCodes.PrintingZoneNotFound, LocalizationKeys.PrintingZoneNotFound, ErrorType.NotFound);
+    public static readonly Error PrintingZoneAlreadyExists = new(ErrorCodes.PrintingZoneAlreadyExists, LocalizationKeys.PrintingZoneAlreadyExists, ErrorType.Conflict);
+    public static readonly Error PrintJobNotFound = new(ErrorCodes.PrintJobNotFound, LocalizationKeys.PrintJobNotFound, ErrorType.NotFound);
+    public static readonly Error PrintJobInvalidStatus = new(ErrorCodes.PrintJobInvalidStatus, LocalizationKeys.PrintJobInvalidStatus, ErrorType.Conflict);
     public static readonly Error InvalidCredentials = new(ErrorCodes.InvalidCredentials, LocalizationKeys.InvalidCredentials, ErrorType.Unauthenticated);
     public static readonly Error AccountDisabled = new(ErrorCodes.AccountDisabled, LocalizationKeys.AccountDisabled, ErrorType.Unauthenticated);
     public static readonly Error EmailAlreadyExists = new(ErrorCodes.EmailAlreadyExists, LocalizationKeys.EmailAlreadyExists, ErrorType.Conflict);

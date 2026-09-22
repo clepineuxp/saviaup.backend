@@ -204,6 +204,26 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.ToTable("categories", (string)null);
                 });
 
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.CategoryPrintingRoute", b =>
+                {
+                    b.Property<Guid>("PrintingZoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PrintingZoneId", "CategoryId");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("TenantId", "CategoryId");
+
+                    b.ToTable("category_printing_routes", (string)null);
+                });
+
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.DigitalMenuItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -529,6 +549,46 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.HasIndex("TenantId", "CreatedAt");
 
                     b.ToTable("inventory_movements", (string)null);
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Location", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "IsDefault");
+
+                    b.HasIndex("TenantId", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("locations", (string)null);
                 });
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.MeasurementUnit", b =>
@@ -925,6 +985,437 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.ToTable("payment_methods", (string)null);
                 });
 
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DeviceIdentifier")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Hostname")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LocalIpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("OperatingSystem")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("TenantId", "DeviceIdentifier")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "Enabled", "LastSeenAt");
+
+                    b.ToTable("print_agents", (string)null);
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgentCredential", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PrintAgentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PrintAgentId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "PrintAgentId", "ExpiresAt");
+
+                    b.ToTable("print_agent_credentials", (string)null);
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgentDiscoveredPrinter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)");
+
+                    b.Property<Guid>("PrintAgentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PrintAgentId");
+
+                    b.HasIndex("TenantId", "PrintAgentId", "IsAvailable");
+
+                    b.HasIndex("TenantId", "PrintAgentId", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("print_agent_discovered_printers", (string)null);
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgentPairingCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AgentName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique();
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("TenantId", "ExpiresAt", "ConsumedAt");
+
+                    b.ToTable("print_agent_pairing_codes", (string)null);
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintJob", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset?>("FailedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsReprint")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("OriginalPrintJobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("PrintAgentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("PrintedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PrinterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("PrintingAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PrintingZoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("QueuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ReprintRequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReprintRequestedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("OriginalPrintJobId");
+
+                    b.HasIndex("PrintAgentId");
+
+                    b.HasIndex("PrinterId");
+
+                    b.HasIndex("PrintingZoneId");
+
+                    b.HasIndex("TenantId", "PrintAgentId", "Status");
+
+                    b.HasIndex("TenantId", "SourceType", "SourceId");
+
+                    b.HasIndex("TenantId", "Status", "CreatedAt");
+
+                    b.ToTable("print_jobs", (string)null);
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Printer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConnectionType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("LocalPrinterName")
+                        .HasMaxLength(260)
+                        .HasColumnType("character varying(260)");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("PaperWidth")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("Port")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("PrintAgentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("PrintAgentId");
+
+                    b.HasIndex("TenantId", "PrintAgentId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("printers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_printers_PaperWidth", "\"PaperWidth\" IN (58, 80)");
+
+                            t.HasCheckConstraint("CK_printers_Port", "\"Port\" IS NULL OR (\"Port\" BETWEEN 1 AND 65535)");
+                        });
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintingZone", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("PrintAgentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("PrintAgentId");
+
+                    b.HasIndex("TenantId", "LocationId", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("printing_zones", (string)null);
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintingZonePrinter", b =>
+                {
+                    b.Property<Guid>("PrintingZoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PrinterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PrintingZoneId", "PrinterId");
+
+                    b.HasIndex("PrinterId");
+
+                    b.HasIndex("TenantId", "PrintingZoneId");
+
+                    b.ToTable("printing_zone_printers", (string)null);
+                });
+
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1012,6 +1503,26 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 
                             t.HasCheckConstraint("CK_products_Type", "\"Type\" IN ('NORMAL', 'COMBO')");
                         });
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.ProductPrintingRoute", b =>
+                {
+                    b.Property<Guid>("PrintingZoneId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PrintingZoneId", "ProductId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("TenantId", "ProductId");
+
+                    b.ToTable("product_printing_routes", (string)null);
                 });
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.ProductRecipeItem", b =>
@@ -1410,6 +1921,25 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Navigation("ImageStored");
                 });
 
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.CategoryPrintingRoute", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.PrintingZone", "PrintingZone")
+                        .WithMany("CategoryRoutes")
+                        .HasForeignKey("PrintingZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("PrintingZone");
+                });
+
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Expense", b =>
                 {
                     b.HasOne("SaviaUp.Backend.Domain.Entities.Supplier", "Supplier")
@@ -1496,6 +2026,148 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgent", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Location", "Location")
+                        .WithMany("PrintAgents")
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Location");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgentCredential", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.PrintAgent", "PrintAgent")
+                        .WithMany("Credentials")
+                        .HasForeignKey("PrintAgentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PrintAgent");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgentDiscoveredPrinter", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.PrintAgent", "PrintAgent")
+                        .WithMany("DiscoveredPrinters")
+                        .HasForeignKey("PrintAgentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PrintAgent");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgentPairingCode", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Location");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintJob", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.PrintJob", "OriginalPrintJob")
+                        .WithMany()
+                        .HasForeignKey("OriginalPrintJobId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.PrintAgent", "PrintAgent")
+                        .WithMany()
+                        .HasForeignKey("PrintAgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Printer", "Printer")
+                        .WithMany()
+                        .HasForeignKey("PrinterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.PrintingZone", "PrintingZone")
+                        .WithMany()
+                        .HasForeignKey("PrintingZoneId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Location");
+
+                    b.Navigation("OriginalPrintJob");
+
+                    b.Navigation("PrintAgent");
+
+                    b.Navigation("Printer");
+
+                    b.Navigation("PrintingZone");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Printer", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.PrintAgent", "PrintAgent")
+                        .WithMany("Printers")
+                        .HasForeignKey("PrintAgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Location");
+
+                    b.Navigation("PrintAgent");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintingZone", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.PrintAgent", "PrintAgent")
+                        .WithMany("Zones")
+                        .HasForeignKey("PrintAgentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Location");
+
+                    b.Navigation("PrintAgent");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintingZonePrinter", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Printer", "Printer")
+                        .WithMany("ZoneLinks")
+                        .HasForeignKey("PrinterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.PrintingZone", "PrintingZone")
+                        .WithMany("PrinterLinks")
+                        .HasForeignKey("PrintingZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Printer");
+
+                    b.Navigation("PrintingZone");
+                });
+
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Product", b =>
                 {
                     b.HasOne("SaviaUp.Backend.Domain.Entities.Category", "Category")
@@ -1512,6 +2184,25 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Navigation("Category");
 
                     b.Navigation("ImageStored");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.ProductPrintingRoute", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.PrintingZone", "PrintingZone")
+                        .WithMany("ProductRoutes")
+                        .HasForeignKey("PrintingZoneId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PrintingZone");
+
+                    b.Navigation("Product");
                 });
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.ProductRecipeItem", b =>
@@ -1582,6 +2273,11 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Navigation("Movements");
                 });
 
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Location", b =>
+                {
+                    b.Navigation("PrintAgents");
+                });
+
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.MeasurementUnit", b =>
                 {
                     b.Navigation("Ingredients");
@@ -1592,6 +2288,31 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Navigation("Items");
 
                     b.Navigation("Receipts");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintAgent", b =>
+                {
+                    b.Navigation("Credentials");
+
+                    b.Navigation("DiscoveredPrinters");
+
+                    b.Navigation("Printers");
+
+                    b.Navigation("Zones");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Printer", b =>
+                {
+                    b.Navigation("ZoneLinks");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PrintingZone", b =>
+                {
+                    b.Navigation("CategoryRoutes");
+
+                    b.Navigation("PrinterLinks");
+
+                    b.Navigation("ProductRoutes");
                 });
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Product", b =>

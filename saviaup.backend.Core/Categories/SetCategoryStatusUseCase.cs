@@ -25,6 +25,7 @@ public sealed class SetCategoryStatusUseCase(
         await unitOfWork.SaveChangesAsync(cancellationToken);
         if (realtime is not null)
             await realtime.SalesDataInvalidatedAsync(tenantId, new(["categories", "products"], category.UpdatedAt), cancellationToken);
-        return Result<CategoryDto>.Success(CategoryRules.ToDto(category));
+        var usageCounts = await categoryRepository.GetUsageCountsAsync(tenantId, categoryId, cancellationToken);
+        return Result<CategoryDto>.Success(CategoryRules.ToDto(category, usageCounts));
     }
 }

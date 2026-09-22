@@ -29,7 +29,7 @@ internal static class NavigationCatalog
                 new("billing", 4)
             ],
             []),
-        new("inventory", 3,
+        new("inventory", 4,
             [
                 new("products", 1),
                 new("categories", 2),
@@ -37,7 +37,7 @@ internal static class NavigationCatalog
                 new("kitchen", 4)
             ],
             []),
-        new("expenses", 4,
+        new("expenses", 3,
             [
                 new("expenses", 1),
                 new("suppliers", 2)
@@ -46,11 +46,12 @@ internal static class NavigationCatalog
         new("configuration", 5,
             [
                 new("settings", 1),
-                new("digital_menu", 2)
+                new("digital_menu", 2),
+                new("printing", 3)
             ],
             [
-                new("tables.manage", "tables", "tables.manage", 3),
-                new("cash-registers.manage", "cash_registers", "cash-registers.manage", 4)
+                new("tables.manage", "tables", "tables.manage", 4),
+                new("cash-registers.manage", "cash_registers", "cash-registers.manage", 5)
             ])
     ];
 
