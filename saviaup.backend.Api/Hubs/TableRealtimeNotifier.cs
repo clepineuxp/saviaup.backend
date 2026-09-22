@@ -19,4 +19,11 @@ public sealed class TableRealtimeNotifier(IHubContext<TablesHub> hub) : ITableRe
         CancellationToken cancellationToken)
         => hub.Clients.Group(TablesHub.TenantGroup(tenantId))
             .SendAsync("OnTableOrderUpdated", notification, cancellationToken);
+
+    public Task SalesDataInvalidatedAsync(
+        Guid tenantId,
+        TableSalesDataInvalidatedEvent notification,
+        CancellationToken cancellationToken)
+        => hub.Clients.Group(TablesHub.TenantGroup(tenantId))
+            .SendAsync("OnTableSalesDataInvalidated", notification, cancellationToken);
 }

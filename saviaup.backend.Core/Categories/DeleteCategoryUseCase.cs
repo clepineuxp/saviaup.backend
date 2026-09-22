@@ -6,7 +6,8 @@ namespace SaviaUp.Backend.Core.Categories;
 
 public sealed class DeleteCategoryUseCase(
     ICategoryRepository categoryRepository,
-    IUnitOfWork unitOfWork) : IDeleteCategoryUseCase
+    IUnitOfWork unitOfWork,
+    ITableRealtimeNotifier? realtime = null) : IDeleteCategoryUseCase
 {
     public async Task<Result> ExecuteAsync(
         Guid tenantId,
@@ -20,6 +21,8 @@ public sealed class DeleteCategoryUseCase(
 
         categoryRepository.Remove(category);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (realtime is not null)
+            await realtime.SalesDataInvalidatedAsync(tenantId, new(["categories", "products"], category.UpdatedAt), cancellationToken);
         return Result.Success();
     }
 }

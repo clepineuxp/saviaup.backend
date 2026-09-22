@@ -8,7 +8,8 @@ namespace SaviaUp.Backend.Core.Categories;
 public sealed class SetCategoryStatusUseCase(
     ICategoryRepository categoryRepository,
     IDateTimeProvider dateTimeProvider,
-    IUnitOfWork unitOfWork) : ISetCategoryStatusUseCase
+    IUnitOfWork unitOfWork,
+    ITableRealtimeNotifier? realtime = null) : ISetCategoryStatusUseCase
 {
     public async Task<Result<CategoryDto>> ExecuteAsync(
         Guid tenantId,
@@ -22,6 +23,8 @@ public sealed class SetCategoryStatusUseCase(
         category.IsActive = request.IsActive;
         category.UpdatedAt = dateTimeProvider.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (realtime is not null)
+            await realtime.SalesDataInvalidatedAsync(tenantId, new(["categories", "products"], category.UpdatedAt), cancellationToken);
         return Result<CategoryDto>.Success(CategoryRules.ToDto(category));
     }
 }

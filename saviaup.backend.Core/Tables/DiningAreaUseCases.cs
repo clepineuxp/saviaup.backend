@@ -20,7 +20,8 @@ public sealed class ListDiningAreasUseCase(IDiningAreaRepository repository) : I
 public sealed class CreateDiningAreaUseCase(
     IDiningAreaRepository repository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork) : ICreateDiningAreaUseCase
+    IUnitOfWork unitOfWork,
+    ITableRealtimeNotifier? realtime = null) : ICreateDiningAreaUseCase
 {
     public async Task<Result<DiningAreaDto>> ExecuteAsync(
         Guid tenantId,
@@ -50,6 +51,8 @@ public sealed class CreateDiningAreaUseCase(
         };
         await repository.AddAsync(area, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (realtime is not null)
+            await realtime.SalesDataInvalidatedAsync(tenantId, new(["tables"], now), cancellationToken);
         return Result<DiningAreaDto>.Success(TableRules.ToDto(area));
     }
 }
@@ -57,7 +60,8 @@ public sealed class CreateDiningAreaUseCase(
 public sealed class UpdateDiningAreaUseCase(
     IDiningAreaRepository repository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork) : IUpdateDiningAreaUseCase
+    IUnitOfWork unitOfWork,
+    ITableRealtimeNotifier? realtime = null) : IUpdateDiningAreaUseCase
 {
     public async Task<Result<DiningAreaDto>> ExecuteAsync(
         Guid tenantId,
@@ -79,6 +83,8 @@ public sealed class UpdateDiningAreaUseCase(
         area.IsActive = request.IsActive;
         area.UpdatedAt = clock.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (realtime is not null)
+            await realtime.SalesDataInvalidatedAsync(tenantId, new(["tables"], area.UpdatedAt), cancellationToken);
         return Result<DiningAreaDto>.Success(TableRules.ToDto(area));
     }
 }
@@ -86,7 +92,8 @@ public sealed class UpdateDiningAreaUseCase(
 public sealed class ReorderDiningAreasUseCase(
     IDiningAreaRepository repository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork) : IReorderDiningAreasUseCase
+    IUnitOfWork unitOfWork,
+    ITableRealtimeNotifier? realtime = null) : IReorderDiningAreasUseCase
 {
     public async Task<Result<IReadOnlyCollection<DiningAreaDto>>> ExecuteAsync(
         Guid tenantId,
@@ -100,7 +107,7 @@ public sealed class ReorderDiningAreasUseCase(
             || requestedIds.ToHashSet().SetEquals(areas.Select(area => area.Id)) is false)
             return Result<IReadOnlyCollection<DiningAreaDto>>.Failure(Errors.Validation);
 
-        return await unitOfWork.ExecuteInTransactionAsync(async transactionToken =>
+        var result = await unitOfWork.ExecuteInTransactionAsync(async transactionToken =>
         {
             var temporaryBase = areas.Max(area => area.Order) + areas.Count + 1;
             foreach (var (area, index) in areas.Select((area, index) => (area, index)))
@@ -117,12 +124,16 @@ public sealed class ReorderDiningAreasUseCase(
             var result = requestedIds.Select(areaId => TableRules.ToDto(byId[areaId])).ToArray();
             return Result<IReadOnlyCollection<DiningAreaDto>>.Success(result);
         }, cancellationToken);
+        if (result.IsSuccess && realtime is not null)
+            await realtime.SalesDataInvalidatedAsync(tenantId, new(["tables"], clock.UtcNow), cancellationToken);
+        return result;
     }
 }
 
 public sealed class DeleteDiningAreaUseCase(
     IDiningAreaRepository repository,
-    IUnitOfWork unitOfWork) : IDeleteDiningAreaUseCase
+    IUnitOfWork unitOfWork,
+    ITableRealtimeNotifier? realtime = null) : IDeleteDiningAreaUseCase
 {
     public async Task<Result> ExecuteAsync(Guid tenantId, Guid areaId, CancellationToken cancellationToken)
     {
@@ -132,6 +143,8 @@ public sealed class DeleteDiningAreaUseCase(
             return Result.Failure(Errors.DiningAreaInUse);
         repository.Remove(area);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (realtime is not null)
+            await realtime.SalesDataInvalidatedAsync(tenantId, new(["tables"], area.UpdatedAt), cancellationToken);
         return Result.Success();
     }
 }

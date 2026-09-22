@@ -354,6 +354,11 @@ public interface IUpdateTableOrderUseCase
     Task<Result<RestaurantTableDto>> ExecuteAsync(Guid tenantId, Guid tableId, UpdateTableOrderRequest request, CancellationToken cancellationToken);
 }
 
+public interface IGetTableSalesContextUseCase
+{
+    Task<Result<TableSalesContextDto>> ExecuteAsync(Guid tenantId, Guid roleId, CancellationToken cancellationToken);
+}
+
 public interface IGetOrdersPageUseCase
 {
     Task<Result<PagedResponse<OrderDto>>> ExecuteAsync(Guid tenantId, OrderQueryRequest request, CancellationToken cancellationToken);

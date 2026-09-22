@@ -30,7 +30,8 @@ public sealed class CreateProductUseCase(
     ICategoryRepository categoryRepository,
     IDateTimeProvider clock,
     IUnitOfWork unitOfWork,
-    IStoredImageRepository? imageRepository = null) : ICreateProductUseCase
+    IStoredImageRepository? imageRepository = null,
+    ITableRealtimeNotifier? realtime = null) : ICreateProductUseCase
 {
     public async Task<Result<ProductDto>> ExecuteAsync(
         Guid tenantId, Guid userId, string userName, CreateProductRequest request, CancellationToken cancellationToken)
@@ -142,6 +143,8 @@ public sealed class CreateProductUseCase(
 
         await productRepository.AddAsync(product, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (realtime is not null)
+            await realtime.SalesDataInvalidatedAsync(tenantId, new(["products"], now), cancellationToken);
         var reloaded = await productRepository.GetByIdAsync(tenantId, productId, cancellationToken);
         return Result<ProductDto>.Success(ProductRules.ToDto(reloaded ?? product));
     }
@@ -152,7 +155,8 @@ public sealed class UpdateProductUseCase(
     ICategoryRepository categoryRepository,
     IDateTimeProvider clock,
     IUnitOfWork unitOfWork,
-    IStoredImageRepository? imageRepository = null) : IUpdateProductUseCase
+    IStoredImageRepository? imageRepository = null,
+    ITableRealtimeNotifier? realtime = null) : IUpdateProductUseCase
 {
     public async Task<Result<ProductDto>> ExecuteAsync(
         Guid tenantId, Guid productId, Guid userId, string userName, UpdateProductRequest request, CancellationToken cancellationToken)
@@ -281,6 +285,8 @@ public sealed class UpdateProductUseCase(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (realtime is not null)
+            await realtime.SalesDataInvalidatedAsync(tenantId, new(["products"], now), cancellationToken);
         var reloaded = await productRepository.GetByIdAsync(tenantId, product.Id, cancellationToken);
         return Result<ProductDto>.Success(ProductRules.ToDto(reloaded ?? product));
     }
@@ -289,7 +295,8 @@ public sealed class UpdateProductUseCase(
 public sealed class SetProductStatusUseCase(
     IProductRepository repository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork) : ISetProductStatusUseCase
+    IUnitOfWork unitOfWork,
+    ITableRealtimeNotifier? realtime = null) : ISetProductStatusUseCase
 {
     public async Task<Result<ProductDto>> ExecuteAsync(
         Guid tenantId, Guid productId, SetProductStatusRequest request, CancellationToken cancellationToken)
@@ -299,11 +306,16 @@ public sealed class SetProductStatusUseCase(
         product.IsActive = request.IsActive;
         product.UpdatedAt = clock.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (realtime is not null)
+            await realtime.SalesDataInvalidatedAsync(tenantId, new(["products"], product.UpdatedAt), cancellationToken);
         return Result<ProductDto>.Success(ProductRules.ToDto(product));
     }
 }
 
-public sealed class DeleteProductUseCase(IProductRepository repository, IUnitOfWork unitOfWork) : IDeleteProductUseCase
+public sealed class DeleteProductUseCase(
+    IProductRepository repository,
+    IUnitOfWork unitOfWork,
+    ITableRealtimeNotifier? realtime = null) : IDeleteProductUseCase
 {
     public async Task<Result> ExecuteAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
     {
@@ -311,6 +323,8 @@ public sealed class DeleteProductUseCase(IProductRepository repository, IUnitOfW
         if (product is null) return Result.Failure(Errors.ProductNotFound);
         repository.Remove(product);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (realtime is not null)
+            await realtime.SalesDataInvalidatedAsync(tenantId, new(["products"], product.UpdatedAt), cancellationToken);
         return Result.Success();
     }
 }

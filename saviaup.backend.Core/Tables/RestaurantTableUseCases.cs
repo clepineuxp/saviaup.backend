@@ -72,6 +72,7 @@ public sealed class CreateRestaurantTableUseCase(
         await unitOfWork.SaveChangesAsync(cancellationToken);
         var dto = TableRules.ToDto(table);
         await realtime.StatusChangedAsync(tenantId, new TableStatusChangedEvent(dto), cancellationToken);
+        await realtime.SalesDataInvalidatedAsync(tenantId, new(["tables"], dto.UpdatedAt), cancellationToken);
         return Result<RestaurantTableDto>.Success(dto);
     }
 }
@@ -125,6 +126,7 @@ public sealed class UpdateRestaurantTableUseCase(
         await unitOfWork.SaveChangesAsync(cancellationToken);
         var dto = TableRules.ToDto(table);
         await realtime.StatusChangedAsync(tenantId, new TableStatusChangedEvent(dto), cancellationToken);
+        await realtime.SalesDataInvalidatedAsync(tenantId, new(["tables"], dto.UpdatedAt), cancellationToken);
         return Result<RestaurantTableDto>.Success(dto);
     }
 
@@ -151,6 +153,7 @@ public sealed class DeleteRestaurantTableUseCase(
         repository.Remove(table);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await realtime.StatusChangedAsync(tenantId, new TableStatusChangedEvent(dto, true), cancellationToken);
+        await realtime.SalesDataInvalidatedAsync(tenantId, new(["tables"], dto.UpdatedAt), cancellationToken);
         return Result.Success();
     }
 }
