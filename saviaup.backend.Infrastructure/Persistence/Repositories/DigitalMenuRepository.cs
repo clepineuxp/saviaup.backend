@@ -90,6 +90,32 @@ public sealed class DigitalMenuRepository(
             .Where(p => p.TenantId == tenantId && p.IsActive)
             .ToListAsync(cancellationToken);
 
+        var variationsByProductId = (await appContext.ProductVariations
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(variation => variation.TenantId == tenantId && variation.IsActive)
+            .OrderBy(variation => variation.Order)
+            .ThenBy(variation => variation.Name)
+            .Select(variation => new
+            {
+                variation.ProductId,
+                variation.Id,
+                variation.Name,
+                variation.SalePrice,
+                SortOrder = variation.Order
+            })
+            .ToListAsync(cancellationToken))
+            .GroupBy(variation => variation.ProductId)
+            .ToDictionary(
+                group => group.Key,
+                group => (IReadOnlyCollection<PublicProductVariationDto>)group
+                    .Select(variation => new PublicProductVariationDto(
+                        variation.Id,
+                        variation.Name,
+                        variation.SalePrice,
+                        variation.SortOrder))
+                    .ToArray());
+
         var storedImages = await appContext.StoredImages
             .AsNoTracking()
             .IgnoreQueryFilters()
@@ -163,7 +189,8 @@ public sealed class DigitalMenuRepository(
                     x.Product.SalePrice,
                     x.Product.ImageRef,
                     ResolveImage(x.Product.ImageRef, "products", x.Product.Id, imagesById, imagesByEntity),
-                    x.SortOrder
+                    x.SortOrder,
+                    variationsByProductId.GetValueOrDefault(x.Product.Id, [])
                 ))
                 .ToList();
 

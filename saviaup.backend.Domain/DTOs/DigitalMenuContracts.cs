@@ -58,6 +58,13 @@ public sealed record PublicProductDto(
     decimal SalePrice,
     Guid? ImageRef,
     string? Image,
+    int SortOrder,
+    IReadOnlyCollection<PublicProductVariationDto> Variations);
+
+public sealed record PublicProductVariationDto(
+    Guid Id,
+    string Name,
+    decimal SalePrice,
     int SortOrder);
 
 public sealed record PublicCategoryDto(
