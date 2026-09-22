@@ -18,6 +18,12 @@ public sealed class SettingsRepository(
     public async Task<IReadOnlyCollection<OrganizationParameter>> GetParametersAsync(Guid tenantId, CancellationToken cancellationToken)
         => await appContext.OrganizationParameters.IgnoreQueryFilters().Where(item => item.TenantId == tenantId).OrderBy(item => item.Key).ToArrayAsync(cancellationToken);
 
+    public Task<string?> GetParameterValueAsync(Guid tenantId, string key, CancellationToken cancellationToken)
+        => appContext.OrganizationParameters.AsNoTracking().IgnoreQueryFilters()
+            .Where(item => item.TenantId == tenantId && item.Key == key)
+            .Select(item => item.Value)
+            .SingleOrDefaultAsync(cancellationToken);
+
     public Task<bool> DigitalMenuSlugExistsAsync(string slug, Guid excludedTenantId, CancellationToken cancellationToken)
     {
         var lower = slug.Trim().ToLowerInvariant();

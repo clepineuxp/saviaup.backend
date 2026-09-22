@@ -169,6 +169,8 @@ PUT    /api/tables/{id}
 PATCH  /api/tables/{id}/status
 DELETE /api/tables/{id}
 GET    /api/tables/operation
+GET    /api/tables/sales-catalog/version
+GET    /api/tables/sales-catalog/sync
 
 GET    /api/orders?page=1&pageSize=20&status=&search=&date=
 POST   /api/tables/{tableId}/orders/items
@@ -495,7 +497,9 @@ El frontend conectado está en `../saviaup.frontend`: desarrollo usa `useMockApi
 
 `AddTableManagement` agrega salas ordenables, mesas con coordenadas 2D y el hook persistente de turnos de caja. `AddRestaurantTableShape` incorpora las formas `SQUARE`, `ROUND`, `RECTANGLE_HORIZONTAL` y `RECTANGLE_VERTICAL`, con `SQUARE` como valor por defecto para datos existentes. La configuración usa `/api/table-areas` y `/api/tables`; el snapshot operativo se obtiene en `/api/tables/operation`. `tables.read`, `tables.operate` y `tables.manage` separan consulta, operación y configuración.
 
-`TablesHub` se publica en `/hubs/tables`, valida sesión/tenant/permiso y aísla cada conexión en un grupo por tenant. Emite `OnTableStatusChanged` y `OnTableOrderUpdated` después de persistir cada cambio. Si `RequiresOpenCashRegister` está activo, las mutaciones se bloquean hasta que exista un turno sin fecha de cierre.
+La venta en mesas sincroniza su catálogo mediante un contrato independiente del listado administrativo: `/api/tables/sales-catalog/version` expone la versión vigente y `/api/tables/sales-catalog/sync` devuelve en una sola instantánea las categorías, productos con variaciones/recetas y salas/mesas activas del tenant. El parámetro interno `sales.catalog.lastModifiedAt` no se expone como ajuste editable; el backend lo crea o actualiza mediante EF al persistir cambios relevantes de categorías, productos, variaciones, salas o configuración de mesas, sin triggers de base de datos. Las transiciones operativas disponible/ocupada no invalidan el catálogo; activar o desactivar administrativamente una mesa sí lo hace.
+
+`TablesHub` se publica en `/hubs/tables`, valida sesión/tenant/permiso y aísla cada conexión en un grupo por tenant. Emite `OnTableStatusChanged`, `OnTableOrderUpdated` y `OnTableSalesDataInvalidated` después de persistir los cambios correspondientes. Si `RequiresOpenCashRegister` está activo, las mutaciones se bloquean hasta que exista un turno sin fecha de cierre.
 
 ## Gastos y proveedores
 

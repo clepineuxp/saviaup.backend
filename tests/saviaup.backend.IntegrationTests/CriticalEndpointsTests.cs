@@ -64,8 +64,11 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         Assert.Equal(
             ["cash_registers", "orders", "statistics", "billing"],
             sections[1].GetProperty("modules").EnumerateArray().Select(module => module.GetProperty("code").GetString()));
+        var inventorySection = Assert.Single(
+            sections,
+            section => section.GetProperty("code").GetString() == "inventory");
         Assert.Contains(
-            sections[2].GetProperty("modules").EnumerateArray(),
+            inventorySection.GetProperty("modules").EnumerateArray(),
             module => module.GetProperty("code").GetString() == "categories"
                 && module.GetProperty("name").GetString() == "Categorías"
                 && module.GetProperty("order").GetInt32() == 2);

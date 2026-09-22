@@ -360,6 +360,16 @@ public interface IGetTableSalesContextUseCase
     Task<Result<TableSalesContextDto>> ExecuteAsync(Guid tenantId, Guid roleId, CancellationToken cancellationToken);
 }
 
+public interface IGetTableSalesCatalogVersionUseCase
+{
+    Task<Result<TableSalesCatalogVersionDto>> ExecuteAsync(Guid tenantId, CancellationToken cancellationToken);
+}
+
+public interface ISynchronizeTableSalesCatalogUseCase
+{
+    Task<Result<TableSalesCatalogSnapshotDto>> ExecuteAsync(Guid tenantId, CancellationToken cancellationToken);
+}
+
 public interface IGetOrdersPageUseCase
 {
     Task<Result<PagedResponse<OrderDto>>> ExecuteAsync(Guid tenantId, OrderQueryRequest request, CancellationToken cancellationToken);

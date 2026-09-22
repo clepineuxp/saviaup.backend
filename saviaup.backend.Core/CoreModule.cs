@@ -74,6 +74,8 @@ public static class CoreModule
         services.AddScoped<ISetTableOperationUseCase, SetTableOperationUseCase>();
         services.AddScoped<IUpdateTableOrderUseCase, UpdateTableOrderUseCase>();
         services.AddScoped<IGetTableSalesContextUseCase, GetTableSalesContextUseCase>();
+        services.AddScoped<IGetTableSalesCatalogVersionUseCase, GetTableSalesCatalogVersionUseCase>();
+        services.AddScoped<ISynchronizeTableSalesCatalogUseCase, SynchronizeTableSalesCatalogUseCase>();
         services.AddScoped<IGetActiveTableOrderUseCase, GetActiveTableOrderUseCase>();
         services.AddScoped<IGetOrdersPageUseCase, GetOrdersPageUseCase>();
         services.AddScoped<IGetOrderItemsPageUseCase, GetOrderItemsPageUseCase>();

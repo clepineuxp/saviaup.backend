@@ -13,4 +13,5 @@ public static class OrganizationParameterKeys
     public const string DigitalMenuSlug = "business.digitalMenuSlug";
     public const string DigitalMenuStyle = "business.digitalMenuStyle";
     public const string EnableOrderPrintZones = "business.enableOrderPrintZones";
+    public const string SalesCatalogLastModifiedAt = "sales.catalog.lastModifiedAt";
 }
