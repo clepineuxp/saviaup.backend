@@ -1,6 +1,9 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
+using SaviaUp.Backend.Shared.Constants;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Application;
 
@@ -85,11 +88,102 @@ public sealed class ApplicationDbContext(
         modelBuilder.Entity<PrintJob>().HasQueryFilter(x => x.TenantId == TenantId);
     }
 
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         EnsureTenantIdOnAddedEntities();
-        return base.SaveChangesAsync(cancellationToken);
+        await TouchSalesCatalogVersionAsync(cancellationToken);
+        return await base.SaveChangesAsync(cancellationToken);
     }
+
+    private async Task TouchSalesCatalogVersionAsync(CancellationToken cancellationToken)
+    {
+        ChangeTracker.DetectChanges();
+        var tenantIds = ChangeTracker.Entries()
+            .Where(RequiresSalesCatalogInvalidation)
+            .Select(GetTenantId)
+            .Where(tenantId => tenantId != Guid.Empty)
+            .Distinct()
+            .ToArray();
+        if (tenantIds.Length == 0) return;
+
+        var trackedParameters = ChangeTracker.Entries<OrganizationParameter>()
+            .Where(entry => entry.State != EntityState.Deleted
+                && entry.Entity.Key == OrganizationParameterKeys.SalesCatalogLastModifiedAt
+                && tenantIds.Contains(entry.Entity.TenantId))
+            .ToDictionary(entry => entry.Entity.TenantId, entry => entry.Entity);
+        var missingTenantIds = tenantIds.Where(tenantId => !trackedParameters.ContainsKey(tenantId)).ToArray();
+        if (missingTenantIds.Length > 0)
+        {
+            var storedParameters = await OrganizationParameters
+                .IgnoreQueryFilters()
+                .Where(parameter => missingTenantIds.Contains(parameter.TenantId)
+                    && parameter.Key == OrganizationParameterKeys.SalesCatalogLastModifiedAt)
+                .ToArrayAsync(cancellationToken);
+            foreach (var parameter in storedParameters) trackedParameters[parameter.TenantId] = parameter;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var value = now.ToString("O", CultureInfo.InvariantCulture);
+        foreach (var tenantId in tenantIds)
+        {
+            if (trackedParameters.TryGetValue(tenantId, out var parameter))
+            {
+                parameter.Value = value;
+                parameter.ValueType = "datetime";
+                parameter.UpdatedAt = now;
+                continue;
+            }
+
+            OrganizationParameters.Add(new OrganizationParameter
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                Key = OrganizationParameterKeys.SalesCatalogLastModifiedAt,
+                Value = value,
+                ValueType = "datetime",
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+    }
+
+    private static bool RequiresSalesCatalogInvalidation(EntityEntry entry)
+        => entry.Entity switch
+        {
+            Category or Product or ProductVariation or DiningArea
+                => entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted,
+            RestaurantTable
+                => RequiresTableCatalogInvalidation(entry),
+            _ => false
+        };
+
+    private static bool RequiresTableCatalogInvalidation(EntityEntry entry)
+    {
+        if (entry.State is EntityState.Added or EntityState.Deleted) return true;
+        if (entry.State != EntityState.Modified) return false;
+
+        string[] catalogProperties =
+        [
+            nameof(RestaurantTable.DiningAreaId),
+            nameof(RestaurantTable.Name),
+            nameof(RestaurantTable.NormalizedName),
+            nameof(RestaurantTable.Capacity),
+            nameof(RestaurantTable.PositionX),
+            nameof(RestaurantTable.PositionY),
+            nameof(RestaurantTable.Shape),
+            nameof(RestaurantTable.IsDelivery),
+            nameof(RestaurantTable.IsCashRegister)
+        ];
+        if (catalogProperties.Any(propertyName => entry.Property(propertyName).IsModified)) return true;
+
+        var status = entry.Property(nameof(RestaurantTable.Status));
+        return status.IsModified
+            && ((TableStatus)status.OriginalValue! == TableStatus.Disabled
+                || (TableStatus)status.CurrentValue! == TableStatus.Disabled);
+    }
+
+    private static Guid GetTenantId(EntityEntry entry)
+        => entry.Property(nameof(OrganizationParameter.TenantId)).CurrentValue as Guid? ?? Guid.Empty;
 
     private void EnsureTenantIdOnAddedEntities()
     {

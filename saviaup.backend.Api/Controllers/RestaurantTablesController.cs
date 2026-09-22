@@ -19,6 +19,8 @@ public sealed class RestaurantTablesController(
     IDeleteRestaurantTableUseCase deleteUseCase,
     IGetTableOperationUseCase operationUseCase,
     IGetTableSalesContextUseCase salesContextUseCase,
+    IGetTableSalesCatalogVersionUseCase salesCatalogVersionUseCase,
+    ISynchronizeTableSalesCatalogUseCase synchronizeSalesCatalogUseCase,
     IOrganizationSettingsUseCase organization,
     ISetTableOperationUseCase setOperationUseCase,
     IUpdateTableOrderUseCase updateOrderUseCase,
@@ -42,6 +44,22 @@ public sealed class RestaurantTablesController(
         => this.FromResult(await salesContextUseCase.ExecuteAsync(
             currentUser.TenantId!.Value,
             currentUser.RoleId!.Value,
+            cancellationToken));
+
+    [HttpGet("sales-catalog/version")]
+    [RequirePermission(PermissionCodes.TablesRead, PermissionCodes.TablesOperate)]
+    public async Task<ActionResult<TableSalesCatalogVersionDto>> SalesCatalogVersion(
+        CancellationToken cancellationToken)
+        => this.FromResult(await salesCatalogVersionUseCase.ExecuteAsync(
+            currentUser.TenantId!.Value,
+            cancellationToken));
+
+    [HttpGet("sales-catalog/sync")]
+    [RequirePermission(PermissionCodes.TablesRead, PermissionCodes.TablesOperate)]
+    public async Task<ActionResult<TableSalesCatalogSnapshotDto>> SynchronizeSalesCatalog(
+        CancellationToken cancellationToken)
+        => this.FromResult(await synchronizeSalesCatalogUseCase.ExecuteAsync(
+            currentUser.TenantId!.Value,
             cancellationToken));
 
     [HttpGet("sales-logo")]

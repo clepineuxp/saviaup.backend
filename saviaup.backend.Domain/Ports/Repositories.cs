@@ -124,6 +124,9 @@ public interface IProductRepository
         Guid tenantId,
         bool includeInactive,
         CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<Product>> GetSalesCatalogAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken);
     Task<Product?> GetByIdAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
     Task<Product?> GetByIdForUpdateAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<Product>> GetByIdsWithRecipesAsync(Guid tenantId, IEnumerable<Guid> productIds, CancellationToken cancellationToken);
@@ -256,6 +259,7 @@ public interface ISettingsRepository
 {
     Task<Tenant?> GetTenantForUpdateAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<OrganizationParameter>> GetParametersAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<string?> GetParameterValueAsync(Guid tenantId, string key, CancellationToken cancellationToken);
     Task<bool> DigitalMenuSlugExistsAsync(string slug, Guid excludedTenantId, CancellationToken cancellationToken);
     Task AddParametersAsync(IEnumerable<OrganizationParameter> parameters, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<PaymentMethod>> GetPaymentMethodsAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);

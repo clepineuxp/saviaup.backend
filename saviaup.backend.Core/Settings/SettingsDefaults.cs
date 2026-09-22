@@ -16,6 +16,7 @@ public static class SettingsDefaults
     public const string DigitalMenuSlug = OrganizationParameterKeys.DigitalMenuSlug;
     public const string DigitalMenuStyle = OrganizationParameterKeys.DigitalMenuStyle;
     public const string EnableOrderPrintZones = OrganizationParameterKeys.EnableOrderPrintZones;
+    public const string SalesCatalogLastModifiedAt = OrganizationParameterKeys.SalesCatalogLastModifiedAt;
 
     public const string DefaultMenuStyleJson = "{\"templateId\":\"bistro\",\"primaryColor\":\"#10b981\",\"accentColor\":\"#f59e0b\",\"backgroundColor\":\"#ffffff\",\"textColor\":\"#0f172a\",\"selectedButtonTextColor\":\"#ffffff\",\"fontFamily\":\"Inter\",\"welcomeMessage\":\"¡Bienvenidos! Descubre nuestra selección de platos.\",\"showImages\":true,\"headerAlignment\":\"left\",\"infoPlacement\":\"header\",\"logoPlacement\":\"header\"}";
 
@@ -31,7 +32,8 @@ public static class SettingsDefaults
         Parameter(tenantId, EnableDigitalMenu, "false", "boolean", now),
         Parameter(tenantId, DigitalMenuSlug, "", "string", now),
         Parameter(tenantId, DigitalMenuStyle, DefaultMenuStyleJson, "json", now),
-        Parameter(tenantId, EnableOrderPrintZones, "false", "boolean", now)
+        Parameter(tenantId, EnableOrderPrintZones, "false", "boolean", now),
+        Parameter(tenantId, SalesCatalogLastModifiedAt, now.ToString("O"), "datetime", now)
     ];
 
     public static IReadOnlyCollection<PaymentMethod> CreatePaymentMethods(Guid tenantId, DateTimeOffset now) =>
