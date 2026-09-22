@@ -11,7 +11,8 @@ public sealed class UpdateCategoryUseCase(
     IProductRepository productRepository,
     IDateTimeProvider dateTimeProvider,
     IUnitOfWork unitOfWork,
-    IStoredImageRepository? imageRepository = null) : IUpdateCategoryUseCase
+    IStoredImageRepository? imageRepository = null,
+    ITableRealtimeNotifier? realtime = null) : IUpdateCategoryUseCase
 {
     public async Task<Result<CategoryDto>> ExecuteAsync(
         Guid tenantId,
@@ -75,6 +76,8 @@ public sealed class UpdateCategoryUseCase(
                 cancellationToken);
         }
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (realtime is not null)
+            await realtime.SalesDataInvalidatedAsync(tenantId, new(["categories", "products"], now), cancellationToken);
         return Result<CategoryDto>.Success(CategoryRules.ToDto(category));
     }
 }

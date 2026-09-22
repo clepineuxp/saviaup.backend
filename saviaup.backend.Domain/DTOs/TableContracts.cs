@@ -92,3 +92,14 @@ public sealed record UpdateTableOrderRequest(
 
 public sealed record TableStatusChangedEvent(RestaurantTableDto Table, bool IsDeleted = false);
 public sealed record TableOrderUpdatedEvent(Guid TableId, Guid ActiveOrderId, decimal Total, DateTimeOffset UpdatedAt);
+public sealed record TableSalesDataInvalidatedEvent(IReadOnlyCollection<string> Resources, DateTimeOffset OccurredAt);
+
+public sealed record TableSalesOrganizationDto(string Name, bool HasLogo, long LogoVersion);
+public sealed record TableSalesCapabilitiesDto(bool CanRead, bool CanOperate, bool CanManage);
+public sealed record TableSalesBusinessDto(bool EnableCustomSales, bool ShowVoluntaryTip, int SuggestedTipPercentage);
+public sealed record TableSalesPaymentMethodDto(Guid Id, string Name);
+public sealed record TableSalesContextDto(
+    TableSalesOrganizationDto Organization,
+    TableSalesBusinessDto Business,
+    IReadOnlyCollection<TableSalesPaymentMethodDto> PaymentMethods,
+    TableSalesCapabilitiesDto Capabilities);

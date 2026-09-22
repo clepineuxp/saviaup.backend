@@ -47,6 +47,7 @@ public interface ITableRealtimeNotifier
 {
     Task StatusChangedAsync(Guid tenantId, TableStatusChangedEvent notification, CancellationToken cancellationToken);
     Task OrderUpdatedAsync(Guid tenantId, TableOrderUpdatedEvent notification, CancellationToken cancellationToken);
+    Task SalesDataInvalidatedAsync(Guid tenantId, TableSalesDataInvalidatedEvent notification, CancellationToken cancellationToken);
 }
 
 public interface IPrintAgentContext
