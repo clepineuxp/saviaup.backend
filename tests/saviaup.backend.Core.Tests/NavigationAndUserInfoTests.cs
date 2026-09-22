@@ -27,7 +27,8 @@ public sealed class NavigationAndUserInfoTests
                 new AvailableModuleReference(Guid.NewGuid(), "settings"),
                 new AvailableModuleReference(Guid.NewGuid(), "products"),
                 new AvailableModuleReference(Guid.NewGuid(), "orders"),
-                new AvailableModuleReference(Guid.NewGuid(), "inventory")
+                new AvailableModuleReference(Guid.NewGuid(), "inventory"),
+                new AvailableModuleReference(Guid.NewGuid(), "expenses")
             ]);
         var (useCase, membership, _) = AvailableModulesUseCase(repository);
 
@@ -58,7 +59,14 @@ public sealed class NavigationAndUserInfoTests
             },
             section =>
             {
-                Assert.Equal(("inventory", "Inventario", 3, true),
+                Assert.Equal(("expenses", "Gastos", 3, false),
+                    (section.Code, section.Name, section.Order, section.IsGrouped));
+                var module = Assert.Single(section.Modules);
+                Assert.Equal(("expenses", 1), (module.Code, module.Order));
+            },
+            section =>
+            {
+                Assert.Equal(("inventory", "Inventario", 4, true),
                     (section.Code, section.Name, section.Order, section.IsGrouped));
                 Assert.Equal(
                     [("products", 1), ("categories", 2), ("inventory", 3), ("kitchen", 4)],
