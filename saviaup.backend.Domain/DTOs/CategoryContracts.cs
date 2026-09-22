@@ -10,7 +10,16 @@ public sealed record CategoryDto(
     bool IsInventoryTracked,
     bool IsActive,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    int ProductCount = 0,
+    int VariationCount = 0,
+    int IngredientCount = 0);
+
+public sealed record CategoryUsageCounts(
+    Guid CategoryId,
+    int ProductCount,
+    int VariationCount,
+    int IngredientCount);
 
 public sealed record CreateCategoryRequest(
     [Required, MaxLength(120)] string Name,
