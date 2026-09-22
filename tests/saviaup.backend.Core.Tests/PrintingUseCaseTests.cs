@@ -178,7 +178,7 @@ public sealed class PrintingUseCaseTests
         var repository = new Mock<IPrintingRepository>();
         repository.Setup(x => x.GetPairingCodeByHashAsync("hash:ABC123", It.IsAny<CancellationToken>())).ReturnsAsync(pairing);
         repository.Setup(x => x.TryConsumePairingCodeAsync(pairing.Id, Now, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        repository.Setup(x => x.GetAgentByDeviceAsync(tenantId, location.Id, "device-1", It.IsAny<CancellationToken>()))
+        repository.Setup(x => x.GetAgentByDeviceAsync(tenantId, "device-1", It.IsAny<CancellationToken>()))
             .ReturnsAsync((PrintAgent?)null);
         repository.Setup(x => x.AddAgentAsync(It.IsAny<PrintAgent>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         PrintAgentCredential? credential = null;
@@ -412,12 +412,72 @@ public sealed class PrintingUseCaseTests
         unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Fact]
+    public async Task CreatePrinter_ReactivatesTheDisabledPrinterWithTheSameWindowsQueue()
+    {
+        var tenantId = Guid.NewGuid();
+        var agent = new PrintAgent { Id = Guid.NewGuid(), TenantId = tenantId, LocationId = Guid.NewGuid(), Enabled = true };
+        var disabledPrinter = new Printer
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            LocationId = agent.LocationId,
+            PrintAgentId = agent.Id,
+            Name = "Cocina anterior",
+            ConnectionType = PrinterConnectionTypes.WindowsSpooler,
+            LocalPrinterName = "EPSON Cocina",
+            PaperWidth = 80,
+            Enabled = false,
+            CreatedAt = Now.AddDays(-1)
+        };
+        var repository = new Mock<IPrintingRepository>();
+        repository.Setup(x => x.GetAgentAsync(tenantId, agent.Id, It.IsAny<CancellationToken>())).ReturnsAsync(agent);
+        repository.Setup(x => x.GetDisabledPrintersForUpdateAsync(tenantId, agent.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([disabledPrinter]);
+
+        var result = await Administration(repository, new Mock<IPrintingRealtimeNotifier>()).CreatePrinterAsync(
+            tenantId,
+            new SavePrinterRequest(agent.Id, "Cocina", PrinterConnectionTypes.WindowsSpooler, "EPSON Cocina", null, null, 80),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(disabledPrinter.Id, result.Value!.Id);
+        Assert.True(disabledPrinter.Enabled);
+        Assert.Equal("Cocina", disabledPrinter.Name);
+        repository.Verify(x => x.AddPrinterAsync(It.IsAny<Printer>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ListDiscoveredAgents_OnlyReturnsAgentsThatCanBeLinkedForTheCurrentTenant()
+    {
+        var tenantId = Guid.NewGuid();
+        var registry = new Mock<IUnpairedPrintAgentRegistry>();
+        var disabledDiscovery = new DiscoveredPrintAgentDto(Guid.NewGuid(), "disabled-device", "PC Cocina", "Windows", "1", null, Now);
+        var activeDiscovery = new DiscoveredPrintAgentDto(Guid.NewGuid(), "active-device", "PC Barra", "Windows", "1", null, Now);
+        registry.Setup(x => x.ListAsync("203.0.113.10", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([disabledDiscovery, activeDiscovery]);
+        var repository = new Mock<IPrintingRepository>();
+        repository.Setup(x => x.GetAgentsAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            new PrintAgent { TenantId = tenantId, DeviceIdentifier = "disabled-device", Enabled = false },
+            new PrintAgent { TenantId = tenantId, DeviceIdentifier = "active-device", Enabled = true }
+        ]);
+
+        var result = await Administration(repository, new Mock<IPrintingRealtimeNotifier>(), discoveryRegistry: registry.Object)
+            .ListDiscoveredAgentsAsync(tenantId, "203.0.113.10", CancellationToken.None);
+
+        var agent = Assert.Single(result.Value!);
+        Assert.Equal("disabled-device", agent.DeviceIdentifier);
+        Assert.True(agent.IsReactivation);
+    }
+
     private static PrintingAdministrationUseCase Administration(
         Mock<IPrintingRepository> repository,
         Mock<IPrintingRealtimeNotifier> realtime,
-        ITenantRepository? tenantRepository = null)
+        ITenantRepository? tenantRepository = null,
+        IUnpairedPrintAgentRegistry? discoveryRegistry = null)
         => new(repository.Object, Mock.Of<ICategoryRepository>(), Mock.Of<IProductRepository>(),
-            tenantRepository ?? Mock.Of<ITenantRepository>(), Mock.Of<ITokenGenerator>(), Clock(), realtime.Object, Mock.Of<IUnpairedPrintAgentRegistry>(), Mock.Of<IOrganizationTimeZone>(),
+            tenantRepository ?? Mock.Of<ITenantRepository>(), Mock.Of<ITokenGenerator>(), Clock(), realtime.Object, discoveryRegistry ?? Mock.Of<IUnpairedPrintAgentRegistry>(), Mock.Of<IOrganizationTimeZone>(),
             Mock.Of<ITimeZoneService>(), Options.Create(new PrintingOptions()), UnitOfWork().Object);
 
     private static Mock<IUnitOfWork> UnitOfWork()

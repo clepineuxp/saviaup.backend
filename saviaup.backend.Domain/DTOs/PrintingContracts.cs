@@ -64,7 +64,8 @@ public sealed record DiscoveredPrintAgentDto(
     string OperatingSystem,
     string Version,
     string? LocalIpAddress,
-    DateTimeOffset ConnectedAt);
+    DateTimeOffset ConnectedAt,
+    bool IsReactivation = false);
 
 public sealed record LinkDiscoveredPrintAgentRequest(
     [Required] Guid DiscoveryId,

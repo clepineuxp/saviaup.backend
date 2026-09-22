@@ -250,10 +250,23 @@ public sealed class PrintingAdministrationUseCase(
     }
 
     public async Task<Result<IReadOnlyCollection<DiscoveredPrintAgentDto>>> ListDiscoveredAgentsAsync(
+        Guid tenantId,
         string? sourceIpAddress,
         CancellationToken cancellationToken)
-        => Result<IReadOnlyCollection<DiscoveredPrintAgentDto>>.Success(
-            await discoveryRegistry.ListAsync(sourceIpAddress, cancellationToken));
+    {
+        var knownAgents = (await repository.GetAgentsAsync(tenantId, cancellationToken))
+            .GroupBy(agent => agent.DeviceIdentifier, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.OrderByDescending(agent => agent.Enabled).First(), StringComparer.Ordinal);
+        var discovered = await discoveryRegistry.ListAsync(sourceIpAddress, cancellationToken);
+        return Result<IReadOnlyCollection<DiscoveredPrintAgentDto>>.Success(
+            discovered
+                .Where(agent => !knownAgents.TryGetValue(agent.DeviceIdentifier, out var existing) || !existing.Enabled)
+                .Select(agent => agent with
+                {
+                    IsReactivation = knownAgents.TryGetValue(agent.DeviceIdentifier, out var existing) && !existing.Enabled
+                })
+                .ToArray());
+    }
 
     public async Task<Result<PrintAgentDto>> LinkDiscoveredAgentAsync(
         Guid tenantId,
@@ -265,7 +278,10 @@ public sealed class PrintingAdministrationUseCase(
         if (discovered is null) return Result<PrintAgentDto>.Failure(Errors.PrintAgentPairingInvalid);
 
         var now = clock.UtcNow;
-        var location = request.LocationId.HasValue
+        var existingAgent = await repository.GetAgentByDeviceAsync(tenantId, discovered.DeviceIdentifier, cancellationToken);
+        var location = existingAgent is not null
+            ? await repository.GetLocationAsync(tenantId, existingAgent.LocationId, cancellationToken)
+            : request.LocationId.HasValue
             ? await repository.GetLocationAsync(tenantId, request.LocationId.Value, cancellationToken)
             : await repository.GetOrCreateDefaultLocationAsync(tenantId, now, cancellationToken);
         if (location is null || !location.IsActive) return Result<PrintAgentDto>.Failure(Errors.PrintingLocationNotFound);
@@ -273,17 +289,25 @@ public sealed class PrintingAdministrationUseCase(
         var name = string.IsNullOrWhiteSpace(request.AgentName) ? discovered.Hostname : request.AgentName.Trim();
         var result = await unitOfWork.ExecuteInTransactionAsync(async transactionToken =>
         {
-            var agent = await repository.GetAgentByDeviceAsync(
-                tenantId, location.Id, discovered.DeviceIdentifier, transactionToken);
+            var agent = await repository.GetAgentByDeviceAsync(tenantId, discovered.DeviceIdentifier, transactionToken);
             if (agent is null)
             {
                 agent = new PrintAgent
                 {
-                    Id = Guid.NewGuid(), TenantId = tenantId, LocationId = location.Id, Name = name,
-                    DeviceIdentifier = discovered.DeviceIdentifier, Hostname = discovered.Hostname,
-                    OperatingSystem = discovered.OperatingSystem, Version = discovered.Version,
-                    LocalIpAddress = Clean(discovered.LocalIpAddress), Status = PrintAgentStatuses.Online,
-                    LastSeenAt = now, CreatedAt = now, UpdatedAt = now, Enabled = true
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    LocationId = location.Id,
+                    Name = name,
+                    DeviceIdentifier = discovered.DeviceIdentifier,
+                    Hostname = discovered.Hostname,
+                    OperatingSystem = discovered.OperatingSystem,
+                    Version = discovered.Version,
+                    LocalIpAddress = Clean(discovered.LocalIpAddress),
+                    Status = PrintAgentStatuses.Online,
+                    LastSeenAt = now,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                    Enabled = true
                 };
                 await repository.AddAgentAsync(agent, transactionToken);
             }
@@ -305,8 +329,12 @@ public sealed class PrintingAdministrationUseCase(
             var expiresAt = now.AddDays(Math.Clamp(Options.DeviceTokenExpirationDays, 1, 730));
             await repository.AddCredentialAsync(new PrintAgentCredential
             {
-                Id = Guid.NewGuid(), TenantId = tenantId, PrintAgentId = agent.Id,
-                TokenHash = tokenGenerator.Hash(rawToken), CreatedAt = now, ExpiresAt = expiresAt
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                PrintAgentId = agent.Id,
+                TokenHash = tokenGenerator.Hash(rawToken),
+                CreatedAt = now,
+                ExpiresAt = expiresAt
             }, transactionToken);
             await unitOfWork.SaveChangesAsync(transactionToken);
             return Result<(PrintAgent Agent, PairPrintAgentResponse Response)>.Success((agent,
@@ -404,6 +432,14 @@ public sealed class PrintingAdministrationUseCase(
         if (!validation.IsSuccess) return Result<PrinterDto>.Failure(validation.Error!);
         var now = clock.UtcNow;
         var agent = validation.Value!;
+        var restored = (await repository.GetDisabledPrintersForUpdateAsync(tenantId, agent.Id, cancellationToken))
+            .FirstOrDefault(printer => IsSamePrinterConnection(printer, request));
+        if (restored is not null)
+        {
+            ApplyPrinterRequest(restored, agent, request, now);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+            return Result<PrinterDto>.Success(PrintingRules.ToDto(restored));
+        }
         var printer = new Printer
         {
             Id = Guid.NewGuid(),
@@ -689,6 +725,31 @@ public sealed class PrintingAdministrationUseCase(
         return Result<(PrintAgent, Location)>.Success((agent, location));
     }
 
+    private static void ApplyPrinterRequest(Printer printer, PrintAgent agent, SavePrinterRequest request, DateTimeOffset updatedAt)
+    {
+        printer.LocationId = agent.LocationId;
+        printer.PrintAgentId = agent.Id;
+        printer.Name = request.Name.Trim();
+        printer.ConnectionType = request.ConnectionType.Trim().ToUpperInvariant();
+        printer.LocalPrinterName = Clean(request.LocalPrinterName);
+        printer.IpAddress = Clean(request.IpAddress);
+        printer.Port = request.Port;
+        printer.PaperWidth = request.PaperWidth;
+        printer.Enabled = request.Enabled;
+        printer.UpdatedAt = updatedAt;
+    }
+
+    private static bool IsSamePrinterConnection(Printer printer, SavePrinterRequest request)
+    {
+        var connectionType = request.ConnectionType.Trim().ToUpperInvariant();
+        if (!string.Equals(printer.ConnectionType, connectionType, StringComparison.Ordinal)) return false;
+        if (connectionType == PrinterConnectionTypes.WindowsSpooler)
+            return string.Equals(PrintingRules.Normalize(printer.LocalPrinterName ?? string.Empty),
+                PrintingRules.Normalize(request.LocalPrinterName ?? string.Empty), StringComparison.Ordinal);
+        return string.Equals(Clean(printer.IpAddress), Clean(request.IpAddress), StringComparison.OrdinalIgnoreCase)
+            && printer.Port == request.Port;
+    }
+
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 
@@ -717,7 +778,7 @@ public sealed class PrintAgentUseCase(
             if (!await repository.TryConsumePairingCodeAsync(pairing.Id, now, transactionToken))
                 return Result<PairPrintAgentResponse>.Failure(Errors.PrintAgentPairingInvalid);
 
-            var agent = await repository.GetAgentByDeviceAsync(pairing.TenantId, pairing.LocationId, request.DeviceIdentifier.Trim(), transactionToken);
+            var agent = await repository.GetAgentByDeviceAsync(pairing.TenantId, request.DeviceIdentifier.Trim(), transactionToken);
             if (agent is null)
             {
                 agent = new PrintAgent
