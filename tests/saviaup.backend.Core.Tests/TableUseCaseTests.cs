@@ -236,6 +236,93 @@ public sealed class TableUseCaseTests
         Assert.False(result.Value.CashRegister.IsInteractionBlocked);
     }
 
+    [Fact]
+    public async Task SalesCatalogSynchronization_ReturnsCompleteTenantSnapshot()
+    {
+        var tenantId = Guid.NewGuid();
+        var category = new Category
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            Name = "Bebidas",
+            NormalizedName = "BEBIDAS",
+            IsActive = true,
+            CreatedAt = TestSupport.Now,
+            UpdatedAt = TestSupport.Now
+        };
+        var product = new Product
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            CategoryId = category.Id,
+            Category = category,
+            Name = "Limonada",
+            NormalizedName = "LIMONADA",
+            SalePrice = 12000,
+            IsActive = true,
+            CreatedAt = TestSupport.Now,
+            UpdatedAt = TestSupport.Now
+        };
+        product.Variations.Add(new ProductVariation
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            ProductId = product.Id,
+            Name = "Grande",
+            NormalizedName = "GRANDE",
+            SalePrice = 16000,
+            IsActive = true,
+            CreatedAt = TestSupport.Now,
+            UpdatedAt = TestSupport.Now
+        });
+        var area = new DiningArea
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            Name = "Principal",
+            NormalizedName = "PRINCIPAL",
+            Order = 1,
+            IsActive = true,
+            CreatedAt = TestSupport.Now,
+            UpdatedAt = TestSupport.Now
+        };
+        area.Tables.Add(Table(area.Id, tenantId, TableStatus.Available, 0));
+        var settings = new Mock<ISettingsRepository>();
+        settings.Setup(value => value.GetParameterValueAsync(
+                tenantId,
+                OrganizationParameterKeys.SalesCatalogLastModifiedAt,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(TestSupport.Now.ToString("O"));
+        var categories = new Mock<ICategoryRepository>();
+        categories.Setup(value => value.GetForTenantAsync(
+                tenantId,
+                false,
+                It.IsAny<CancellationToken>(),
+                true))
+            .ReturnsAsync([category]);
+        var products = new Mock<IProductRepository>();
+        products.Setup(value => value.GetSalesCatalogAsync(tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([product]);
+        var tables = new Mock<IRestaurantTableRepository>();
+        tables.Setup(value => value.GetOperationAreasAsync(tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([area]);
+        var useCase = new SynchronizeTableSalesCatalogUseCase(
+            settings.Object,
+            categories.Object,
+            products.Object,
+            tables.Object);
+
+        var result = await useCase.ExecuteAsync(tenantId, default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(tenantId, result.Value!.TenantId);
+        Assert.Equal(TestSupport.Now, result.Value.LastModifiedAt);
+        Assert.Single(result.Value.Categories);
+        Assert.Equal("Limonada", Assert.Single(result.Value.Products).Name);
+        Assert.Equal("Grande", Assert.Single(result.Value.Products.Single().Variations).Name);
+        Assert.Single(Assert.Single(result.Value.Areas).Tables);
+    }
+
     private static RestaurantTable Table(Guid areaId, Guid tenantId, TableStatus status, decimal total)
         => new()
         {

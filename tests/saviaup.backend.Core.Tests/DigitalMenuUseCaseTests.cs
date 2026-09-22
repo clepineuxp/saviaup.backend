@@ -205,6 +205,39 @@ public sealed class DigitalMenuUseCaseTests
         unitOfWork.Verify(work => work.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task DigitalMenu_GetCategoryImagesReturnsProgressiveBatch()
+    {
+        var categoryId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var expected = new PublicDigitalMenuCategoryImagesDto(
+            categoryId,
+            "data:image/webp;base64,CATEGORY",
+            [new PublicDigitalMenuProductImageDto(productId, "data:image/webp;base64,PRODUCT")]);
+        var repository = new Mock<IDigitalMenuRepository>();
+        repository
+            .Setup(item => item.GetPublicMenuCategoryImagesAsync(
+                "mi-restaurante",
+                categoryId,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expected);
+        var useCase = new DigitalMenuUseCase(
+            Mock.Of<ISettingsRepository>(),
+            repository.Object,
+            Mock.Of<ICategoryRepository>(),
+            Mock.Of<IProductRepository>(),
+            new FixedClock(TestSupport.Now),
+            Mock.Of<IUnitOfWork>());
+
+        var result = await useCase.GetPublicMenuCategoryImagesAsync(
+            "mi-restaurante",
+            categoryId,
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Same(expected, result.Value);
+    }
+
     private static DigitalMenuUseCase CreateUseCase(ISettingsRepository settingsRepository, IUnitOfWork? unitOfWork = null)
         => new(
             settingsRepository,

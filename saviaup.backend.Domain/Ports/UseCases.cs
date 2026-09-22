@@ -360,6 +360,16 @@ public interface IGetTableSalesContextUseCase
     Task<Result<TableSalesContextDto>> ExecuteAsync(Guid tenantId, Guid roleId, CancellationToken cancellationToken);
 }
 
+public interface IGetTableSalesCatalogVersionUseCase
+{
+    Task<Result<TableSalesCatalogVersionDto>> ExecuteAsync(Guid tenantId, CancellationToken cancellationToken);
+}
+
+public interface ISynchronizeTableSalesCatalogUseCase
+{
+    Task<Result<TableSalesCatalogSnapshotDto>> ExecuteAsync(Guid tenantId, CancellationToken cancellationToken);
+}
+
 public interface IGetOrdersPageUseCase
 {
     Task<Result<PagedResponse<OrderDto>>> ExecuteAsync(Guid tenantId, OrderQueryRequest request, CancellationToken cancellationToken);
@@ -619,6 +629,10 @@ public interface IDigitalMenuUseCase
     Task<Result> UpdateItemsAsync(Guid tenantId, SaveDigitalMenuItemsRequest request, Guid? userId, string? userName, CancellationToken cancellationToken);
     Task<Result> UpdateStyleAsync(Guid tenantId, DigitalMenuStyleDto request, CancellationToken cancellationToken);
     Task<Result<PublicDigitalMenuDto>> GetPublicMenuAsync(string slug, CancellationToken cancellationToken);
+    Task<Result<PublicDigitalMenuCategoryImagesDto>> GetPublicMenuCategoryImagesAsync(
+        string slug,
+        Guid categoryId,
+        CancellationToken cancellationToken);
 }
 
 public interface IPrintingAdministrationUseCase

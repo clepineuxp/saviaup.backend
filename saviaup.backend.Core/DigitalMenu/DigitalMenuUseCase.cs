@@ -293,6 +293,20 @@ public sealed class DigitalMenuUseCase(
         return Result<PublicDigitalMenuDto>.Success(menu);
     }
 
+    public async Task<Result<PublicDigitalMenuCategoryImagesDto>> GetPublicMenuCategoryImagesAsync(
+        string slug,
+        Guid categoryId,
+        CancellationToken cancellationToken)
+    {
+        var images = await digitalMenuRepository.GetPublicMenuCategoryImagesAsync(
+            slug,
+            categoryId,
+            cancellationToken);
+        return images is null
+            ? Result<PublicDigitalMenuCategoryImagesDto>.Failure(Errors.DigitalMenuNotFound)
+            : Result<PublicDigitalMenuCategoryImagesDto>.Success(images);
+    }
+
     private static DigitalMenuStyleDto ParseStyle(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return new DigitalMenuStyleDto();

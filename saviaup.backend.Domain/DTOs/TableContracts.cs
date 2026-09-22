@@ -103,3 +103,16 @@ public sealed record TableSalesContextDto(
     TableSalesBusinessDto Business,
     IReadOnlyCollection<TableSalesPaymentMethodDto> PaymentMethods,
     TableSalesCapabilitiesDto Capabilities);
+
+public sealed record TableSalesCatalogVersionDto(
+    Guid TenantId,
+    string Version,
+    DateTimeOffset LastModifiedAt);
+
+public sealed record TableSalesCatalogSnapshotDto(
+    Guid TenantId,
+    string Version,
+    DateTimeOffset LastModifiedAt,
+    IReadOnlyCollection<CategoryDto> Categories,
+    IReadOnlyCollection<ProductDto> Products,
+    IReadOnlyCollection<DiningAreaTablesDto> Areas);

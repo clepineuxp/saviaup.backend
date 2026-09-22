@@ -87,3 +87,12 @@ public sealed record PublicDigitalMenuDto(
     string? Website,
     DigitalMenuStyleDto Style,
     IReadOnlyCollection<PublicCategoryDto> Categories);
+
+public sealed record PublicDigitalMenuProductImageDto(
+    Guid ProductId,
+    string? Image);
+
+public sealed record PublicDigitalMenuCategoryImagesDto(
+    Guid CategoryId,
+    string? CategoryImage,
+    IReadOnlyCollection<PublicDigitalMenuProductImageDto> Products);
