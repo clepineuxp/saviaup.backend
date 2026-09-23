@@ -21,3 +21,7 @@ La migración es `AddProductComboComposition`. Las pruebas relevantes viven en `
 ## Inmutabilidad de gastos
 
 `POST /api/expenses` define el valor, la fecha de negocio y si el dinero sale de caja. Esos campos dejan de formar parte de `UpdateExpenseRequest`; `PUT /api/expenses/{expenseId}` solo actualiza nombre, descripción, medio de pago y proveedor. `UpdateExpenseUseCase` reutiliza los valores financieros persistidos durante la validación y no los reasigna, incluso si un cliente intenta enviar propiedades adicionales.
+
+## Total de turnos de caja
+
+`CashRegisterShiftDto` y `CashRegisterShiftSummaryDto` exponen `InitialOpeningAmount` y `TotalInCashAmount`. El primero suma los saldos registrados durante la apertura; el segundo aplica `TotalCollectedAmount + InitialOpeningAmount - TotalExpensesAmount`, de modo que el historial y el detalle usan la misma cifra.

@@ -546,6 +546,7 @@ El catálogo falla explícitamente si la base de datos devuelve un módulo sin c
 - Una mesa `DISABLED` no se opera. Una mesa ocupada no se elimina. El estado `AVAILABLE` siempre limpia orden, total y tiempo de ocupación.
 - Una mesa `IsCashRegister` procesa pedidos inmediatos sin conservar ocupación persistente.
 - Si `Tenant.RequiresOpenCashRegister` es verdadero, toda mutación operativa exige un `CashRegisterShift` sin `ClosedAt`.
+- Los DTO de turno exponen el total inicial consolidado y calculan `TotalInCashAmount` como recaudo de ventas + fondo inicial - gastos salidos de caja.
 - `TablesHub` publica `OnTableStatusChanged` y `OnTableOrderUpdated` únicamente al grupo derivado del tenant autenticado.
 
 ## Invariantes de gastos y proveedores
