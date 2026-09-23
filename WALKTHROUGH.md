@@ -18,9 +18,11 @@ La feature extiende `Product` sin cambiar el flujo de productos `NORMAL`:
 
 La migración es `AddProductComboComposition`. Las pruebas relevantes viven en `ProductUseCaseTests`, `OrderUseCaseTests` y el flujo HTTP de `CriticalEndpointsTests`.
 
-## Inmutabilidad de gastos
+## Política de edición financiera de gastos
 
-`POST /api/expenses` define el valor, la fecha de negocio y si el dinero sale de caja. Esos campos dejan de formar parte de `UpdateExpenseRequest`; `PUT /api/expenses/{expenseId}` solo actualiza nombre, descripción, medio de pago y proveedor. `UpdateExpenseUseCase` reutiliza los valores financieros persistidos durante la validación y no los reasigna, incluso si un cliente intenta enviar propiedades adicionales.
+`POST /api/expenses` define el valor, la fecha de negocio y si el dinero sale de caja. El parámetro de organización `expenses.lockFinancialFieldsAfterCreation` controla si `PUT /api/expenses/{expenseId}` puede modificar esos campos: su valor inicial es `true` para organizaciones nuevas y una clave ausente o inválida también se interpreta como bloqueada. Cuando está activo, Core conserva `Amount`, `ExpenseDate`, `BusinessDate` e `IsCashOut`; cuando está desactivado, el contrato acepta sus nuevos valores y vuelve a validar fecha, monto y turno de caja.
+
+La política se consulta en `GET /api/settings/business/expense-editing-policy` y solo puede cambiarse mediante `PUT /api/settings/business/expense-editing-policy` con `settings.expense-financial-fields.manage`. La migración `AddExpenseFinancialFieldsPolicyPermission` inserta únicamente este permiso global: no habilita el permiso en organizaciones ni lo asigna a roles existentes.
 
 ## Total de turnos de caja
 

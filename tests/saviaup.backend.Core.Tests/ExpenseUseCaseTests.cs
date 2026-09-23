@@ -1,6 +1,7 @@
 using Moq;
 using SaviaUp.Backend.Core.Common;
 using SaviaUp.Backend.Core.Expenses;
+using SaviaUp.Backend.Core.Settings;
 using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
@@ -108,6 +109,7 @@ public sealed class ExpenseUseCaseTests
         var originalDate = new DateTimeOffset(2026, 9, 18, 5, 0, 0, TimeSpan.Zero);
         var originalBusinessDate = new DateOnly(2026, 9, 18);
         var repository = new Mock<IExpenseRepository>();
+        var settingsRepository = new Mock<ISettingsRepository>();
         var unitOfWork = new Mock<IUnitOfWork>();
         var existing = new Expense
         {
@@ -128,19 +130,34 @@ public sealed class ExpenseUseCaseTests
 
         repository.Setup(x => x.GetByIdAsync(tenantId, expenseId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existing);
+        settingsRepository.Setup(x => x.GetParameterValueAsync(
+                tenantId,
+                SettingsDefaults.LockExpenseFinancialFieldsAfterCreation,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
 
         var useCase = new UpdateExpenseUseCase(
             repository.Object,
             Mock.Of<ISupplierRepository>(),
+            settingsRepository.Object,
             new FixedClock(TestSupport.Now.AddHours(1)),
-            unitOfWork.Object);
+            unitOfWork.Object,
+            new FixedOrganizationTimeZone(),
+            TestSupport.TimeZones());
 
         var result = await useCase.ExecuteAsync(
             tenantId,
             expenseId,
             Guid.NewGuid(),
             "Admin User",
-            new UpdateExpenseRequest("Compra corregida", "Detalle actualizado", "Tarjeta", null),
+            new UpdateExpenseRequest(
+                "Compra corregida",
+                "Detalle actualizado",
+                "Tarjeta",
+                null,
+                Amount: 1m,
+                IsCashOut: false,
+                BusinessDate: new DateOnly(2026, 9, 20)),
             CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -152,6 +169,70 @@ public sealed class ExpenseUseCaseTests
         Assert.Equal(originalDate, existing.ExpenseDate);
         Assert.Equal(originalBusinessDate, existing.BusinessDate);
         unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task UpdateExpense_WhenFinancialFieldsAreUnlocked_ChangesAmountDateAndCashOrigin()
+    {
+        var tenantId = Guid.NewGuid();
+        var expenseId = Guid.NewGuid();
+        var repository = new Mock<IExpenseRepository>();
+        var settingsRepository = new Mock<ISettingsRepository>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var existing = new Expense
+        {
+            Id = expenseId,
+            TenantId = tenantId,
+            ConsecutiveNumber = 17,
+            Name = "Compra inicial",
+            NormalizedName = "COMPRA INICIAL",
+            Amount = 98_000m,
+            IsCashOut = true,
+            PaymentMethod = "Efectivo",
+            ExpenseDate = new DateTimeOffset(2026, 9, 18, 5, 0, 0, TimeSpan.Zero),
+            BusinessDate = new DateOnly(2026, 9, 18),
+            Status = "ACTIVE",
+            CreatedAt = TestSupport.Now,
+            UpdatedAt = TestSupport.Now
+        };
+
+        repository.Setup(x => x.GetByIdAsync(tenantId, expenseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+        settingsRepository.Setup(x => x.GetParameterValueAsync(
+                tenantId,
+                SettingsDefaults.LockExpenseFinancialFieldsAfterCreation,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("false");
+
+        var useCase = new UpdateExpenseUseCase(
+            repository.Object,
+            Mock.Of<ISupplierRepository>(),
+            settingsRepository.Object,
+            new FixedClock(TestSupport.Now.AddHours(1)),
+            unitOfWork.Object,
+            new FixedOrganizationTimeZone(),
+            TestSupport.TimeZones());
+
+        var result = await useCase.ExecuteAsync(
+            tenantId,
+            expenseId,
+            Guid.NewGuid(),
+            "Admin User",
+            new UpdateExpenseRequest(
+                "Compra corregida",
+                null,
+                "Transferencia",
+                null,
+                Amount: 120_000m,
+                IsCashOut: false,
+                BusinessDate: new DateOnly(2026, 9, 20)),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(120_000m, existing.Amount);
+        Assert.False(existing.IsCashOut);
+        Assert.Equal(new DateOnly(2026, 9, 20), existing.BusinessDate);
+        Assert.Equal(new DateTimeOffset(2026, 9, 20, 5, 0, 0, TimeSpan.Zero), existing.ExpenseDate);
     }
 
     [Fact]

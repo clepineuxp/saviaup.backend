@@ -37,6 +37,7 @@ public static class PermissionCodes
     public const string SettingsUsersManage = "settings.users.manage";
     public const string SettingsRolesRead = "settings.roles.read";
     public const string SettingsRolesManage = "settings.roles.manage";
+    public const string SettingsExpenseFinancialFieldsManage = "settings.expense-financial-fields.manage";
     public const string CashRegistersRead = "cash-registers.read";
     public const string CashRegistersOperate = "cash-registers.operate";
     public const string CashRegistersManage = "cash-registers.manage";
@@ -72,6 +73,7 @@ public static class PermissionCodes
         SettingsPaymentMethodsRead, SettingsPaymentMethodsManage,
         SettingsUsersRead, SettingsUsersManage,
         SettingsRolesRead, SettingsRolesManage,
+        SettingsExpenseFinancialFieldsManage,
         CashRegistersRead, CashRegistersOperate, CashRegistersManage,
         SuppliersRead, SuppliersManage,
         ExpensesRead, ExpensesCreate, ExpensesEdit, ExpensesAnnul,
