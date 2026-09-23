@@ -11,6 +11,57 @@ namespace SaviaUp.Backend.Core.Tests;
 public sealed class CashRegisterUseCaseTests
 {
     [Fact]
+    public void CashRegisterShiftDto_CalculatesInitialAndTotalInCash()
+    {
+        var shift = new CashRegisterShiftDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Caja principal",
+            "CLOSED",
+            Guid.NewGuid(),
+            "Apertura",
+            TestSupport.Now,
+            Guid.NewGuid(),
+            "Cierre",
+            TestSupport.Now.AddHours(8),
+            TotalSalesAmount: 450_000m,
+            TotalTipsAmount: 16_000m,
+            TotalCollectedAmount: 466_000m,
+            TotalExpensesAmount: 66_000m,
+            OpeningBalancesJson: """[{"methodName":"Efectivo","amount":100000},{"methodName":"Tarjeta","amount":25000}]""",
+            ClosingSummaryJson: null);
+
+        Assert.Equal(125_000m, shift.InitialOpeningAmount);
+        Assert.Equal(525_000m, shift.TotalInCashAmount);
+    }
+
+    [Fact]
+    public void CashRegisterShiftSummaryDto_CalculatesInitialAndTotalInCash()
+    {
+        var summary = new CashRegisterShiftSummaryDto(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Caja principal",
+            "CLOSED",
+            "Apertura",
+            TestSupport.Now,
+            TotalSalesAmount: 450_000m,
+            TotalTipsAmount: 16_000m,
+            TotalCollectedAmount: 466_000m,
+            TotalExpensesAmount: 66_000m,
+            MethodSummaries:
+            [
+                new PaymentMethodClosingSummaryDto(
+                    "Efectivo", 100_000m, 350_000m, 16_000m, 66_000m, 366_000m, 400_000m, 400_000m, 0),
+                new PaymentMethodClosingSummaryDto(
+                    "Tarjeta", 25_000m, 100_000m, 0, 0, 100_000m, 125_000m, 125_000m, 0)
+            ]);
+
+        Assert.Equal(125_000m, summary.InitialOpeningAmount);
+        Assert.Equal(525_000m, summary.TotalInCashAmount);
+    }
+
+    [Fact]
     public async Task CreateCashRegister_NormalizesNameAndRejectsDuplicate()
     {
         var tenantId = Guid.NewGuid();

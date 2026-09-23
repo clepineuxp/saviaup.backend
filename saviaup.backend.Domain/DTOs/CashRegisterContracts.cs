@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace SaviaUp.Backend.Domain.DTOs;
 
@@ -62,7 +63,12 @@ public record CashRegisterShiftSummaryDto(
     decimal TotalTipsAmount,
     decimal TotalCollectedAmount,
     decimal TotalExpensesAmount,
-    IReadOnlyCollection<PaymentMethodClosingSummaryDto> MethodSummaries);
+    IReadOnlyCollection<PaymentMethodClosingSummaryDto> MethodSummaries)
+{
+    public decimal InitialOpeningAmount => MethodSummaries.Sum(method => method.InitialOpeningAmount);
+
+    public decimal TotalInCashAmount => InitialOpeningAmount + TotalCollectedAmount - TotalExpensesAmount;
+}
 
 public record CashRegisterShiftDto(
     Guid Id,
@@ -80,7 +86,31 @@ public record CashRegisterShiftDto(
     decimal TotalCollectedAmount,
     decimal TotalExpensesAmount,
     string OpeningBalancesJson,
-    string? ClosingSummaryJson);
+    string? ClosingSummaryJson)
+{
+    public decimal InitialOpeningAmount => SumOpeningBalances(OpeningBalancesJson);
+
+    public decimal TotalInCashAmount => InitialOpeningAmount + TotalCollectedAmount - TotalExpensesAmount;
+
+    private static decimal SumOpeningBalances(string openingBalancesJson)
+    {
+        if (string.IsNullOrWhiteSpace(openingBalancesJson)) return 0;
+
+        try
+        {
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var balances = JsonSerializer.Deserialize<IReadOnlyCollection<OpeningBalanceInputDto>>(
+                openingBalancesJson,
+                options);
+
+            return balances?.Sum(balance => balance.Amount) ?? 0;
+        }
+        catch (JsonException)
+        {
+            return 0;
+        }
+    }
+}
 
 public record CashRegisterShiftQueryRequest(
     int Page = 1,

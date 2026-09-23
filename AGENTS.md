@@ -106,6 +106,8 @@ Entidades actuales:
 - `Category`: categoría funcional perteneciente a un tenant, con nombre normalizado, descripción/imagen opcionales, clasificación inventariable, estado y timestamps.
 - `Product`: producto tenant-aware de tipo `NORMAL` o `COMBO`, con categoría obligatoria, precio de venta, descripción/imagen/tiempo de preparación opcionales, clasificación inventariable, estado, timestamps y colección de ítems de receta (`ProductRecipeItem`).
 - `ProductRecipeItem`: relación de un producto con ingredientes de inventario (`IngredientId`) o insumos personalizados (`CustomIngredientName`), cantidad requerida, unidad, notas y orden secuencial.
+- `ProductComboGroup` y `ProductComboOption`: composición tenant-aware de productos `COMBO` mediante grupos de selección única, múltiple o fija, obligatoriedad, límites, productos normales, unidades incluidas y ajustes de precio.
+- `OrderItemComboSelection`: snapshot inmutable de las opciones elegidas al vender un combo, usado para trazabilidad, precio y consumo de inventario.
 - `StoredImage`: persistencia binaria comprimida en Base64 para imágenes de categorías y productos, vinculada mediante `ImageRef`.
 - `DiningArea`: sala tenant-aware con nombre normalizado único, orden único y estado activo.
 - `RestaurantTable`: mesa tenant-aware asignada a una sala, con capacidad, coordenadas 2D, forma, flags de domicilio/caja, estado y referencia opcional a la orden activa.
@@ -492,6 +494,11 @@ El catálogo falla explícitamente si la base de datos devuelve un módulo sin c
 - `Description` es opcional y tiene máximo 1000 caracteres.
 - Las imágenes se procesan en Base64 mediante `ImageHelper.CreateStoredImage`, se persisten en `stored_images` y se asocian mediante la clave foránea `ImageRef`.
 - Las recetas de productos (`ProductRecipeItem`) permiten vincular ingredientes de inventario (`IngredientId`) o insumos manuales (`CustomIngredientName`) con cantidad requerida por porción.
+- Un producto `COMBO` exige al menos un grupo con una opción basada en un producto `NORMAL` activo del mismo tenant. No se admiten autorreferencias ni combos anidados.
+- Un producto usado como opción no puede desactivarse, convertirse en `COMBO` ni eliminarse hasta retirarlo de todas las composiciones.
+- Cada grupo define `SINGLE`, `MULTIPLE` o `FIXED`. Los seleccionables definen obligatoriedad y límites mínimo/máximo; `FIXED` es obligatorio e incorpora todas sus opciones una vez. Cada opción define unidades incluidas y un ajuste de precio opcional positivo o negativo.
+- La venta envía ids de grupo/opción y cantidades solo para grupos seleccionables. Core vuelve a validar la configuración, incorpora los fijos, recalcula el precio y persiste una instantánea en `order_item_combo_selections`; nunca confía en nombres o ajustes enviados por el cliente.
+- `OrderItem.Notes` concatena la composición validada del combo y las observaciones adicionales para que ambos datos lleguen a operación e impresión.
 - Al cobrar y cerrar una orden (`PayAndCloseTableOrderUseCase`), el backend deduce de forma atómica y transaccional los ingredientes vinculados en las recetas de los productos pagados mediante movimientos de inventario (`Decrease`/`Sale`).
 - La categoría debe estar activa. `IsInventoryTracked` solo puede ser `true` cuando la categoría elegida es inventariable; Core lo fuerza a `false` si la categoría no lo permite, tanto al crear como al actualizar. Si una categoría deja de ser inventariable, todos sus productos se actualizan a `false` en la misma persistencia.
 - Todos los listados son paginados y aceptan búsqueda por nombre, filtro por categoría, filtro por tipo e `includeInactive`. Toda consulta filtra explícitamente por tenant.
@@ -539,12 +546,15 @@ El catálogo falla explícitamente si la base de datos devuelve un módulo sin c
 - Una mesa `DISABLED` no se opera. Una mesa ocupada no se elimina. El estado `AVAILABLE` siempre limpia orden, total y tiempo de ocupación.
 - Una mesa `IsCashRegister` procesa pedidos inmediatos sin conservar ocupación persistente.
 - Si `Tenant.RequiresOpenCashRegister` es verdadero, toda mutación operativa exige un `CashRegisterShift` sin `ClosedAt`.
+- Los DTO de turno exponen el total inicial consolidado y calculan `TotalInCashAmount` como recaudo de ventas + fondo inicial - gastos salidos de caja.
 - `TablesHub` publica `OnTableStatusChanged` y `OnTableOrderUpdated` únicamente al grupo derivado del tenant autenticado.
 
 ## Invariantes de gastos y proveedores
 
 - Todo gasto y proveedor pertenece al tenant activo. `expenses.read` y `expenses.manage` controlan el acceso a gastos; `suppliers.read` y `suppliers.manage` (o equivalentes del módulo) controlan el acceso a proveedores.
 - Los egresos pueden registrarse con o sin proveedor asociado. Si se selecciona un proveedor, este debe pertenecer al tenant y estar activo.
+- La edición posterior de `Amount`, `ExpenseDate`, `BusinessDate` e `IsCashOut` depende de `expenses.lockFinancialFieldsAfterCreation`. Toda organización nueva lo recibe en `true` y una clave ausente o inválida también significa bloqueo; en ese estado Core conserva los campos financieros aunque el cliente los envíe. Cuando está en `false`, `UpdateExpenseRequest` puede modificarlos y Core vuelve a validar sus reglas.
+- Consultar la política de edición es parte del flujo de gastos; activarla o desactivarla exige exclusivamente `settings.expense-financial-fields.manage`. El permiso global no se habilita en tenants ni se asigna a roles existentes de forma automática.
 - Un gasto puede asociarse al turno de caja abierto actual (`CashRegisterShiftId`). Los egresos en efectivo restan del balance esperado al cierre de turno.
 - No se permite eliminar un proveedor que posea gastos asociados; debe ofrecerse desactivación reversible (`PATCH /status`).
 
@@ -552,7 +562,7 @@ El catálogo falla explícitamente si la base de datos devuelve un módulo sin c
 
 - Toda orden (`Order`) posee un `OrderNumber` secuencial único por tenant y puede contener múltiples ítems con cantidades, precios y notas.
 - `PayAndCloseTableOrderUseCase` procesa cobros parciales por ítem o el pago total de la orden, emitiendo el comprobante de pago (`OrderReceipt`).
-- Al pagarse y cerrarse una comanda, los productos que tengan recetas asociadas descuentan automáticamente el inventario de sus ingredientes en tiempo real.
+- Al pagarse y cerrarse una comanda, los productos que tengan recetas asociadas descuentan automáticamente el inventario de sus ingredientes en tiempo real. Para combos se expanden los productos seleccionados usando `ProductQuantity × SelectionQuantity × ComboQuantity` antes de aplicar cada receta.
 - Los comprobantes de pago generados son inmutables y quedan archivados para consulta y reimpresión en `/api/billing/receipts`.
 
 ## Invariantes de estadísticas

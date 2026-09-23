@@ -1,4 +1,5 @@
 using SaviaUp.Backend.Core.Common;
+using SaviaUp.Backend.Core.Settings;
 using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
@@ -117,8 +118,11 @@ public sealed class CreateExpenseUseCase(
 public sealed class UpdateExpenseUseCase(
     IExpenseRepository repository,
     ISupplierRepository supplierRepository,
+    ISettingsRepository settingsRepository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork, IOrganizationTimeZone organizationTimeZone, ITimeZoneService timeZones) : IUpdateExpenseUseCase
+    IUnitOfWork unitOfWork,
+    IOrganizationTimeZone organizationTimeZone,
+    ITimeZoneService timeZones) : IUpdateExpenseUseCase
 {
     public async Task<Result<ExpenseDto>> ExecuteAsync(
         Guid tenantId,
@@ -129,28 +133,51 @@ public sealed class UpdateExpenseUseCase(
         CancellationToken cancellationToken)
     {
         var now = clock.UtcNow;
-        var zone = await organizationTimeZone.GetAsync(tenantId, cancellationToken);
-        var businessDate = request.BusinessDate ?? DateOnly.FromDateTime(timeZones.ConvertFromUtc(request.ExpenseDate ?? now, zone).DateTime);
-        if (!ExpenseRules.TryPrepare(
-                request.Name,
-                request.Description,
-                request.Amount,
-                request.IsCashOut,
-                request.PaymentMethod,
-                request.SupplierId,
-                request.ExpenseDate ?? timeZones.StartOfDayUtc(businessDate, zone),
-                now,
-                out var values))
-        {
-            return Result<ExpenseDto>.Failure(Errors.Validation);
-        }
-
         var expense = await repository.GetByIdAsync(tenantId, expenseId, cancellationToken);
         if (expense is null) return Result<ExpenseDto>.Failure(Errors.ExpenseNotFound);
 
         if (string.Equals(expense.Status, "ANNULLED", StringComparison.OrdinalIgnoreCase))
         {
             return Result<ExpenseDto>.Failure(Errors.ExpenseAlreadyAnnulled);
+        }
+
+        var lockValue = await settingsRepository.GetParameterValueAsync(
+            tenantId,
+            SettingsDefaults.LockExpenseFinancialFieldsAfterCreation,
+            cancellationToken);
+        var lockFinancialFields = !bool.TryParse(lockValue, out var parsedLock) || parsedLock;
+        var amount = lockFinancialFields ? expense.Amount : request.Amount ?? expense.Amount;
+        var isCashOut = lockFinancialFields ? expense.IsCashOut : request.IsCashOut ?? expense.IsCashOut;
+        var expenseDate = expense.ExpenseDate;
+        var businessDate = expense.BusinessDate;
+
+        if (!lockFinancialFields && (request.ExpenseDate.HasValue || request.BusinessDate.HasValue))
+        {
+            var zone = await organizationTimeZone.GetAsync(tenantId, cancellationToken);
+            if (request.BusinessDate.HasValue)
+            {
+                businessDate = request.BusinessDate.Value;
+                expenseDate = request.ExpenseDate ?? timeZones.StartOfDayUtc(businessDate.Value, zone);
+            }
+            else if (request.ExpenseDate.HasValue)
+            {
+                expenseDate = request.ExpenseDate.Value;
+                businessDate = DateOnly.FromDateTime(timeZones.ConvertFromUtc(expenseDate, zone).DateTime);
+            }
+        }
+
+        if (!ExpenseRules.TryPrepare(
+                request.Name,
+                request.Description,
+                amount,
+                isCashOut,
+                request.PaymentMethod,
+                request.SupplierId,
+                expenseDate,
+                now,
+                out var values))
+        {
+            return Result<ExpenseDto>.Failure(Errors.Validation);
         }
 
         Supplier? supplier = null;
@@ -163,13 +190,16 @@ public sealed class UpdateExpenseUseCase(
         expense.Name = values.Name;
         expense.NormalizedName = values.NormalizedName;
         expense.Description = values.Description;
-        expense.Amount = values.Amount;
-        expense.IsCashOut = values.IsCashOut;
+        if (!lockFinancialFields)
+        {
+            expense.Amount = values.Amount;
+            expense.IsCashOut = values.IsCashOut;
+            expense.ExpenseDate = values.ExpenseDate;
+            expense.BusinessDate = businessDate;
+        }
         expense.PaymentMethod = values.PaymentMethod;
         expense.SupplierId = supplier?.Id;
         expense.Supplier = supplier;
-        expense.ExpenseDate = values.ExpenseDate;
-        expense.BusinessDate = businessDate;
         expense.LastModifiedByUserId = userId;
         expense.LastModifiedByUserName = userName;
         expense.UpdatedAt = now;

@@ -12,6 +12,51 @@ namespace SaviaUp.Backend.Core.Tests;
 public sealed class SettingsUseCaseTests
 {
     [Fact]
+    public void BusinessDefaults_LockExpenseFinancialFieldsForNewOrganizations()
+    {
+        var parameter = SettingsDefaults.CreateBusinessParameters(Guid.NewGuid(), TestSupport.Now)
+            .Single(item => item.Key == SettingsDefaults.LockExpenseFinancialFieldsAfterCreation);
+
+        Assert.Equal("true", parameter.Value);
+        Assert.Equal("boolean", parameter.ValueType);
+    }
+
+    [Fact]
+    public async Task ExpenseEditingPolicy_UpdateCreatesMissingParameterWithoutChangingTenantData()
+    {
+        var tenant = new Tenant { Id = Guid.NewGuid(), Name = "Savia", UpdatedAt = TestSupport.Now.AddDays(-1) };
+        var originalUpdatedAt = tenant.UpdatedAt;
+        var repository = new Mock<ISettingsRepository>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        OrganizationParameter? created = null;
+        repository.Setup(value => value.GetTenantForUpdateAsync(tenant.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(tenant);
+        repository.Setup(value => value.GetParametersAsync(tenant.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        repository.Setup(value => value.AddParametersAsync(It.IsAny<IEnumerable<OrganizationParameter>>(), It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<OrganizationParameter>, CancellationToken>((items, _) => created = items.Single())
+            .Returns(Task.CompletedTask);
+        var useCase = new BusinessSettingsUseCase(
+            repository.Object,
+            Mock.Of<ICashRegisterShiftRepository>(),
+            new FixedClock(TestSupport.Now),
+            unitOfWork.Object);
+
+        var result = await useCase.UpdateExpenseEditingPolicyAsync(
+            tenant.Id,
+            new UpdateExpenseEditingPolicyRequest(false),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value!.LockFinancialFieldsAfterCreation);
+        Assert.NotNull(created);
+        Assert.Equal(SettingsDefaults.LockExpenseFinancialFieldsAfterCreation, created.Key);
+        Assert.Equal("false", created.Value);
+        Assert.Equal(originalUpdatedAt, tenant.UpdatedAt);
+        unitOfWork.Verify(value => value.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task Organization_NonOwnerCannotChangeDocument()
     {
         var tenant = new Tenant { Id = Guid.NewGuid(), Name = "Savia", Document = "900", UpdatedAt = TestSupport.Now };

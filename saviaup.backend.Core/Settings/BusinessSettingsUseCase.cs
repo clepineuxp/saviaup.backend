@@ -72,7 +72,63 @@ public sealed class BusinessSettingsUseCase(
         tenant.UpdatedAt = now;
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result<BusinessSettingsDto>.Success(new BusinessSettingsDto(request.UsesTables, request.DeliveryEnabled, requiresOpenCashRegister,
-            request.EnableCustomSales, request.ShowVoluntaryTip, request.TipMessage.Trim(), request.SuggestedTipPercentage, enableOrderPrintZones));
+            request.EnableCustomSales, request.ShowVoluntaryTip, request.TipMessage.Trim(), request.SuggestedTipPercentage, enableOrderPrintZones,
+            LockExpenseFinancialFields(parameters.Values)));
+    }
+
+    public async Task<Result<ExpenseEditingPolicyDto>> GetExpenseEditingPolicyAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken)
+    {
+        if (await repository.GetTenantForUpdateAsync(tenantId, cancellationToken) is null)
+            return Result<ExpenseEditingPolicyDto>.Failure(Errors.TenantNotFound);
+
+        var value = await repository.GetParameterValueAsync(
+            tenantId,
+            SettingsDefaults.LockExpenseFinancialFieldsAfterCreation,
+            cancellationToken);
+
+        return Result<ExpenseEditingPolicyDto>.Success(
+            new ExpenseEditingPolicyDto(ParseLockExpenseFinancialFields(value)));
+    }
+
+    public async Task<Result<ExpenseEditingPolicyDto>> UpdateExpenseEditingPolicyAsync(
+        Guid tenantId,
+        UpdateExpenseEditingPolicyRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (await repository.GetTenantForUpdateAsync(tenantId, cancellationToken) is null)
+            return Result<ExpenseEditingPolicyDto>.Failure(Errors.TenantNotFound);
+
+        var parameters = (await repository.GetParametersAsync(tenantId, cancellationToken))
+            .ToDictionary(item => item.Key);
+        var now = clock.UtcNow;
+        var value = request.LockFinancialFieldsAfterCreation.ToString().ToLowerInvariant();
+
+        if (parameters.TryGetValue(SettingsDefaults.LockExpenseFinancialFieldsAfterCreation, out var parameter))
+        {
+            parameter.Value = value;
+            parameter.ValueType = "boolean";
+            parameter.UpdatedAt = now;
+        }
+        else
+        {
+            await repository.AddParametersAsync(
+                [new OrganizationParameter
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    Key = SettingsDefaults.LockExpenseFinancialFieldsAfterCreation,
+                    Value = value,
+                    ValueType = "boolean",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                }],
+                cancellationToken);
+        }
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return Result<ExpenseEditingPolicyDto>.Success(new ExpenseEditingPolicyDto(request.LockFinancialFieldsAfterCreation));
     }
 
     private static bool HasCashRegistersModule(IReadOnlyCollection<string>? permissions)
@@ -96,8 +152,16 @@ public sealed class BusinessSettingsUseCase(
             Bool(values[SettingsDefaults.ShowVoluntaryTip]),
             values[SettingsDefaults.TipMessage],
             int.TryParse(values[SettingsDefaults.SuggestedTipPercentage], out var percent) ? percent : 10,
-            Bool(values[SettingsDefaults.EnableOrderPrintZones]));
+            Bool(values[SettingsDefaults.EnableOrderPrintZones]),
+            ParseLockExpenseFinancialFields(values[SettingsDefaults.LockExpenseFinancialFieldsAfterCreation]));
     }
+
+    private static bool LockExpenseFinancialFields(IEnumerable<OrganizationParameter> parameters)
+        => ParseLockExpenseFinancialFields(parameters.FirstOrDefault(parameter =>
+            parameter.Key == SettingsDefaults.LockExpenseFinancialFieldsAfterCreation)?.Value);
+
+    private static bool ParseLockExpenseFinancialFields(string? value)
+        => !bool.TryParse(value, out var parsed) || parsed;
 
     private static bool Bool(string value) => bool.TryParse(value, out var parsed) && parsed;
 }

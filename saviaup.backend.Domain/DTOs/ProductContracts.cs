@@ -45,6 +45,39 @@ public sealed record ProductVariationRequest(
     int Order = 0,
     bool IsActive = true);
 
+public sealed record ProductComboOptionDto(
+    Guid Id,
+    Guid ProductId,
+    string ProductName,
+    int ProductQuantity,
+    decimal PriceAdjustment,
+    int Order);
+
+public sealed record ProductComboGroupDto(
+    Guid Id,
+    string Name,
+    string SelectionType,
+    bool IsRequired,
+    int MinSelections,
+    int MaxSelections,
+    int Order,
+    IReadOnlyCollection<ProductComboOptionDto> Options);
+
+public sealed record ProductComboOptionRequest(
+    Guid ProductId,
+    [Range(1, 1000)] int ProductQuantity,
+    [Range(typeof(decimal), "-9999999999999999.99", "9999999999999999.99")] decimal PriceAdjustment = 0,
+    int Order = 0);
+
+public sealed record ProductComboGroupRequest(
+    [Required, MaxLength(120)] string Name,
+    [Required, MaxLength(10)] string SelectionType,
+    bool IsRequired,
+    [Range(0, 1000)] int MinSelections,
+    [Range(1, 1000)] int MaxSelections,
+    [Required, MinLength(1)] IReadOnlyCollection<ProductComboOptionRequest> Options,
+    int Order = 0);
+
 public sealed record ProductDto(
     Guid Id,
     string Type,
@@ -61,7 +94,8 @@ public sealed record ProductDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     IReadOnlyCollection<ProductRecipeItemDto> Recipe,
-    IReadOnlyCollection<ProductVariationDto> Variations);
+    IReadOnlyCollection<ProductVariationDto> Variations,
+    IReadOnlyCollection<ProductComboGroupDto> ComboGroups);
 
 public sealed record CreateProductRequest(
     string? Type,
@@ -73,7 +107,8 @@ public sealed record CreateProductRequest(
     [Range(0, int.MaxValue)] int? PreparationTimeMinutes,
     bool IsInventoryTracked,
     IReadOnlyCollection<ProductRecipeItemRequest>? Recipe = null,
-    IReadOnlyCollection<ProductVariationRequest>? Variations = null);
+    IReadOnlyCollection<ProductVariationRequest>? Variations = null,
+    IReadOnlyCollection<ProductComboGroupRequest>? ComboGroups = null);
 
 public sealed record UpdateProductRequest(
     string? Type,
@@ -85,6 +120,7 @@ public sealed record UpdateProductRequest(
     [Range(0, int.MaxValue)] int? PreparationTimeMinutes,
     bool IsInventoryTracked,
     IReadOnlyCollection<ProductRecipeItemRequest>? Recipe = null,
-    IReadOnlyCollection<ProductVariationRequest>? Variations = null);
+    IReadOnlyCollection<ProductVariationRequest>? Variations = null,
+    IReadOnlyCollection<ProductComboGroupRequest>? ComboGroups = null);
 
 public sealed record SetProductStatusRequest(bool IsActive);
