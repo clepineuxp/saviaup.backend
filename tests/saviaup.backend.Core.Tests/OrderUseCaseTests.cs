@@ -66,6 +66,108 @@ public sealed class OrderUseCaseTests
     }
 
     [Fact]
+    public async Task AddTableOrderItems_ConfiguredCombo_ValidatesSelectionsAndCalculatesPrice()
+    {
+        var table = new RestaurantTable { Id = Guid.NewGuid(), TenantId = _tenantId, Status = TableStatus.Available };
+        var includedProduct = new Product { Id = Guid.NewGuid(), TenantId = _tenantId, Type = ProductType.Normal, Name = "Arepa", IsActive = true };
+        var fixedProduct = new Product { Id = Guid.NewGuid(), TenantId = _tenantId, Type = ProductType.Normal, Name = "Café", IsActive = true };
+        var combo = new Product
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            Type = ProductType.Combo,
+            Name = "Combo desayuno",
+            SalePrice = 20000m,
+            IsActive = true
+        };
+        var group = new ProductComboGroup
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            ComboProductId = combo.Id,
+            Name = "Acompañantes",
+            SelectionType = ProductComboSelectionType.Multiple,
+            IsRequired = true,
+            MinSelections = 1,
+            MaxSelections = 2
+        };
+        var option = new ProductComboOption
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            ComboGroupId = group.Id,
+            ProductId = includedProduct.Id,
+            Product = includedProduct,
+            ProductQuantity = 1,
+            PriceAdjustment = 1000m
+        };
+        group.Options.Add(option);
+        combo.ComboGroups.Add(group);
+        var fixedGroup = new ProductComboGroup
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            ComboProductId = combo.Id,
+            Name = "Incluidos",
+            SelectionType = ProductComboSelectionType.Fixed,
+            IsRequired = true,
+            MinSelections = 1,
+            MaxSelections = 1
+        };
+        fixedGroup.Options.Add(new ProductComboOption
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            ComboGroupId = fixedGroup.Id,
+            ProductId = fixedProduct.Id,
+            Product = fixedProduct,
+            ProductQuantity = 2,
+            PriceAdjustment = -500m
+        });
+        combo.ComboGroups.Add(fixedGroup);
+
+        var orderRepo = new Mock<IOrderRepository>();
+        orderRepo.Setup(r => r.GetActiveByTableIdAsync(_tenantId, table.Id, It.IsAny<CancellationToken>())).ReturnsAsync((Order?)null);
+        orderRepo.Setup(r => r.GetNextOrderNumberAsync(_tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        var tableRepo = new Mock<IRestaurantTableRepository>();
+        tableRepo.Setup(r => r.GetByIdAsync(_tenantId, table.Id, It.IsAny<CancellationToken>())).ReturnsAsync(table);
+        var tenantRepo = new Mock<ITenantRepository>();
+        tenantRepo.Setup(r => r.GetByIdAsync(_tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Tenant { Id = _tenantId, RequiresOpenCashRegister = false });
+        var productRepo = new Mock<IProductRepository>();
+        productRepo.Setup(r => r.GetByIdsWithRecipesAsync(_tenantId, It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([combo]);
+        var printJobs = new Mock<IPrintJobFactory>();
+        printJobs.Setup(x => x.CreateForOrderItemsAsync(
+                It.IsAny<Guid>(), It.IsAny<Order>(), It.IsAny<IReadOnlyCollection<OrderItem>>(),
+                It.IsAny<Guid>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        var useCase = new AddTableOrderItemsUseCase(
+            orderRepo.Object, tableRepo.Object, tenantRepo.Object, Mock.Of<ICashRegisterShiftRepository>(),
+            Mock.Of<ITableRealtimeNotifier>(), printJobs.Object, Mock.Of<IPrintingRealtimeNotifier>(),
+            new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>(), productRepo.Object);
+
+        var result = await useCase.ExecuteAsync(
+            _tenantId, table.Id, _userId, _userName,
+            new AddOrderItemsRequest([
+                new CreateOrderItemRequest(
+                    combo.Id, combo.Name, combo.SalePrice, 1, "Sin azúcar", false,
+                    [new CreateOrderItemComboSelectionRequest(group.Id, option.Id, 2)])
+            ]),
+            default);
+
+        Assert.True(result.IsSuccess);
+        var orderItem = Assert.Single(result.Value!.Items);
+        Assert.Equal(21500m, orderItem.UnitPrice);
+        Assert.Equal(2, orderItem.ComboSelections.Count);
+        Assert.Equal(2, orderItem.ComboSelections.Single(selection => selection.ComboGroupId == group.Id).SelectionQuantity);
+        Assert.Equal(1, orderItem.ComboSelections.Single(selection => selection.ComboGroupId == fixedGroup.Id).SelectionQuantity);
+        Assert.Equal(
+            "Combo: Acompañantes: 2× Arepa; Incluidos: 2× Café | Observaciones adicionales: Sin azúcar",
+            orderItem.Notes);
+    }
+
+    [Fact]
     public async Task CancelOrderItem_WithReason_UpdatesItemStatusAndRecalculatesTotal()
     {
         var orderId = Guid.NewGuid();
@@ -275,5 +377,83 @@ public sealed class OrderUseCaseTests
         Assert.Equal(7m, createdMovement.StockAfter);
         Assert.Equal(InventoryMovementCodes.Decrease, createdMovement.Direction);
         Assert.Equal(InventoryMovementCodes.Sale, createdMovement.Reason);
+    }
+
+    [Fact]
+    public async Task PayAndCloseTableOrder_WithComboSelections_DeductsSelectedProductsRecipes()
+    {
+        var orderId = Guid.NewGuid();
+        var componentProductId = Guid.NewGuid();
+        var ingredientId = Guid.NewGuid();
+        var table = new RestaurantTable
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            Status = TableStatus.Occupied,
+            ActiveOrderId = orderId,
+            Name = "Mesa combo"
+        };
+        var item = new OrderItem
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            ProductId = Guid.NewGuid(),
+            ProductName = "Combo",
+            UnitPrice = 40000m,
+            Quantity = 2,
+            Subtotal = 80000m,
+            Status = "PENDING"
+        };
+        item.ComboSelections.Add(new OrderItemComboSelection
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            OrderItemId = item.Id,
+            ProductId = componentProductId,
+            GroupName = "Bebidas",
+            ProductName = "Jugo",
+            ProductQuantity = 2,
+            SelectionQuantity = 1
+        });
+        var order = new Order
+        {
+            Id = orderId,
+            TenantId = _tenantId,
+            TableId = table.Id,
+            OrderNumber = 102,
+            Status = "PENDING",
+            SubtotalAmount = 80000m,
+            TotalAmount = 80000m,
+            Items = [item]
+        };
+        var ingredient = new Ingredient { Id = ingredientId, TenantId = _tenantId, Name = "Pulpa", CurrentStock = 20m };
+        var component = new Product
+        {
+            Id = componentProductId,
+            TenantId = _tenantId,
+            Name = "Jugo",
+            RecipeItems = [new ProductRecipeItem { Id = Guid.NewGuid(), TenantId = _tenantId, ProductId = componentProductId, IngredientId = ingredientId, Quantity = 0.5m }]
+        };
+        var orderRepo = new Mock<IOrderRepository>();
+        orderRepo.Setup(r => r.GetActiveByTableIdAsync(_tenantId, table.Id, It.IsAny<CancellationToken>())).ReturnsAsync(order);
+        var tableRepo = new Mock<IRestaurantTableRepository>();
+        tableRepo.Setup(r => r.GetByIdAsync(_tenantId, table.Id, It.IsAny<CancellationToken>())).ReturnsAsync(table);
+        var tenantRepo = new Mock<ITenantRepository>();
+        tenantRepo.Setup(r => r.GetByIdAsync(_tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Tenant { Id = _tenantId, RequiresOpenCashRegister = false });
+        var productRepo = new Mock<IProductRepository>();
+        productRepo.Setup(r => r.GetByIdsWithRecipesAsync(_tenantId, It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>())).ReturnsAsync([component]);
+        var ingredientRepo = new Mock<IIngredientRepository>();
+        ingredientRepo.Setup(r => r.GetForStockUpdateAsync(_tenantId, ingredientId, It.IsAny<CancellationToken>())).ReturnsAsync(ingredient);
+        var useCase = new PayAndCloseTableOrderUseCase(
+            orderRepo.Object, tableRepo.Object, tenantRepo.Object, Mock.Of<ICashRegisterShiftRepository>(),
+            productRepo.Object, ingredientRepo.Object, Mock.Of<IInventoryMovementRepository>(), Mock.Of<ITableRealtimeNotifier>(),
+            new FixedClock(TestSupport.Now), Mock.Of<IUnitOfWork>());
+
+        var result = await useCase.ExecuteAsync(
+            _tenantId, table.Id, _userId, _userName, new CheckoutOrderRequest("Efectivo"), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(18m, ingredient.CurrentStock); // 0.5 receta × 2 unidades incluidas × 2 combos
     }
 }

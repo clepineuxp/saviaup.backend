@@ -17,6 +17,7 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
         var query = dbContext.Orders
             .Include(o => o.Table)
             .Include(o => o.Items)
+                .ThenInclude(i => i.ComboSelections)
             .Where(o => o.TenantId == tenantId);
 
         if (request.TableId.HasValue)
@@ -106,7 +107,18 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
                 i.LastModifiedByUserId,
                 i.LastModifiedByUserName,
                 i.CreatedAt,
-                i.UpdatedAt)).ToList()
+                i.UpdatedAt,
+                i.ComboSelections.OrderBy(selection => selection.Order).Select(selection => new OrderItemComboSelectionDto(
+                    selection.Id,
+                    selection.ComboGroupId,
+                    selection.ComboOptionId,
+                    selection.ProductId,
+                    selection.GroupName,
+                    selection.ProductName,
+                    selection.ProductQuantity,
+                    selection.SelectionQuantity,
+                    selection.PriceAdjustment,
+                    selection.Order)).ToList())).ToList()
         )).ToList();
 
         return new PageData<OrderDto>(dtos, totalCount);
@@ -195,6 +207,7 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
         return await dbContext.Orders
             .Include(o => o.Table)
             .Include(o => o.Items)
+                .ThenInclude(i => i.ComboSelections)
             .FirstOrDefaultAsync(o => o.TenantId == tenantId && o.TableId == tableId && o.Status == "PENDING", cancellationToken);
     }
 
@@ -203,6 +216,7 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
         return await dbContext.Orders
             .Include(o => o.Table)
             .Include(o => o.Items)
+                .ThenInclude(i => i.ComboSelections)
             .FirstOrDefaultAsync(o => o.TenantId == tenantId && o.Id == orderId, cancellationToken);
     }
 

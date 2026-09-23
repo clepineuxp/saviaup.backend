@@ -15,7 +15,7 @@ public sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.Property(i => i.UnitPrice).HasPrecision(18, 2);
         builder.Property(i => i.Subtotal).HasPrecision(18, 2);
         builder.Property(i => i.Status).HasMaxLength(30).IsRequired();
-        builder.Property(i => i.Notes).HasMaxLength(500);
+        builder.Property(i => i.Notes).HasMaxLength(2000);
         builder.Property(i => i.CancellationReason).HasMaxLength(300);
         builder.Property(i => i.CancelledByUserName).HasMaxLength(160);
         builder.Property(i => i.CreatedByUserName).HasMaxLength(160).IsRequired();

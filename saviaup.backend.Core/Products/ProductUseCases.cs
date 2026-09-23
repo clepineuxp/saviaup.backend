@@ -44,15 +44,21 @@ public sealed class CreateProductUseCase(
                 request.Image,
                 request.SalePrice,
                 request.PreparationTimeMinutes,
-                out var values))
+                out var values)
+            || !ProductRules.TryValidateComboGroups(values.Type, request.ComboGroups)
+            || (values.Type == ProductType.Combo && request.Recipe is { Count: > 0 }))
             return Result<ProductDto>.Failure(Errors.Validation);
 
         var category = await categoryRepository.GetByIdAsync(tenantId, request.CategoryId, cancellationToken);
         if (category is null || !category.IsActive)
             return Result<ProductDto>.Failure(Errors.CategoryNotFound);
 
-        var now = clock.UtcNow;
         var productId = Guid.NewGuid();
+        var comboProducts = await LoadComboProductsAsync(
+            tenantId, productId, values.Type, request.ComboGroups, productRepository, cancellationToken);
+        if (comboProducts is null) return Result<ProductDto>.Failure(Errors.Validation);
+
+        var now = clock.UtcNow;
         Guid? imageRef = null;
         StoredImage? imageStored = null;
 
@@ -82,7 +88,7 @@ public sealed class CreateProductUseCase(
             ImageStored = imageStored,
             SalePrice = values.SalePrice,
             PreparationTimeMinutes = values.PreparationTimeMinutes,
-            IsInventoryTracked = category.IsInventoryTracked && request.IsInventoryTracked,
+            IsInventoryTracked = values.Type == ProductType.Normal && category.IsInventoryTracked && request.IsInventoryTracked,
             IsActive = true,
             CreatedByUserId = userId,
             CreatedByUserName = userName,
@@ -141,12 +147,36 @@ public sealed class CreateProductUseCase(
             }
         }
 
+        if (values.Type == ProductType.Combo && request.ComboGroups is { Count: > 0 })
+        {
+            foreach (var group in ProductRules.CreateComboGroups(
+                tenantId, productId, request.ComboGroups, now))
+                product.ComboGroups.Add(group);
+        }
+
         await productRepository.AddAsync(product, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         if (realtime is not null)
             await realtime.SalesDataInvalidatedAsync(tenantId, new(["products"], now), cancellationToken);
         var reloaded = await productRepository.GetByIdAsync(tenantId, productId, cancellationToken);
         return Result<ProductDto>.Success(ProductRules.ToDto(reloaded ?? product));
+    }
+
+    private static async Task<IReadOnlyDictionary<Guid, Product>?> LoadComboProductsAsync(
+        Guid tenantId,
+        Guid comboProductId,
+        ProductType type,
+        IReadOnlyCollection<ProductComboGroupRequest>? groups,
+        IProductRepository repository,
+        CancellationToken cancellationToken)
+    {
+        if (type == ProductType.Normal) return new Dictionary<Guid, Product>();
+        var ids = groups!.SelectMany(group => group.Options).Select(option => option.ProductId).Distinct().ToArray();
+        var products = await repository.GetByIdsWithRecipesAsync(tenantId, ids, cancellationToken);
+        if (products.Count != ids.Length
+            || products.Any(product => product.Id == comboProductId || !product.IsActive || product.Type != ProductType.Normal))
+            return null;
+        return products.ToDictionary(product => product.Id);
     }
 }
 
@@ -169,7 +199,9 @@ public sealed class UpdateProductUseCase(
                 request.Image,
                 request.SalePrice,
                 request.PreparationTimeMinutes,
-                out var values))
+                out var values)
+            || !ProductRules.TryValidateComboGroups(values.Type, request.ComboGroups)
+            || (values.Type == ProductType.Combo && request.Recipe is { Count: > 0 }))
             return Result<ProductDto>.Failure(Errors.Validation);
 
         // GetByIdForUpdateAsync carga el producto SIN RecipeItems en el ChangeTracker.
@@ -177,11 +209,19 @@ public sealed class UpdateProductUseCase(
         // los RecipeItems antiguos (ya rastreados) junto con los nuevos en el mismo contexto.
         var product = await productRepository.GetByIdForUpdateAsync(tenantId, productId, cancellationToken);
         if (product is null) return Result<ProductDto>.Failure(Errors.ProductNotFound);
+        if (product.Type == ProductType.Normal
+            && values.Type == ProductType.Combo
+            && await productRepository.IsUsedInComboAsync(tenantId, productId, cancellationToken))
+            return Result<ProductDto>.Failure(Errors.ProductInUse);
 
         // AsNoTracking porque GetByIdForUpdateAsync ya tiene product.Category en el tracker.
         var category = await categoryRepository.GetByIdAsNoTrackingAsync(tenantId, request.CategoryId, cancellationToken);
         if (category is null || !category.IsActive)
             return Result<ProductDto>.Failure(Errors.CategoryNotFound);
+
+        var comboProducts = await LoadComboProductsAsync(
+            tenantId, productId, values.Type, request.ComboGroups, productRepository, cancellationToken);
+        if (comboProducts is null) return Result<ProductDto>.Failure(Errors.Validation);
 
         var now = clock.UtcNow;
 
@@ -213,19 +253,18 @@ public sealed class UpdateProductUseCase(
         product.Description = values.Description;
         product.SalePrice = values.SalePrice;
         product.PreparationTimeMinutes = values.PreparationTimeMinutes;
-        product.IsInventoryTracked = category.IsInventoryTracked && request.IsInventoryTracked;
+        product.IsInventoryTracked = values.Type == ProductType.Normal && category.IsInventoryTracked && request.IsInventoryTracked;
         product.LastModifiedByUserId = userId;
         product.LastModifiedByUserName = userName;
         product.UpdatedAt = now;
 
-        if (request.Recipe is not null)
+        if (request.Recipe is not null || values.Type == ProductType.Combo)
         {
-            // DeleteRecipeItemsAsync usa ExecuteDeleteAsync → bypass del ChangeTracker.
             await productRepository.DeleteRecipeItemsAsync(tenantId, productId, cancellationToken);
 
             var itemsToAdd = new List<ProductRecipeItem>();
             var orderIdx = 0;
-            foreach (var r in request.Recipe)
+            foreach (var r in request.Recipe ?? [])
             {
                 if (r.Quantity <= 0) continue;
                 var hasIng = r.IngredientId.HasValue && r.IngredientId.Value != Guid.Empty;
@@ -284,11 +323,39 @@ public sealed class UpdateProductUseCase(
             }
         }
 
+        if (request.ComboGroups is not null || values.Type == ProductType.Normal)
+        {
+            await productRepository.DeleteComboGroupsAsync(tenantId, productId, cancellationToken);
+            if (values.Type == ProductType.Combo && request.ComboGroups is { Count: > 0 })
+            {
+                var groups = ProductRules.CreateComboGroups(
+                    tenantId, productId, request.ComboGroups, now);
+                await productRepository.AddComboGroupsAsync(groups, cancellationToken);
+            }
+        }
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
         if (realtime is not null)
             await realtime.SalesDataInvalidatedAsync(tenantId, new(["products"], now), cancellationToken);
         var reloaded = await productRepository.GetByIdAsync(tenantId, product.Id, cancellationToken);
         return Result<ProductDto>.Success(ProductRules.ToDto(reloaded ?? product));
+    }
+
+    private static async Task<IReadOnlyDictionary<Guid, Product>?> LoadComboProductsAsync(
+        Guid tenantId,
+        Guid comboProductId,
+        ProductType type,
+        IReadOnlyCollection<ProductComboGroupRequest>? groups,
+        IProductRepository repository,
+        CancellationToken cancellationToken)
+    {
+        if (type == ProductType.Normal) return new Dictionary<Guid, Product>();
+        var ids = groups!.SelectMany(group => group.Options).Select(option => option.ProductId).Distinct().ToArray();
+        var products = await repository.GetByIdsWithRecipesAsync(tenantId, ids, cancellationToken);
+        if (products.Count != ids.Length
+            || products.Any(product => product.Id == comboProductId || !product.IsActive || product.Type != ProductType.Normal))
+            return null;
+        return products.ToDictionary(product => product.Id);
     }
 }
 
@@ -303,6 +370,8 @@ public sealed class SetProductStatusUseCase(
     {
         var product = await repository.GetByIdAsync(tenantId, productId, cancellationToken);
         if (product is null) return Result<ProductDto>.Failure(Errors.ProductNotFound);
+        if (!request.IsActive && await repository.IsUsedInComboAsync(tenantId, productId, cancellationToken))
+            return Result<ProductDto>.Failure(Errors.ProductInUse);
         product.IsActive = request.IsActive;
         product.UpdatedAt = clock.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
@@ -321,6 +390,8 @@ public sealed class DeleteProductUseCase(
     {
         var product = await repository.GetByIdAsync(tenantId, productId, cancellationToken);
         if (product is null) return Result.Failure(Errors.ProductNotFound);
+        if (await repository.IsUsedInComboAsync(tenantId, productId, cancellationToken))
+            return Result.Failure(Errors.ProductInUse);
         repository.Remove(product);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         if (realtime is not null)

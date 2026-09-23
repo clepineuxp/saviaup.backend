@@ -35,6 +35,7 @@ internal static class Errors
     public static readonly Error InventoryMovementInvalid = new(ErrorCodes.InventoryMovementInvalid, LocalizationKeys.InventoryMovementInvalid, ErrorType.Validation);
     public static readonly Error InventoryInsufficientStock = new(ErrorCodes.InventoryInsufficientStock, LocalizationKeys.InventoryInsufficientStock, ErrorType.Business);
     public static readonly Error ProductNotFound = new(ErrorCodes.ProductNotFound, LocalizationKeys.ProductNotFound, ErrorType.NotFound);
+    public static readonly Error ProductInUse = new(ErrorCodes.ProductInUse, LocalizationKeys.ProductInUse, ErrorType.Conflict);
     public static readonly Error DiningAreaNotFound = new(ErrorCodes.DiningAreaNotFound, LocalizationKeys.DiningAreaNotFound, ErrorType.NotFound);
     public static readonly Error DiningAreaAlreadyExists = new(ErrorCodes.DiningAreaAlreadyExists, LocalizationKeys.DiningAreaAlreadyExists, ErrorType.Conflict);
     public static readonly Error DiningAreaInUse = new(ErrorCodes.DiningAreaInUse, LocalizationKeys.DiningAreaInUse, ErrorType.Conflict);

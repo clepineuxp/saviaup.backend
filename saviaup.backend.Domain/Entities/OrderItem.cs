@@ -28,4 +28,5 @@ public sealed class OrderItem
 
     public Order? Order { get; set; }
     public Product? Product { get; set; }
+    public ICollection<OrderItemComboSelection> ComboSelections { get; set; } = [];
 }

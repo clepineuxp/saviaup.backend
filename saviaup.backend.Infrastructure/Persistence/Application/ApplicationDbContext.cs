@@ -34,6 +34,9 @@ public sealed class ApplicationDbContext(
     public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<ProductRecipeItem> ProductRecipeItems => Set<ProductRecipeItem>();
     public DbSet<ProductVariation> ProductVariations => Set<ProductVariation>();
+    public DbSet<ProductComboGroup> ProductComboGroups => Set<ProductComboGroup>();
+    public DbSet<ProductComboOption> ProductComboOptions => Set<ProductComboOption>();
+    public DbSet<OrderItemComboSelection> OrderItemComboSelections => Set<OrderItemComboSelection>();
     public DbSet<DigitalMenuItem> DigitalMenuItems => Set<DigitalMenuItem>();
     public DbSet<Location> Locations => Set<Location>();
     public DbSet<PrintAgent> PrintAgents => Set<PrintAgent>();
@@ -62,6 +65,9 @@ public sealed class ApplicationDbContext(
         modelBuilder.Entity<Product>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<ProductRecipeItem>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<ProductVariation>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<ProductComboGroup>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<ProductComboOption>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<OrderItemComboSelection>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<DiningArea>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<RestaurantTable>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<CashRegister>().HasQueryFilter(x => x.TenantId == TenantId);
@@ -150,7 +156,7 @@ public sealed class ApplicationDbContext(
     private static bool RequiresSalesCatalogInvalidation(EntityEntry entry)
         => entry.Entity switch
         {
-            Category or Product or ProductVariation or DiningArea
+            Category or Product or ProductVariation or ProductComboGroup or ProductComboOption or DiningArea
                 => entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted,
             RestaurantTable
                 => RequiresTableCatalogInvalidation(entry),

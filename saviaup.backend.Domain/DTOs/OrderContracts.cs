@@ -2,6 +2,18 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SaviaUp.Backend.Domain.DTOs;
 
+public sealed record OrderItemComboSelectionDto(
+    Guid Id,
+    Guid? ComboGroupId,
+    Guid? ComboOptionId,
+    Guid? ProductId,
+    string GroupName,
+    string ProductName,
+    int ProductQuantity,
+    int SelectionQuantity,
+    decimal PriceAdjustment,
+    int Order);
+
 public sealed record OrderItemDto(
     Guid Id,
     Guid OrderId,
@@ -22,7 +34,8 @@ public sealed record OrderItemDto(
     Guid? LastModifiedByUserId,
     string? LastModifiedByUserName,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    IReadOnlyCollection<OrderItemComboSelectionDto> ComboSelections);
 
 public sealed record OrderItemReportDto(
     Guid ItemId,
@@ -87,7 +100,13 @@ public sealed record CreateOrderItemRequest(
     [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal UnitPrice,
     [Range(1, 10000)] int Quantity,
     [MaxLength(500)] string? Notes,
-    bool IsCustomSale);
+    bool IsCustomSale,
+    IReadOnlyCollection<CreateOrderItemComboSelectionRequest>? ComboSelections = null);
+
+public sealed record CreateOrderItemComboSelectionRequest(
+    Guid ComboGroupId,
+    Guid ComboOptionId,
+    [Range(1, 1000)] int Quantity);
 
 public sealed record AddOrderItemsRequest(
     [Required, MinLength(1)] IReadOnlyCollection<CreateOrderItemRequest> Items,

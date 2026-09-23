@@ -66,12 +66,103 @@ public sealed class ProductUseCaseTests
             tenantId,
             Guid.NewGuid(),
             "admin@saviaup.test",
-            new CreateProductRequest("COMBO", "Combo familiar", category.Id, 50000m, null, null, null, true),
+            new CreateProductRequest("NORMAL", "Combo familiar", category.Id, 50000m, null, null, null, true),
             default);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(ProductType.Combo, persisted!.Type);
+        Assert.Equal(ProductType.Normal, persisted!.Type);
         Assert.True(persisted.IsInventoryTracked);
+    }
+
+    [Fact]
+    public async Task CreateCombo_WithConfiguredGroup_PersistsNormalProductOptionsAndDisablesDirectInventory()
+    {
+        var tenantId = Guid.NewGuid();
+        var category = Category(tenantId);
+        var includedProduct = Product(tenantId);
+        var categories = new Mock<ICategoryRepository>();
+        var products = new Mock<IProductRepository>();
+        Product? persisted = null;
+        categories.Setup(value => value.GetByIdAsync(tenantId, category.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(category);
+        products.Setup(value => value.GetByIdsWithRecipesAsync(
+                tenantId,
+                It.Is<IEnumerable<Guid>>(ids => ids.SequenceEqual(new[] { includedProduct.Id })),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([includedProduct]);
+        products.Setup(value => value.AddAsync(It.IsAny<Product>(), It.IsAny<CancellationToken>()))
+            .Callback<Product, CancellationToken>((value, _) => persisted = value)
+            .Returns(Task.CompletedTask);
+        var useCase = new CreateProductUseCase(
+            products.Object, categories.Object, new FixedClock(TestSupport.Now), UnitOfWork().Object);
+
+        var groups = new[]
+        {
+            new ProductComboGroupRequest(
+                "Elige acompañante", "MULTIPLE", true, 1, 2,
+                [new ProductComboOptionRequest(includedProduct.Id, 2, 1500m)])
+        };
+        var result = await useCase.ExecuteAsync(
+            tenantId,
+            Guid.NewGuid(),
+            "admin@saviaup.test",
+            new CreateProductRequest(
+                "COMBO", "Combo familiar", category.Id, 50000m, null, null, null, true,
+                ComboGroups: groups),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(persisted);
+        Assert.Equal(ProductType.Combo, persisted.Type);
+        Assert.False(persisted.IsInventoryTracked);
+        var group = Assert.Single(persisted.ComboGroups);
+        var option = Assert.Single(group.Options);
+        Assert.Equal((includedProduct.Id, 2, 1500m), (option.ProductId, option.ProductQuantity, option.PriceAdjustment));
+        Assert.Single(result.Value!.ComboGroups);
+    }
+
+    [Fact]
+    public async Task CreateCombo_WithoutGroups_ReturnsValidation()
+    {
+        var useCase = new CreateProductUseCase(
+            Mock.Of<IProductRepository>(),
+            Mock.Of<ICategoryRepository>(),
+            new FixedClock(TestSupport.Now),
+            UnitOfWork().Object);
+
+        var result = await useCase.ExecuteAsync(
+            Guid.NewGuid(), Guid.NewGuid(), "admin@saviaup.test",
+            new CreateProductRequest("COMBO", "Combo", Guid.NewGuid(), 100m, null, null, null, false),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorCodes.Validation, result.Error!.Code);
+    }
+
+    [Fact]
+    public async Task CreateCombo_WithOptionalFixedGroup_ReturnsValidation()
+    {
+        var useCase = new CreateProductUseCase(
+            Mock.Of<IProductRepository>(),
+            Mock.Of<ICategoryRepository>(),
+            new FixedClock(TestSupport.Now),
+            UnitOfWork().Object);
+        var groups = new[]
+        {
+            new ProductComboGroupRequest(
+                "Incluidos", "FIXED", false, 0, 1,
+                [new ProductComboOptionRequest(Guid.NewGuid(), 1)])
+        };
+
+        var result = await useCase.ExecuteAsync(
+            Guid.NewGuid(), Guid.NewGuid(), "admin@saviaup.test",
+            new CreateProductRequest(
+                "COMBO", "Combo", Guid.NewGuid(), 100m, null, null, null, false,
+                ComboGroups: groups),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorCodes.Validation, result.Error!.Code);
     }
 
     [Theory]
@@ -164,6 +255,29 @@ public sealed class ProductUseCaseTests
         Assert.True(result.IsSuccess);
         Assert.False(product.IsActive);
         Assert.Equal(TestSupport.Now, product.UpdatedAt);
+    }
+
+    [Fact]
+    public async Task SetProductStatus_WhenProductIsUsedByCombo_ReturnsProductInUse()
+    {
+        var tenantId = Guid.NewGuid();
+        var product = Product(tenantId);
+        var products = new Mock<IProductRepository>();
+        products.Setup(value => value.GetByIdAsync(tenantId, product.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(product);
+        products.Setup(value => value.IsUsedInComboAsync(tenantId, product.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        var unitOfWork = UnitOfWork();
+        var useCase = new SetProductStatusUseCase(
+            products.Object, new FixedClock(TestSupport.Now), unitOfWork.Object);
+
+        var result = await useCase.ExecuteAsync(
+            tenantId, product.Id, new SetProductStatusRequest(false), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorCodes.ProductInUse, result.Error!.Code);
+        Assert.True(product.IsActive);
+        unitOfWork.Verify(value => value.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

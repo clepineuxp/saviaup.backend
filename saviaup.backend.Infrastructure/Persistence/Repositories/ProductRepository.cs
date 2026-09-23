@@ -16,12 +16,16 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
         CancellationToken cancellationToken)
     {
         var query = context.Products.AsNoTracking()
+            .AsSplitQuery()
             .Include(product => product.Category)
             .Include(product => product.ImageStored)
             .Include(product => product.RecipeItems)
                 .ThenInclude(item => item.Ingredient)
                     .ThenInclude(ingredient => ingredient!.MeasurementUnit)
             .Include(product => product.Variations)
+            .Include(product => product.ComboGroups)
+                .ThenInclude(group => group.Options)
+                    .ThenInclude(option => option.Product)
             .Where(product => product.TenantId == tenantId
                 && (request.IncludeInactive || product.IsActive));
         if (request.CategoryId.HasValue)
@@ -65,6 +69,9 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
                 .ThenInclude(item => item.Ingredient)
                     .ThenInclude(ingredient => ingredient!.MeasurementUnit)
             .Include(product => product.Variations)
+            .Include(product => product.ComboGroups)
+                .ThenInclude(group => group.Options)
+                    .ThenInclude(option => option.Product)
             .Where(product => product.TenantId == tenantId
                 && product.IsActive
                 && product.Category.IsActive)
@@ -73,12 +80,16 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
             .ToArrayAsync(cancellationToken);
 
     public Task<Product?> GetByIdAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
-        => context.Products.Include(product => product.Category)
+        => context.Products.AsSplitQuery()
+            .Include(product => product.Category)
             .Include(product => product.ImageStored)
             .Include(product => product.RecipeItems)
                 .ThenInclude(item => item.Ingredient)
                     .ThenInclude(ingredient => ingredient!.MeasurementUnit)
             .Include(product => product.Variations)
+            .Include(product => product.ComboGroups)
+                .ThenInclude(group => group.Options)
+                    .ThenInclude(option => option.Product)
             .SingleOrDefaultAsync(
                 product => product.TenantId == tenantId && product.Id == productId,
                 cancellationToken);
@@ -105,9 +116,13 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
         if (idList.Count == 0) return [];
 
         return await context.Products.AsNoTracking()
+            .AsSplitQuery()
             .Include(product => product.RecipeItems)
                 .ThenInclude(item => item.Ingredient)
             .Include(product => product.Variations)
+            .Include(product => product.ComboGroups)
+                .ThenInclude(group => group.Options)
+                    .ThenInclude(option => option.Product)
             .Where(product => product.TenantId == tenantId && idList.Contains(product.Id))
             .ToArrayAsync(cancellationToken);
     }
@@ -134,25 +149,46 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
         => await context.Products.AddAsync(product, cancellationToken);
 
     /// <summary>
-    /// Elimina todos los recipe items de un producto directamente en base de datos,
-    /// sin pasar por el Change Tracker de EF Core. Esto evita DbUpdateConcurrencyException
-    /// cuando los RecipeItems están rastreados en el contexto actual.
+    /// Reemplaza la colección sin cargarla junto al agregado principal, evitando conflictos
+    /// entre instancias rastreadas y manteniendo compatibilidad con proveedores de pruebas.
     /// </summary>
-    public Task DeleteRecipeItemsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
-        => context.ProductRecipeItems
+    public async Task DeleteRecipeItemsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
+    {
+        var items = await context.ProductRecipeItems
             .Where(item => item.TenantId == tenantId && item.ProductId == productId)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ToArrayAsync(cancellationToken);
+        context.ProductRecipeItems.RemoveRange(items);
+    }
 
     public async Task AddRecipeItemsAsync(IEnumerable<ProductRecipeItem> items, CancellationToken cancellationToken)
         => await context.ProductRecipeItems.AddRangeAsync(items, cancellationToken);
 
-    public Task DeleteVariationsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
-        => context.ProductVariations
+    public async Task DeleteVariationsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
+    {
+        var variations = await context.ProductVariations
             .Where(item => item.TenantId == tenantId && item.ProductId == productId)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ToArrayAsync(cancellationToken);
+        context.ProductVariations.RemoveRange(variations);
+    }
 
     public async Task AddVariationsAsync(IEnumerable<ProductVariation> variations, CancellationToken cancellationToken)
         => await context.ProductVariations.AddRangeAsync(variations, cancellationToken);
+
+    public async Task DeleteComboGroupsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
+    {
+        var groups = await context.ProductComboGroups
+            .Where(group => group.TenantId == tenantId && group.ComboProductId == productId)
+            .ToArrayAsync(cancellationToken);
+        context.ProductComboGroups.RemoveRange(groups);
+    }
+
+    public async Task AddComboGroupsAsync(IEnumerable<ProductComboGroup> groups, CancellationToken cancellationToken)
+        => await context.ProductComboGroups.AddRangeAsync(groups, cancellationToken);
+
+    public Task<bool> IsUsedInComboAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
+        => context.ProductComboOptions.AnyAsync(
+            option => option.TenantId == tenantId && option.ProductId == productId,
+            cancellationToken);
 
     public void Remove(Product product) => context.Products.Remove(product);
 }
