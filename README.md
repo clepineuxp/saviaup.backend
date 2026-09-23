@@ -405,15 +405,48 @@ Creación y actualización reciben:
 
 `type` acepta `NORMAL` y `COMBO`; al omitirse usa `NORMAL`. Nombre, categoría y precio positivo son obligatorios. La imagen puede enviarse como data URL en base64; el backend la almacena en `stored_images` y la vincula de forma atómica mediante `ImageRef`.
 
+### Composición y venta de combos
+
+Un producto `COMBO` conserva los mismos datos comerciales, pero exige `comboGroups` con al menos un grupo y una opción. Cada grupo define `selectionType=SINGLE|MULTIPLE|FIXED`. Los grupos seleccionables usan `isRequired` y límites `minSelections`/`maxSelections`; un grupo `FIXED` es siempre obligatorio e incluye automáticamente todas sus opciones, sin recibir selecciones del cliente. Las opciones referencian productos `NORMAL` activos del mismo tenant e indican `productQuantity` y un `priceAdjustment` opcional, positivo o negativo. Los combos no mantienen receta directa ni control de inventario propio; el consumo se deriva de los productos elegidos o incluidos.
+
+```json
+{
+  "type": "COMBO",
+  "name": "Combo almuerzo",
+  "categoryId": "00000000-0000-0000-0000-000000000000",
+  "salePrice": 32000,
+  "comboGroups": [
+    {
+      "name": "Elige tu bebida",
+      "selectionType": "SINGLE",
+      "isRequired": true,
+      "minSelections": 1,
+      "maxSelections": 1,
+      "options": [
+        {
+          "productId": "22222222-2222-2222-2222-222222222222",
+          "productQuantity": 1,
+          "priceAdjustment": 0
+        }
+      ]
+    }
+  ]
+}
+```
+
+Al agregar el combo a una comanda, cada ítem envía `comboSelections: [{ comboGroupId, comboOptionId, quantity }]` únicamente para grupos seleccionables. `AddTableOrderItemsUseCase` vuelve a validar obligatoriedad, tipo y límites, incorpora por sí mismo todas las opciones `FIXED`, calcula `UnitPrice = SalePrice + Σ(PriceAdjustment × quantity)` y guarda una instantánea en `order_item_combo_selections`. También construye `OrderItem.Notes` con los productos seleccionados/fijos y las observaciones adicionales para operación e impresión. Las ediciones posteriores del combo no alteran la comanda existente. Un producto usado como opción responde `409 PRODUCT_IN_USE` al intentar desactivarlo, convertirlo en combo o eliminarlo; primero debe retirarse de todas las composiciones.
+
 ### Recetas y deducción automática de inventario
 
 Cada producto puede tener una receta compuesta por ingredientes vinculados de inventario (`ingredientId`) o insumos personalizados (`customIngredientName`), con su cantidad requerida por porción/unidad vendida.
 
-Al registrar el pago de una comanda (`POST /api/tables/{tableId}/orders/pay-and-close`), el backend ejecuta `PayAndCloseTableOrderUseCase`:
+Al registrar el pago de una comanda (`POST /api/orders/table/{tableId}/checkout`), el backend ejecuta `PayAndCloseTableOrderUseCase`:
 1. Identifica los productos efectivamente pagados en la transacción.
 2. Consulta sus recetas completas en base de datos (`GetByIdsWithRecipesAsync`).
 3. Calcula el consumo total de cada ingrediente vinculado (`recipeItem.Quantity * productQty`).
 4. Genera movimientos automáticos de salida en inventario (`InventoryMovementCodes.Decrease`, motivo `Sale`) con nota de auditoría (ej. `Venta Mesa 1 - Orden #1024`) y actualiza el stock actual del ingrediente en tiempo real de forma transaccional.
+
+Para combos, el paso 1 expande la instantánea seleccionada: `recipeItem.Quantity × productQuantity × selectionQuantity × comboQuantity`. El cobro parcial clona la selección al ítem pagado antes de descontar, por lo que cada unidad se procesa una sola vez.
 
 ## Inventario, ingredientes, movimientos y complementos
 

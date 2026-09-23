@@ -360,6 +360,21 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         Assert.Equal(1, productListJson.GetProperty("totalCount").GetInt32());
         Assert.Equal(productId, productListJson.GetProperty("items")[0].GetProperty("id").GetGuid());
 
+        var createComboComponent = await client.PostAsJsonAsync("/api/products", new
+        {
+            type = "NORMAL",
+            name = "Papas del combo",
+            categoryId = inventoryCategoryId,
+            salePrice = 5000,
+            description = (string?)null,
+            image = (string?)null,
+            preparationTimeMinutes = 5,
+            isInventoryTracked = true
+        });
+        Assert.Equal(HttpStatusCode.OK, createComboComponent.StatusCode);
+        var componentJson = await createComboComponent.Content.ReadFromJsonAsync<JsonElement>();
+        var componentProductId = componentJson.GetProperty("id").GetGuid();
+
         var updateProduct = await client.PutAsJsonAsync($"/api/products/{productId}", new
         {
             type = "COMBO",
@@ -369,12 +384,28 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
             description = (string?)null,
             imageUrl = (string?)null,
             preparationTimeMinutes = 20,
-            isInventoryTracked = true
+            isInventoryTracked = true,
+            comboGroups = new[]
+            {
+                new
+                {
+                    name = "Acompañamiento",
+                    selectionType = "SINGLE",
+                    isRequired = true,
+                    minSelections = 1,
+                    maxSelections = 1,
+                    options = new[]
+                    {
+                        new { productId = componentProductId, productQuantity = 1, priceAdjustment = 0 }
+                    }
+                }
+            }
         });
         Assert.Equal(HttpStatusCode.OK, updateProduct.StatusCode);
         var updatedProductJson = await updateProduct.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("COMBO", updatedProductJson.GetProperty("type").GetString());
-        Assert.True(updatedProductJson.GetProperty("isInventoryTracked").GetBoolean());
+        Assert.False(updatedProductJson.GetProperty("isInventoryTracked").GetBoolean());
+        Assert.Single(updatedProductJson.GetProperty("comboGroups").EnumerateArray());
 
         var disableCategoryInventory = await client.PutAsJsonAsync(
             $"/api/categories/{inventoryCategoryId}", new
@@ -399,10 +430,10 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
             .GetProperty("isActive").GetBoolean());
 
         var activeProducts = await client.GetAsync("/api/products?page=1&pageSize=10");
-        Assert.Equal(0, (await activeProducts.Content.ReadFromJsonAsync<JsonElement>())
+        Assert.Equal(1, (await activeProducts.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("totalCount").GetInt32());
         var inactiveProducts = await client.GetAsync("/api/products?page=1&pageSize=10&includeInactive=true");
-        Assert.Equal(1, (await inactiveProducts.Content.ReadFromJsonAsync<JsonElement>())
+        Assert.Equal(2, (await inactiveProducts.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("totalCount").GetInt32());
 
         var deleteProduct = await client.DeleteAsync($"/api/products/{productId}");

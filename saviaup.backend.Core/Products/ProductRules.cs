@@ -89,7 +89,121 @@ internal static class ProductRules
             .OrderBy(v => v.Order)
             .ThenBy(v => v.CreatedAt)
             .Select(ToVariationDto)
+            .ToArray() ?? [],
+        product.ComboGroups?
+            .OrderBy(group => group.Order)
+            .ThenBy(group => group.CreatedAt)
+            .Select(ToComboGroupDto)
             .ToArray() ?? []);
+
+    public static ProductComboGroupDto ToComboGroupDto(ProductComboGroup group) => new(
+        group.Id,
+        group.Name,
+        group.SelectionType.ToString().ToUpperInvariant(),
+        group.IsRequired,
+        group.MinSelections,
+        group.MaxSelections,
+        group.Order,
+        group.Options
+            .OrderBy(option => option.Order)
+            .ThenBy(option => option.CreatedAt)
+            .Select(option => new ProductComboOptionDto(
+                option.Id,
+                option.ProductId,
+                option.Product?.Name ?? string.Empty,
+                option.ProductQuantity,
+                option.PriceAdjustment,
+                option.Order))
+            .ToArray());
+
+    public static bool TryValidateComboGroups(
+        ProductType type,
+        IReadOnlyCollection<ProductComboGroupRequest>? groups)
+    {
+        if (type == ProductType.Normal) return groups is null or { Count: 0 };
+        if (groups is null || groups.Count == 0) return false;
+
+        foreach (var group in groups)
+        {
+            var name = CleanWords(group.Name);
+            if (name.Length is 0 or > 120
+                || !Enum.TryParse<ProductComboSelectionType>(group.SelectionType?.Trim(), true, out var selectionType)
+                || group.Options is null
+                || group.Options.Count == 0
+                || group.Options.Any(option => option.ProductId == Guid.Empty || option.ProductQuantity <= 0)
+                || group.Options.Select(option => option.ProductId).Distinct().Count() != group.Options.Count)
+                return false;
+
+            if (selectionType == ProductComboSelectionType.Fixed)
+            {
+                if (!group.IsRequired
+                    || group.MinSelections != group.Options.Count
+                    || group.MaxSelections != group.Options.Count)
+                    return false;
+            }
+            else if (selectionType == ProductComboSelectionType.Single)
+            {
+                if (group.MaxSelections != 1 || group.MinSelections != (group.IsRequired ? 1 : 0))
+                    return false;
+            }
+            else if (group.MaxSelections < 1
+                || group.MinSelections < (group.IsRequired ? 1 : 0)
+                || group.MinSelections > group.MaxSelections)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public static List<ProductComboGroup> CreateComboGroups(
+        Guid tenantId,
+        Guid comboProductId,
+        IReadOnlyCollection<ProductComboGroupRequest> requests,
+        DateTimeOffset now)
+    {
+        var groups = new List<ProductComboGroup>(requests.Count);
+        var groupIndex = 0;
+        foreach (var request in requests)
+        {
+            var selectionType = Enum.Parse<ProductComboSelectionType>(request.SelectionType.Trim(), true);
+            var isFixed = selectionType == ProductComboSelectionType.Fixed;
+            var group = new ProductComboGroup
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                ComboProductId = comboProductId,
+                Name = CleanWords(request.Name),
+                SelectionType = selectionType,
+                IsRequired = isFixed || request.IsRequired,
+                MinSelections = isFixed ? request.Options.Count : request.MinSelections,
+                MaxSelections = isFixed ? request.Options.Count : request.MaxSelections,
+                Order = request.Order > 0 ? request.Order : ++groupIndex,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            var optionIndex = 0;
+            foreach (var optionRequest in request.Options)
+            {
+                group.Options.Add(new ProductComboOption
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    ComboGroupId = group.Id,
+                    ProductId = optionRequest.ProductId,
+                    ProductQuantity = optionRequest.ProductQuantity,
+                    PriceAdjustment = optionRequest.PriceAdjustment,
+                    Order = optionRequest.Order > 0 ? optionRequest.Order : ++optionIndex,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+            }
+            groups.Add(group);
+        }
+        return groups;
+    }
 
     public static ProductVariationDto ToVariationDto(ProductVariation item) => new(
         item.Id,

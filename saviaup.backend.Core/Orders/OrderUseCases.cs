@@ -56,7 +56,23 @@ public static class OrderRules
         item.LastModifiedByUserId,
         item.LastModifiedByUserName,
         item.CreatedAt,
-        item.UpdatedAt);
+        item.UpdatedAt,
+        item.ComboSelections
+            .OrderBy(selection => selection.Order)
+            .Select(ToComboSelectionDto)
+            .ToArray());
+
+    public static OrderItemComboSelectionDto ToComboSelectionDto(OrderItemComboSelection selection) => new(
+        selection.Id,
+        selection.ComboGroupId,
+        selection.ComboOptionId,
+        selection.ProductId,
+        selection.GroupName,
+        selection.ProductName,
+        selection.ProductQuantity,
+        selection.SelectionQuantity,
+        selection.PriceAdjustment,
+        selection.Order);
 
     public static void RecalculateTotals(Order order)
     {
@@ -131,7 +147,8 @@ public sealed class AddTableOrderItemsUseCase(
     IPrintJobFactory printJobFactory,
     IPrintingRealtimeNotifier printingRealtime,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork) : IAddTableOrderItemsUseCase
+    IUnitOfWork unitOfWork,
+    IProductRepository? productRepository = null) : IAddTableOrderItemsUseCase
 {
     public async Task<Result<OrderDto>> ExecuteAsync(
         Guid tenantId,
@@ -142,6 +159,19 @@ public sealed class AddTableOrderItemsUseCase(
         CancellationToken cancellationToken)
     {
         if (request.Items.Count == 0 || request.Items.Any(item => string.IsNullOrWhiteSpace(item.ProductName) || item.UnitPrice <= 0 || item.Quantity <= 0))
+            return Result<OrderDto>.Failure(Errors.Validation);
+
+        var productIds = request.Items
+            .Where(item => !item.IsCustomSale && item.ProductId.HasValue)
+            .Select(item => item.ProductId!.Value)
+            .Distinct()
+            .ToArray();
+        var products = productRepository is null || productIds.Length == 0
+            ? new Dictionary<Guid, Product>()
+            : (await productRepository.GetByIdsWithRecipesAsync(tenantId, productIds, cancellationToken))
+                .ToDictionary(product => product.Id);
+        if (productRepository is not null
+            && (products.Count != productIds.Length || products.Values.Any(product => !product.IsActive)))
             return Result<OrderDto>.Failure(Errors.Validation);
 
         var gate = await CheckGateAsync(tenantId, tenantRepository, shiftRepository, cancellationToken);
@@ -194,23 +224,40 @@ public sealed class AddTableOrderItemsUseCase(
         var newItems = new List<OrderItem>();
         foreach (var reqItem in request.Items)
         {
+            products.TryGetValue(reqItem.ProductId ?? Guid.Empty, out var catalogProduct);
+            if (catalogProduct?.Type == ProductType.Normal && reqItem.ComboSelections is { Count: > 0 })
+                return Result<OrderDto>.Failure(Errors.Validation);
+
+            var itemId = Guid.NewGuid();
+            var unitPrice = reqItem.UnitPrice;
+            var productName = reqItem.ProductName.Trim();
+            IReadOnlyCollection<OrderItemComboSelection> comboSelections = [];
+            if (catalogProduct?.Type == ProductType.Combo)
+            {
+                if (!TryBuildComboSelections(
+                    tenantId, itemId, catalogProduct, reqItem.ComboSelections, now, out unitPrice, out comboSelections))
+                    return Result<OrderDto>.Failure(Errors.Validation);
+                productName = catalogProduct.Name;
+            }
+
             var item = new OrderItem
             {
-                Id = Guid.NewGuid(),
+                Id = itemId,
                 OrderId = order.Id,
                 ProductId = reqItem.ProductId,
-                ProductName = reqItem.ProductName.Trim(),
-                UnitPrice = reqItem.UnitPrice,
+                ProductName = productName,
+                UnitPrice = unitPrice,
                 Quantity = reqItem.Quantity,
-                Subtotal = reqItem.UnitPrice * reqItem.Quantity,
+                Subtotal = unitPrice * reqItem.Quantity,
                 Status = "PENDING",
-                Notes = reqItem.Notes?.Trim(),
+                Notes = BuildOrderItemNotes(reqItem.Notes, comboSelections),
                 IsCustomSale = reqItem.IsCustomSale,
                 CreatedByUserId = userId,
                 CreatedByUserName = userName,
                 CreatedAt = now,
                 UpdatedAt = now
             };
+            foreach (var selection in comboSelections) item.ComboSelections.Add(selection);
             order.Items.Add(item);
             newItems.Add(item);
             await orderRepository.AddItemAsync(item, cancellationToken);
@@ -231,6 +278,141 @@ public sealed class AddTableOrderItemsUseCase(
             await printingRealtime.JobAvailableAsync(notification.AgentId, notification.PrintJobId, cancellationToken);
 
         return Result<OrderDto>.Success(OrderRules.ToDto(order));
+    }
+
+    private static bool TryBuildComboSelections(
+        Guid tenantId,
+        Guid orderItemId,
+        Product combo,
+        IReadOnlyCollection<CreateOrderItemComboSelectionRequest>? requests,
+        DateTimeOffset now,
+        out decimal unitPrice,
+        out IReadOnlyCollection<OrderItemComboSelection> selections)
+    {
+        unitPrice = combo.SalePrice;
+        var result = new List<OrderItemComboSelection>();
+        var requested = requests ?? [];
+        if (combo.ComboGroups.Count == 0
+            || combo.ComboGroups.Any(group => group.Options.Count == 0)
+            || requested.Any(request => request.Quantity <= 0)
+            || requested.Select(request => request.ComboOptionId).Distinct().Count() != requested.Count)
+        {
+            selections = [];
+            return false;
+        }
+
+        var validGroupIds = combo.ComboGroups.Select(group => group.Id).ToHashSet();
+        if (requested.Any(request => !validGroupIds.Contains(request.ComboGroupId)))
+        {
+            selections = [];
+            return false;
+        }
+
+        var selectionOrder = 0;
+        foreach (var group in combo.ComboGroups
+                     .OrderBy(group => group.Order)
+                     .ThenBy(group => group.CreatedAt))
+        {
+            var groupRequests = requested.Where(request => request.ComboGroupId == group.Id).ToArray();
+            if (group.SelectionType == ProductComboSelectionType.Fixed)
+            {
+                if (groupRequests.Length > 0)
+                {
+                    selections = [];
+                    return false;
+                }
+
+                foreach (var option in group.Options.OrderBy(option => option.Order))
+                {
+                    if (!option.Product.IsActive || option.Product.Type != ProductType.Normal)
+                    {
+                        selections = [];
+                        return false;
+                    }
+
+                    unitPrice += option.PriceAdjustment;
+                    result.Add(CreateComboSelection(tenantId, orderItemId, group, option, 1, ++selectionOrder, now));
+                }
+                continue;
+            }
+
+            var totalSelections = groupRequests.Sum(request => request.Quantity);
+            if (groupRequests.Length == 0)
+            {
+                if (group.IsRequired)
+                {
+                    selections = [];
+                    return false;
+                }
+                continue;
+            }
+
+            if (group.SelectionType == ProductComboSelectionType.Single
+                ? groupRequests.Length != 1 || totalSelections != 1
+                : totalSelections < group.MinSelections || totalSelections > group.MaxSelections)
+            {
+                selections = [];
+                return false;
+            }
+
+            foreach (var request in groupRequests)
+            {
+                var option = group.Options.SingleOrDefault(candidate => candidate.Id == request.ComboOptionId);
+                if (option is null || !option.Product.IsActive || option.Product.Type != ProductType.Normal)
+                {
+                    selections = [];
+                    return false;
+                }
+
+                unitPrice += option.PriceAdjustment * request.Quantity;
+                result.Add(CreateComboSelection(
+                    tenantId, orderItemId, group, option, request.Quantity, ++selectionOrder, now));
+            }
+        }
+
+        selections = result;
+        return unitPrice > 0;
+    }
+
+    private static OrderItemComboSelection CreateComboSelection(
+        Guid tenantId,
+        Guid orderItemId,
+        ProductComboGroup group,
+        ProductComboOption option,
+        int selectionQuantity,
+        int order,
+        DateTimeOffset now) => new()
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            OrderItemId = orderItemId,
+            ComboGroupId = group.Id,
+            ComboOptionId = option.Id,
+            ProductId = option.ProductId,
+            GroupName = group.Name,
+            ProductName = option.Product.Name,
+            ProductQuantity = option.ProductQuantity,
+            SelectionQuantity = selectionQuantity,
+            PriceAdjustment = option.PriceAdjustment,
+            Order = order,
+            CreatedAt = now
+        };
+
+    private static string? BuildOrderItemNotes(
+        string? additionalNotes,
+        IReadOnlyCollection<OrderItemComboSelection> comboSelections)
+    {
+        var trimmedNotes = string.IsNullOrWhiteSpace(additionalNotes) ? null : additionalNotes.Trim();
+        if (comboSelections.Count == 0) return trimmedNotes;
+
+        var composition = string.Join("; ", comboSelections
+            .OrderBy(selection => selection.Order)
+            .Select(selection =>
+                $"{selection.GroupName}: {selection.ProductQuantity * selection.SelectionQuantity}× {selection.ProductName}"));
+        var notes = trimmedNotes is null
+            ? $"Combo: {composition}"
+            : $"Combo: {composition} | Observaciones adicionales: {trimmedNotes}";
+        return notes.Length <= 2000 ? notes : notes[..2000];
     }
 
     private static async Task<Result> CheckGateAsync(
@@ -528,11 +710,7 @@ public sealed class PayAndCloseTableOrderUseCase(
 
                     transactionPaidItems.Add(new OrderReceiptItemDto(existingItem.ProductName, existingItem.Quantity, existingItem.UnitPrice, existingItem.Subtotal));
 
-                    if (existingItem.ProductId.HasValue && !existingItem.IsCustomSale)
-                    {
-                        paidProductQuantities[existingItem.ProductId.Value] =
-                            paidProductQuantities.GetValueOrDefault(existingItem.ProductId.Value) + existingItem.Quantity;
-                    }
+                    AddPaidProductQuantities(existingItem, existingItem.Quantity, paidProductQuantities);
                 }
                 else
                 {
@@ -562,14 +740,29 @@ public sealed class PayAndCloseTableOrderUseCase(
                         CreatedAt = now,
                         UpdatedAt = now
                     };
+                    foreach (var selection in existingItem.ComboSelections)
+                    {
+                        paidSplitItem.ComboSelections.Add(new OrderItemComboSelection
+                        {
+                            Id = Guid.NewGuid(),
+                            TenantId = selection.TenantId,
+                            OrderItemId = paidSplitItem.Id,
+                            ComboGroupId = selection.ComboGroupId,
+                            ComboOptionId = selection.ComboOptionId,
+                            ProductId = selection.ProductId,
+                            GroupName = selection.GroupName,
+                            ProductName = selection.ProductName,
+                            ProductQuantity = selection.ProductQuantity,
+                            SelectionQuantity = selection.SelectionQuantity,
+                            PriceAdjustment = selection.PriceAdjustment,
+                            Order = selection.Order,
+                            CreatedAt = now
+                        });
+                    }
                     newPaidItems.Add(paidSplitItem);
                     transactionPaidItems.Add(new OrderReceiptItemDto(paidSplitItem.ProductName, paidSplitItem.Quantity, paidSplitItem.UnitPrice, paidSplitItem.Subtotal));
 
-                    if (existingItem.ProductId.HasValue && !existingItem.IsCustomSale)
-                    {
-                        paidProductQuantities[existingItem.ProductId.Value] =
-                            paidProductQuantities.GetValueOrDefault(existingItem.ProductId.Value) + qtyToPay;
-                    }
+                    AddPaidProductQuantities(existingItem, qtyToPay, paidProductQuantities);
                 }
             }
 
@@ -592,11 +785,7 @@ public sealed class PayAndCloseTableOrderUseCase(
 
                     transactionPaidItems.Add(new OrderReceiptItemDto(item.ProductName, item.Quantity, item.UnitPrice, item.Subtotal));
 
-                    if (item.ProductId.HasValue && !item.IsCustomSale)
-                    {
-                        paidProductQuantities[item.ProductId.Value] =
-                            paidProductQuantities.GetValueOrDefault(item.ProductId.Value) + item.Quantity;
-                    }
+                    AddPaidProductQuantities(item, item.Quantity, paidProductQuantities);
                 }
             }
         }
@@ -716,6 +905,27 @@ public sealed class PayAndCloseTableOrderUseCase(
         await realtime.OrderUpdatedAsync(tenantId, new TableOrderUpdatedEvent(table.Id, order.Id, table.ActiveOrderTotal, now), cancellationToken);
 
         return Result<OrderDto>.Success(OrderRules.ToDto(order));
+    }
+
+    private static void AddPaidProductQuantities(
+        OrderItem item,
+        int paidOrderItemQuantity,
+        Dictionary<Guid, int> quantities)
+    {
+        if (item.IsCustomSale || paidOrderItemQuantity <= 0) return;
+        if (item.ComboSelections.Count > 0)
+        {
+            foreach (var selection in item.ComboSelections)
+            {
+                if (!selection.ProductId.HasValue) continue;
+                var quantity = selection.ProductQuantity * selection.SelectionQuantity * paidOrderItemQuantity;
+                quantities[selection.ProductId.Value] = quantities.GetValueOrDefault(selection.ProductId.Value) + quantity;
+            }
+            return;
+        }
+
+        if (item.ProductId.HasValue)
+            quantities[item.ProductId.Value] = quantities.GetValueOrDefault(item.ProductId.Value) + paidOrderItemQuantity;
     }
 }
 
