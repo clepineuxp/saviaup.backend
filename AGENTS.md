@@ -546,12 +546,15 @@ El catálogo falla explícitamente si la base de datos devuelve un módulo sin c
 - Una mesa `DISABLED` no se opera. Una mesa ocupada no se elimina. El estado `AVAILABLE` siempre limpia orden, total y tiempo de ocupación.
 - Una mesa `IsCashRegister` procesa pedidos inmediatos sin conservar ocupación persistente.
 - Si `Tenant.RequiresOpenCashRegister` es verdadero, toda mutación operativa exige un `CashRegisterShift` sin `ClosedAt`.
+- Los DTO de turno exponen el total inicial consolidado y calculan `TotalInCashAmount` como recaudo de ventas + fondo inicial - gastos salidos de caja.
 - `TablesHub` publica `OnTableStatusChanged` y `OnTableOrderUpdated` únicamente al grupo derivado del tenant autenticado.
 
 ## Invariantes de gastos y proveedores
 
 - Todo gasto y proveedor pertenece al tenant activo. `expenses.read` y `expenses.manage` controlan el acceso a gastos; `suppliers.read` y `suppliers.manage` (o equivalentes del módulo) controlan el acceso a proveedores.
 - Los egresos pueden registrarse con o sin proveedor asociado. Si se selecciona un proveedor, este debe pertenecer al tenant y estar activo.
+- La edición posterior de `Amount`, `ExpenseDate`, `BusinessDate` e `IsCashOut` depende de `expenses.lockFinancialFieldsAfterCreation`. Toda organización nueva lo recibe en `true` y una clave ausente o inválida también significa bloqueo; en ese estado Core conserva los campos financieros aunque el cliente los envíe. Cuando está en `false`, `UpdateExpenseRequest` puede modificarlos y Core vuelve a validar sus reglas.
+- Consultar la política de edición es parte del flujo de gastos; activarla o desactivarla exige exclusivamente `settings.expense-financial-fields.manage`. El permiso global no se habilita en tenants ni se asigna a roles existentes de forma automática.
 - Un gasto puede asociarse al turno de caja abierto actual (`CashRegisterShiftId`). Los egresos en efectivo restan del balance esperado al cierre de turno.
 - No se permite eliminar un proveedor que posea gastos asociados; debe ofrecerse desactivación reversible (`PATCH /status`).
 

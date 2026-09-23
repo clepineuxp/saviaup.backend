@@ -542,6 +542,8 @@ public interface IBusinessSettingsUseCase
 {
     Task<Result<BusinessSettingsDto>> GetAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<Result<BusinessSettingsDto>> UpdateAsync(Guid tenantId, UpdateBusinessSettingsRequest request, CancellationToken cancellationToken);
+    Task<Result<ExpenseEditingPolicyDto>> GetExpenseEditingPolicyAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<ExpenseEditingPolicyDto>> UpdateExpenseEditingPolicyAsync(Guid tenantId, UpdateExpenseEditingPolicyRequest request, CancellationToken cancellationToken);
 }
 
 public interface IPaymentMethodsSettingsUseCase

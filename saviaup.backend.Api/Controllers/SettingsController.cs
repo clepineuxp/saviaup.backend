@@ -57,7 +57,7 @@ public sealed class SettingsController(
         => this.FromResult(await organization.DeleteLogoAsync(TenantId, cancellationToken));
 
     [HttpGet("business")]
-    [RequirePermission(PermissionCodes.SettingsBusinessRead, PermissionCodes.OrdersCreate, PermissionCodes.OrdersRead, PermissionCodes.TablesOperate, PermissionCodes.TablesRead)]
+    [RequirePermission(PermissionCodes.SettingsBusinessRead, PermissionCodes.SettingsExpenseFinancialFieldsManage, PermissionCodes.OrdersCreate, PermissionCodes.OrdersRead, PermissionCodes.TablesOperate, PermissionCodes.TablesRead)]
     public async Task<ActionResult<BusinessSettingsDto>> GetBusiness(CancellationToken cancellationToken)
         => this.FromResult(await business.GetAsync(TenantId, cancellationToken));
 
@@ -65,6 +65,16 @@ public sealed class SettingsController(
     [RequirePermission(PermissionCodes.SettingsBusinessManage)]
     public async Task<ActionResult<BusinessSettingsDto>> UpdateBusiness(UpdateBusinessSettingsRequest request, CancellationToken cancellationToken)
         => this.FromResult(await business.UpdateAsync(TenantId, request, cancellationToken));
+
+    [HttpGet("business/expense-editing-policy")]
+    [RequirePermission(PermissionCodes.ExpensesRead, PermissionCodes.ExpensesEdit, PermissionCodes.SettingsBusinessRead, PermissionCodes.SettingsExpenseFinancialFieldsManage)]
+    public async Task<ActionResult<ExpenseEditingPolicyDto>> GetExpenseEditingPolicy(CancellationToken cancellationToken)
+        => this.FromResult(await business.GetExpenseEditingPolicyAsync(TenantId, cancellationToken));
+
+    [HttpPut("business/expense-editing-policy")]
+    [RequirePermission(PermissionCodes.SettingsExpenseFinancialFieldsManage)]
+    public async Task<ActionResult<ExpenseEditingPolicyDto>> UpdateExpenseEditingPolicy(UpdateExpenseEditingPolicyRequest request, CancellationToken cancellationToken)
+        => this.FromResult(await business.UpdateExpenseEditingPolicyAsync(TenantId, request, cancellationToken));
 
     [HttpGet("payment-methods")]
     [RequirePermission(PermissionCodes.SettingsPaymentMethodsRead, PermissionCodes.OrdersCreate, PermissionCodes.OrdersRead, PermissionCodes.TablesOperate, PermissionCodes.TablesRead, PermissionCodes.CashRegistersOperate, PermissionCodes.CashRegistersRead)]

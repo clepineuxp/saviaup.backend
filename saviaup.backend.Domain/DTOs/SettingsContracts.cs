@@ -44,7 +44,8 @@ public sealed record BusinessSettingsDto(
     bool ShowVoluntaryTip,
     string TipMessage,
     int SuggestedTipPercentage,
-    bool EnableOrderPrintZones = false);
+    bool EnableOrderPrintZones = false,
+    bool LockExpenseFinancialFieldsAfterCreation = true);
 
 public sealed record UpdateBusinessSettingsRequest(
     bool UsesTables,
@@ -55,6 +56,10 @@ public sealed record UpdateBusinessSettingsRequest(
     [Required, MaxLength(200)] string TipMessage,
     [Range(0, 100)] int SuggestedTipPercentage,
     bool EnableOrderPrintZones = false);
+
+public sealed record ExpenseEditingPolicyDto(bool LockFinancialFieldsAfterCreation);
+
+public sealed record UpdateExpenseEditingPolicyRequest(bool LockFinancialFieldsAfterCreation);
 
 public sealed record PaymentMethodDto(
     Guid Id,

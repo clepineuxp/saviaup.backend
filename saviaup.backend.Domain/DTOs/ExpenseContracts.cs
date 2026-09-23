@@ -37,11 +37,12 @@ public sealed record CreateExpenseRequest(
 public sealed record UpdateExpenseRequest(
     [Required, MaxLength(160)] string Name,
     [MaxLength(1000)] string? Description,
-    [Range(0.01, 999999999)] decimal Amount,
-    bool IsCashOut,
     [Required, MaxLength(120)] string PaymentMethod,
     Guid? SupplierId,
-    DateTimeOffset? ExpenseDate, DateOnly? BusinessDate = null);
+    [Range(0.01, 999999999)] decimal? Amount = null,
+    bool? IsCashOut = null,
+    DateTimeOffset? ExpenseDate = null,
+    DateOnly? BusinessDate = null);
 
 public sealed record AnnulExpenseRequest(
     [MaxLength(500)] string? Reason);

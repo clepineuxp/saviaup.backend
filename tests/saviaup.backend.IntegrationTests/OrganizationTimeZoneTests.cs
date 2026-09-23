@@ -94,7 +94,7 @@ public sealed class OrganizationTimeZoneTests(SaviaUpApiFactory factory) : IClas
     }
 
     [Fact]
-    public async Task CreateExpense_AcceptsBusinessDateWithoutExpenseDate()
+    public async Task CreateAndUpdateExpense_PreservesImmutableFinancialData()
     {
         using var client = factory.CreateClient();
         var response = await client.PostAsJsonAsync("/api/auth/register", new
@@ -129,6 +129,30 @@ public sealed class OrganizationTimeZoneTests(SaviaUpApiFactory factory) : IClas
 
         response.EnsureSuccessStatusCode();
         json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("2026-09-18", json.GetProperty("businessDate").GetString());
+        Assert.Equal(
+            DateTimeOffset.Parse("2026-09-18T05:00:00Z"),
+            json.GetProperty("expenseDate").GetDateTimeOffset());
+
+        var expenseId = json.GetProperty("id").GetGuid();
+        response = await client.PutAsJsonAsync($"/api/expenses/{expenseId}", new
+        {
+            name = "tomates corregidos",
+            description = "solo cambia la descripción",
+            paymentMethod = "Transferencia",
+            supplierId = (Guid?)null,
+            amount = 1,
+            isCashOut = false,
+            expenseDate = "2026-09-01T00:00:00Z",
+            businessDate = "2026-09-01"
+        });
+
+        response.EnsureSuccessStatusCode();
+        json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("tomates corregidos", json.GetProperty("name").GetString());
+        Assert.Equal("Transferencia", json.GetProperty("paymentMethod").GetString());
+        Assert.Equal(20000m, json.GetProperty("amount").GetDecimal());
+        Assert.True(json.GetProperty("isCashOut").GetBoolean());
         Assert.Equal("2026-09-18", json.GetProperty("businessDate").GetString());
         Assert.Equal(
             DateTimeOffset.Parse("2026-09-18T05:00:00Z"),
