@@ -17,3 +17,7 @@ La feature extiende `Product` sin cambiar el flujo de productos `NORMAL`:
 - al cobrar, las selecciones se expanden a productos normales y sus recetas descuentan inventario con todos los multiplicadores.
 
 La migración es `AddProductComboComposition`. Las pruebas relevantes viven en `ProductUseCaseTests`, `OrderUseCaseTests` y el flujo HTTP de `CriticalEndpointsTests`.
+
+## Inmutabilidad de gastos
+
+`POST /api/expenses` define el valor, la fecha de negocio y si el dinero sale de caja. Esos campos dejan de formar parte de `UpdateExpenseRequest`; `PUT /api/expenses/{expenseId}` solo actualiza nombre, descripción, medio de pago y proveedor. `UpdateExpenseUseCase` reutiliza los valores financieros persistidos durante la validación y no los reasigna, incluso si un cliente intenta enviar propiedades adicionales.

@@ -118,7 +118,7 @@ public sealed class UpdateExpenseUseCase(
     IExpenseRepository repository,
     ISupplierRepository supplierRepository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork, IOrganizationTimeZone organizationTimeZone, ITimeZoneService timeZones) : IUpdateExpenseUseCase
+    IUnitOfWork unitOfWork) : IUpdateExpenseUseCase
 {
     public async Task<Result<ExpenseDto>> ExecuteAsync(
         Guid tenantId,
@@ -129,28 +129,26 @@ public sealed class UpdateExpenseUseCase(
         CancellationToken cancellationToken)
     {
         var now = clock.UtcNow;
-        var zone = await organizationTimeZone.GetAsync(tenantId, cancellationToken);
-        var businessDate = request.BusinessDate ?? DateOnly.FromDateTime(timeZones.ConvertFromUtc(request.ExpenseDate ?? now, zone).DateTime);
-        if (!ExpenseRules.TryPrepare(
-                request.Name,
-                request.Description,
-                request.Amount,
-                request.IsCashOut,
-                request.PaymentMethod,
-                request.SupplierId,
-                request.ExpenseDate ?? timeZones.StartOfDayUtc(businessDate, zone),
-                now,
-                out var values))
-        {
-            return Result<ExpenseDto>.Failure(Errors.Validation);
-        }
-
         var expense = await repository.GetByIdAsync(tenantId, expenseId, cancellationToken);
         if (expense is null) return Result<ExpenseDto>.Failure(Errors.ExpenseNotFound);
 
         if (string.Equals(expense.Status, "ANNULLED", StringComparison.OrdinalIgnoreCase))
         {
             return Result<ExpenseDto>.Failure(Errors.ExpenseAlreadyAnnulled);
+        }
+
+        if (!ExpenseRules.TryPrepare(
+                request.Name,
+                request.Description,
+                expense.Amount,
+                expense.IsCashOut,
+                request.PaymentMethod,
+                request.SupplierId,
+                expense.ExpenseDate,
+                now,
+                out var values))
+        {
+            return Result<ExpenseDto>.Failure(Errors.Validation);
         }
 
         Supplier? supplier = null;
@@ -163,13 +161,9 @@ public sealed class UpdateExpenseUseCase(
         expense.Name = values.Name;
         expense.NormalizedName = values.NormalizedName;
         expense.Description = values.Description;
-        expense.Amount = values.Amount;
-        expense.IsCashOut = values.IsCashOut;
         expense.PaymentMethod = values.PaymentMethod;
         expense.SupplierId = supplier?.Id;
         expense.Supplier = supplier;
-        expense.ExpenseDate = values.ExpenseDate;
-        expense.BusinessDate = businessDate;
         expense.LastModifiedByUserId = userId;
         expense.LastModifiedByUserName = userName;
         expense.UpdatedAt = now;

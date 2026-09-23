@@ -101,6 +101,60 @@ public sealed class ExpenseUseCaseTests
     }
 
     [Fact]
+    public async Task UpdateExpense_ChangesEditableDataAndPreservesImmutableFinancialData()
+    {
+        var tenantId = Guid.NewGuid();
+        var expenseId = Guid.NewGuid();
+        var originalDate = new DateTimeOffset(2026, 9, 18, 5, 0, 0, TimeSpan.Zero);
+        var originalBusinessDate = new DateOnly(2026, 9, 18);
+        var repository = new Mock<IExpenseRepository>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var existing = new Expense
+        {
+            Id = expenseId,
+            TenantId = tenantId,
+            ConsecutiveNumber = 16,
+            Name = "Compra inicial",
+            NormalizedName = "COMPRA INICIAL",
+            Amount = 98000m,
+            IsCashOut = true,
+            PaymentMethod = "Efectivo",
+            ExpenseDate = originalDate,
+            BusinessDate = originalBusinessDate,
+            Status = "ACTIVE",
+            CreatedAt = TestSupport.Now,
+            UpdatedAt = TestSupport.Now
+        };
+
+        repository.Setup(x => x.GetByIdAsync(tenantId, expenseId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+
+        var useCase = new UpdateExpenseUseCase(
+            repository.Object,
+            Mock.Of<ISupplierRepository>(),
+            new FixedClock(TestSupport.Now.AddHours(1)),
+            unitOfWork.Object);
+
+        var result = await useCase.ExecuteAsync(
+            tenantId,
+            expenseId,
+            Guid.NewGuid(),
+            "Admin User",
+            new UpdateExpenseRequest("Compra corregida", "Detalle actualizado", "Tarjeta", null),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Compra corregida", existing.Name);
+        Assert.Equal("Detalle actualizado", existing.Description);
+        Assert.Equal("Tarjeta", existing.PaymentMethod);
+        Assert.Equal(98000m, existing.Amount);
+        Assert.True(existing.IsCashOut);
+        Assert.Equal(originalDate, existing.ExpenseDate);
+        Assert.Equal(originalBusinessDate, existing.BusinessDate);
+        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task AnnulExpense_WhenActive_ReturnsAnnulledState()
     {
         var tenantId = Guid.NewGuid();

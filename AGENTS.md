@@ -552,6 +552,7 @@ El catálogo falla explícitamente si la base de datos devuelve un módulo sin c
 
 - Todo gasto y proveedor pertenece al tenant activo. `expenses.read` y `expenses.manage` controlan el acceso a gastos; `suppliers.read` y `suppliers.manage` (o equivalentes del módulo) controlan el acceso a proveedores.
 - Los egresos pueden registrarse con o sin proveedor asociado. Si se selecciona un proveedor, este debe pertenecer al tenant y estar activo.
+- Después de crear un gasto, `Amount`, `ExpenseDate`, `BusinessDate` e `IsCashOut` son inmutables. `UpdateExpenseRequest` solo permite modificar nombre, descripción, medio de pago y proveedor; Core nunca reasigna los campos financieros bloqueados.
 - Un gasto puede asociarse al turno de caja abierto actual (`CashRegisterShiftId`). Los egresos en efectivo restan del balance esperado al cierre de turno.
 - No se permite eliminar un proveedor que posea gastos asociados; debe ofrecerse desactivación reversible (`PATCH /status`).
 
