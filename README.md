@@ -220,12 +220,14 @@ POST                 /api/printing/jobs/{id}/retry
 POST                 /api/printing/jobs/{id}/reprint
 
 POST /api/printing/agent/pair
+POST /api/printing/agent/discovery
+POST /api/printing/agent/discovery/{id}/poll
+POST /api/printing/agent/discovery/{id}/acknowledge
 POST /api/printing/agent/heartbeat
 POST /api/printing/agent/printers/sync
 GET  /api/printing/agent/jobs/pending
 POST /api/printing/agent/jobs/{id}/status
 HUB  /hubs/printing
-HUB  /hubs/printing-discovery
 
 GET    /api/settings/organization
 PUT    /api/settings/organization
@@ -245,9 +247,9 @@ El backend conserva la cola durable en PostgreSQL y SignalR solo avisa que hay t
 
 Desde la configuración se puede solicitar al agente que vuelva a consultar las colas instaladas en Windows. El backend envía la solicitud por el grupo SignalR autenticado del agente y conserva el resultado en `print_agent_discovered_printers`. Este inventario es independiente de `printers`: descubrir una cola nunca la configura ni le asigna permisos; el registro de configuración se crea únicamente cuando el administrador selecciona una opción y guarda el formulario.
 
-Los ítems nuevos de una comanda y sus trabajos de impresión se guardan en la misma transacción de la base de datos de aplicación. Al instalarse sin credencial, el agente anuncia de forma transitoria su equipo por `/hubs/printing-discovery`; `GET /api/printing/agents/discovered` y el enlace posterior solo aceptan agentes cuya IP de origen coincida con la del frontend administrador. La API toma la IP original propagada por el ingress (`X-Forwarded-For`) y no confía en la IP local reportada por el agente. Así, un agente pendiente no aparece en otras redes. La interfaz lista esos equipos y un administrador lo vincula a una sede sin editar `appsettings` ni ingresar códigos. El backend entrega la credencial solo por esa conexión y el agente la protege con DPAPI. Una vez vinculado, consulta trabajos pendientes, mantiene una cola local SQLite idempotente y reporta los estados `PROCESSING`, `PRINTED` o `FAILED`. Reintentar reutiliza el trabajo fallido; reimprimir crea un trabajo auditado nuevo con referencia al original.
+Los ítems nuevos de una comanda y sus trabajos de impresión se guardan en la misma transacción de la base de datos de aplicación. Al instalarse sin credencial, el agente crea un secreto efímero, registra su disponibilidad por HTTP y consulta la autorización periódicamente. El estado temporal vive en `print_agent_discoveries`, por lo que cualquier réplica puede atender el registro, el listado administrativo o el polling. `GET /api/printing/agents/discovered` y el enlace posterior solo aceptan agentes cuya huella HMAC de red coincida con la del frontend administrador; la IP original se obtiene exclusivamente de `RemoteIpAddress` después de `ForwardedHeadersMiddleware` y solo se aceptan cabeceras reenviadas por proxies configurados como confiables. La interfaz actualiza activamente los equipos disponibles y únicamente un usuario con `printing.agents.manage` puede autorizar uno. La credencial se emite al agente que demuestra el secreto, se confirma después de guardarla con DPAPI y nunca se persiste en texto plano. El código de un solo uso continúa como respaldo. Una vez vinculado, consulta trabajos pendientes, mantiene una cola local SQLite idempotente y reporta los estados `PROCESSING`, `PRINTED` o `FAILED`. Reintentar reutiliza el trabajo fallido; reimprimir crea un trabajo auditado nuevo con referencia al original.
 
-Configura `Printing:AgentDownloadUrl` con la URL del instalador publicado. Los límites de vigencia, heartbeat y detección offline se controlan con las demás opciones `Printing`. El servicio Windows y su instalación se documentan en `saviaup.print-agent/install.MD`; la arquitectura completa está en `saviaup.print-agent/ARCHITECTURE.md`.
+Configura `Printing:AgentDownloadUrl` con la URL del instalador publicado. `Printing:DiscoveryExpirationSeconds`, `Printing:DiscoveryPollIntervalSeconds` y, opcionalmente, `Printing:NetworkFingerprintKey` controlan el descubrimiento; si la clave dedicada no existe se usa la clave JWT como compatibilidad de despliegue. Los límites de heartbeat y detección offline se controlan con las demás opciones `Printing`. El servicio Windows y su instalación se documentan en `saviaup.print-agent/install.MD`; la arquitectura completa está en `saviaup.print-agent/ARCHITECTURE.md`.
 
 ### Contexto visible y navegación
 

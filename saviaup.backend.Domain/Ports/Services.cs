@@ -65,11 +65,7 @@ public interface IPrintingRealtimeNotifier
     Task PrinterDiscoveryRequestedAsync(Guid agentId, CancellationToken cancellationToken);
 }
 
-public interface IUnpairedPrintAgentRegistry
+public interface INetworkFingerprintService
 {
-    Task RegisterAsync(string connectionId, DiscoverPrintAgentRequest request, string? sourceIpAddress, CancellationToken cancellationToken);
-    Task UnregisterAsync(string connectionId, CancellationToken cancellationToken);
-    Task<IReadOnlyCollection<DiscoveredPrintAgentDto>> ListAsync(string? sourceIpAddress, CancellationToken cancellationToken);
-    Task<DiscoveredPrintAgentDto?> FindAsync(Guid discoveryId, string? sourceIpAddress, CancellationToken cancellationToken);
-    Task<bool> DeliverPairingAsync(Guid discoveryId, PairPrintAgentResponse response, CancellationToken cancellationToken);
+    string? Compute(string? sourceIpAddress);
 }

@@ -75,6 +75,7 @@ public static class InfrastructureModule
 
         services.AddSingleton<IPasswordHasher, PasswordHasherAdapter>();
         services.AddSingleton<ITokenGenerator, TokenGenerator>();
+        services.AddSingleton<INetworkFingerprintService, NetworkFingerprintService>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
 

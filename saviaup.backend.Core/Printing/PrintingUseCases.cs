@@ -186,7 +186,6 @@ public sealed class PrintingAdministrationUseCase(
     ITokenGenerator tokenGenerator,
     IDateTimeProvider clock,
     IPrintingRealtimeNotifier realtime,
-    IUnpairedPrintAgentRegistry discoveryRegistry,
     IOrganizationTimeZone organizationTimeZone,
     ITimeZoneService timeZones,
     IOptions<PrintingOptions> configuredOptions,
@@ -257,14 +256,23 @@ public sealed class PrintingAdministrationUseCase(
         var knownAgents = (await repository.GetAgentsAsync(tenantId, cancellationToken))
             .GroupBy(agent => agent.DeviceIdentifier, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.OrderByDescending(agent => agent.Enabled).First(), StringComparer.Ordinal);
-        var discovered = await discoveryRegistry.ListAsync(sourceIpAddress, cancellationToken);
+        if (string.IsNullOrWhiteSpace(sourceIpAddress))
+            return Result<IReadOnlyCollection<DiscoveredPrintAgentDto>>.Success([]);
+        var discovered = await repository.GetPendingDiscoveriesAsync(sourceIpAddress, clock.UtcNow, cancellationToken);
         return Result<IReadOnlyCollection<DiscoveredPrintAgentDto>>.Success(
             discovered
+                .GroupBy(agent => agent.DeviceIdentifier, StringComparer.Ordinal)
+                .Select(group => group.OrderByDescending(agent => agent.CreatedAt).First())
                 .Where(agent => !knownAgents.TryGetValue(agent.DeviceIdentifier, out var existing) || !existing.Enabled)
-                .Select(agent => agent with
-                {
-                    IsReactivation = knownAgents.TryGetValue(agent.DeviceIdentifier, out var existing) && !existing.Enabled
-                })
+                .Select(agent => new DiscoveredPrintAgentDto(
+                    agent.Id,
+                    agent.DeviceIdentifier,
+                    agent.Hostname,
+                    agent.OperatingSystem,
+                    agent.Version,
+                    agent.LocalIpAddress,
+                    agent.CreatedAt,
+                    knownAgents.TryGetValue(agent.DeviceIdentifier, out var existing) && !existing.Enabled))
                 .ToArray());
     }
 
@@ -274,22 +282,25 @@ public sealed class PrintingAdministrationUseCase(
         string? sourceIpAddress,
         CancellationToken cancellationToken)
     {
-        var discovered = await discoveryRegistry.FindAsync(request.DiscoveryId, sourceIpAddress, cancellationToken);
-        if (discovered is null) return Result<PrintAgentDto>.Failure(Errors.PrintAgentPairingInvalid);
-
         var now = clock.UtcNow;
-        var existingAgent = await repository.GetAgentByDeviceAsync(tenantId, discovered.DeviceIdentifier, cancellationToken);
-        var location = existingAgent is not null
-            ? await repository.GetLocationAsync(tenantId, existingAgent.LocationId, cancellationToken)
-            : request.LocationId.HasValue
-            ? await repository.GetLocationAsync(tenantId, request.LocationId.Value, cancellationToken)
-            : await repository.GetOrCreateDefaultLocationAsync(tenantId, now, cancellationToken);
-        if (location is null || !location.IsActive) return Result<PrintAgentDto>.Failure(Errors.PrintingLocationNotFound);
-
-        var name = string.IsNullOrWhiteSpace(request.AgentName) ? discovered.Hostname : request.AgentName.Trim();
-        var result = await unitOfWork.ExecuteInTransactionAsync(async transactionToken =>
+        if (string.IsNullOrWhiteSpace(sourceIpAddress)) return Result<PrintAgentDto>.Failure(Errors.PrintAgentPairingInvalid);
+        return await unitOfWork.ExecuteInTransactionAsync(async transactionToken =>
         {
+            var discovered = await repository.GetDiscoveryForUpdateAsync(
+                request.DiscoveryId, sourceIpAddress, now, transactionToken);
+            if (discovered is null || discovered.Status != PrintAgentDiscoveryStatuses.Pending)
+                return Result<PrintAgentDto>.Failure(Errors.PrintAgentPairingInvalid);
+
             var agent = await repository.GetAgentByDeviceAsync(tenantId, discovered.DeviceIdentifier, transactionToken);
+            var location = agent is not null
+                ? await repository.GetLocationAsync(tenantId, agent.LocationId, transactionToken)
+                : request.LocationId.HasValue
+                    ? await repository.GetLocationAsync(tenantId, request.LocationId.Value, transactionToken)
+                    : await repository.GetOrCreateDefaultLocationAsync(tenantId, now, transactionToken);
+            if (location is null || !location.IsActive)
+                return Result<PrintAgentDto>.Failure(Errors.PrintingLocationNotFound);
+
+            var name = string.IsNullOrWhiteSpace(request.AgentName) ? discovered.Hostname : request.AgentName.Trim();
             if (agent is null)
             {
                 agent = new PrintAgent
@@ -303,8 +314,7 @@ public sealed class PrintingAdministrationUseCase(
                     OperatingSystem = discovered.OperatingSystem,
                     Version = discovered.Version,
                     LocalIpAddress = Clean(discovered.LocalIpAddress),
-                    Status = PrintAgentStatuses.Online,
-                    LastSeenAt = now,
+                    Status = PrintAgentStatuses.Offline,
                     CreatedAt = now,
                     UpdatedAt = now,
                     Enabled = true
@@ -318,34 +328,20 @@ public sealed class PrintingAdministrationUseCase(
                 agent.OperatingSystem = discovered.OperatingSystem;
                 agent.Version = discovered.Version;
                 agent.LocalIpAddress = Clean(discovered.LocalIpAddress);
-                agent.Status = PrintAgentStatuses.Online;
-                agent.LastSeenAt = now;
+                agent.Status = PrintAgentStatuses.Offline;
                 agent.UpdatedAt = now;
                 agent.Enabled = true;
                 await repository.RevokeCredentialsAsync(tenantId, agent.Id, now, transactionToken);
             }
-
-            var rawToken = tokenGenerator.Generate();
-            var expiresAt = now.AddDays(Math.Clamp(Options.DeviceTokenExpirationDays, 1, 730));
-            await repository.AddCredentialAsync(new PrintAgentCredential
-            {
-                Id = Guid.NewGuid(),
-                TenantId = tenantId,
-                PrintAgentId = agent.Id,
-                TokenHash = tokenGenerator.Hash(rawToken),
-                CreatedAt = now,
-                ExpiresAt = expiresAt
-            }, transactionToken);
+            agent.Location = location;
+            discovered.Status = PrintAgentDiscoveryStatuses.Authorized;
+            discovered.TenantId = tenantId;
+            discovered.LocationId = location.Id;
+            discovered.PrintAgentId = agent.Id;
+            discovered.AuthorizedAt = now;
             await unitOfWork.SaveChangesAsync(transactionToken);
-            return Result<(PrintAgent Agent, PairPrintAgentResponse Response)>.Success((agent,
-                new PairPrintAgentResponse(agent.Id, agent.LocationId, rawToken, expiresAt,
-                    Math.Clamp(Options.HeartbeatIntervalSeconds, 10, 300), "/hubs/printing")));
+            return Result<PrintAgentDto>.Success(PrintingRules.ToDto(agent, now, Options.OfflineTimeoutSeconds));
         }, cancellationToken);
-        if (!result.IsSuccess) return Result<PrintAgentDto>.Failure(result.Error!);
-        if (!await discoveryRegistry.DeliverPairingAsync(request.DiscoveryId, result.Value!.Response, cancellationToken))
-            return Result<PrintAgentDto>.Failure(Errors.PrintAgentPairingInvalid);
-        return Result<PrintAgentDto>.Success(PrintingRules.ToDto(
-            result.Value!.Agent, now, Options.OfflineTimeoutSeconds));
     }
 
     public async Task<Result<IReadOnlyCollection<PrintAgentDto>>> ListAgentsAsync(Guid tenantId, CancellationToken cancellationToken)
@@ -761,6 +757,132 @@ public sealed class PrintAgentUseCase(
     IUnitOfWork unitOfWork) : IPrintAgentUseCase
 {
     private PrintingOptions Options => configuredOptions.Value;
+
+    public async Task<Result<RegisterPrintAgentDiscoveryResponse>> RegisterDiscoveryAsync(
+        DiscoverPrintAgentRequest request,
+        string? networkFingerprint,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(networkFingerprint)
+            || string.IsNullOrWhiteSpace(request.DiscoverySecret)
+            || request.DiscoverySecret.Trim().Length < 32
+            || string.IsNullOrWhiteSpace(request.DeviceIdentifier)
+            || string.IsNullOrWhiteSpace(request.Hostname)
+            || string.IsNullOrWhiteSpace(request.OperatingSystem)
+            || string.IsNullOrWhiteSpace(request.Version))
+            return Result<RegisterPrintAgentDiscoveryResponse>.Failure(Errors.Validation);
+
+        var now = clock.UtcNow;
+        var expiresAt = now.AddSeconds(Math.Clamp(Options.DiscoveryExpirationSeconds, 30, 600));
+        await repository.DeleteExpiredDiscoveriesAsync(now, cancellationToken);
+        var discovery = new PrintAgentDiscovery
+        {
+            Id = Guid.NewGuid(),
+            SecretHash = tokenGenerator.Hash(request.DiscoverySecret.Trim()),
+            NetworkFingerprint = networkFingerprint,
+            DeviceIdentifier = request.DeviceIdentifier.Trim(),
+            Hostname = request.Hostname.Trim(),
+            OperatingSystem = request.OperatingSystem.Trim(),
+            Version = request.Version.Trim(),
+            LocalIpAddress = Clean(request.LocalIpAddress),
+            CreatedAt = now,
+            ExpiresAt = expiresAt
+        };
+        await repository.AddDiscoveryAsync(discovery, cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return Result<RegisterPrintAgentDiscoveryResponse>.Success(new(
+            discovery.Id,
+            expiresAt,
+            Math.Clamp(Options.DiscoveryPollIntervalSeconds, 2, 15)));
+    }
+
+    public async Task<Result<PollPrintAgentDiscoveryResponse>> PollDiscoveryAsync(
+        Guid discoveryId,
+        PollPrintAgentDiscoveryRequest request,
+        string? networkFingerprint,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(networkFingerprint) || string.IsNullOrWhiteSpace(request.DiscoverySecret))
+            return Result<PollPrintAgentDiscoveryResponse>.Failure(Errors.PrintAgentPairingInvalid);
+
+        var now = clock.UtcNow;
+        return await unitOfWork.ExecuteInTransactionAsync(async transactionToken =>
+        {
+            var discovery = await repository.GetDiscoveryBySecretForUpdateAsync(
+                discoveryId,
+                tokenGenerator.Hash(request.DiscoverySecret.Trim()),
+                networkFingerprint,
+                now,
+                transactionToken);
+            if (discovery is null || discovery.Status == PrintAgentDiscoveryStatuses.Consumed)
+                return Result<PollPrintAgentDiscoveryResponse>.Failure(Errors.PrintAgentPairingInvalid);
+            if (discovery.Status == PrintAgentDiscoveryStatuses.Pending)
+                return Result<PollPrintAgentDiscoveryResponse>.Success(new(PrintAgentDiscoveryStatuses.Pending, null));
+            if (discovery.Status != PrintAgentDiscoveryStatuses.Authorized
+                || !discovery.TenantId.HasValue
+                || !discovery.LocationId.HasValue
+                || !discovery.PrintAgentId.HasValue)
+                return Result<PollPrintAgentDiscoveryResponse>.Failure(Errors.PrintAgentPairingInvalid);
+
+            var agent = await repository.GetAgentByDeviceAsync(
+                discovery.TenantId.Value, discovery.DeviceIdentifier, transactionToken);
+            if (agent is null || agent.Id != discovery.PrintAgentId.Value || !agent.Enabled)
+                return Result<PollPrintAgentDiscoveryResponse>.Failure(Errors.PrintAgentPairingInvalid);
+
+            await repository.RevokeCredentialsAsync(discovery.TenantId.Value, agent.Id, now, transactionToken);
+            var rawToken = tokenGenerator.Generate();
+            var tokenExpiresAt = now.AddDays(Math.Clamp(Options.DeviceTokenExpirationDays, 1, 730));
+            await repository.AddCredentialAsync(new PrintAgentCredential
+            {
+                Id = Guid.NewGuid(),
+                TenantId = discovery.TenantId.Value,
+                PrintAgentId = agent.Id,
+                TokenHash = tokenGenerator.Hash(rawToken),
+                CreatedAt = now,
+                ExpiresAt = tokenExpiresAt
+            }, transactionToken);
+            discovery.LastCredentialIssuedAt = now;
+            await unitOfWork.SaveChangesAsync(transactionToken);
+            return Result<PollPrintAgentDiscoveryResponse>.Success(new(
+                PrintAgentDiscoveryStatuses.Authorized,
+                new PairPrintAgentResponse(
+                    agent.Id,
+                    discovery.LocationId.Value,
+                    rawToken,
+                    tokenExpiresAt,
+                    Math.Clamp(Options.HeartbeatIntervalSeconds, 10, 300),
+                    "/hubs/printing")));
+        }, cancellationToken);
+    }
+
+    public async Task<Result> AcknowledgeDiscoveryAsync(
+        Guid discoveryId,
+        PollPrintAgentDiscoveryRequest request,
+        string? networkFingerprint,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(networkFingerprint) || string.IsNullOrWhiteSpace(request.DiscoverySecret))
+            return Result.Failure(Errors.PrintAgentPairingInvalid);
+
+        var now = clock.UtcNow;
+        return await unitOfWork.ExecuteInTransactionAsync(async transactionToken =>
+        {
+            var discovery = await repository.GetDiscoveryBySecretForUpdateAsync(
+                discoveryId,
+                tokenGenerator.Hash(request.DiscoverySecret.Trim()),
+                networkFingerprint,
+                now,
+                transactionToken);
+            if (discovery is null) return Result.Failure(Errors.PrintAgentPairingInvalid);
+            if (discovery.Status == PrintAgentDiscoveryStatuses.Consumed) return Result.Success();
+            if (discovery.Status != PrintAgentDiscoveryStatuses.Authorized || !discovery.LastCredentialIssuedAt.HasValue)
+                return Result.Failure(Errors.PrintAgentPairingInvalid);
+            discovery.Status = PrintAgentDiscoveryStatuses.Consumed;
+            discovery.ConsumedAt = now;
+            await unitOfWork.SaveChangesAsync(transactionToken);
+            return Result.Success();
+        }, cancellationToken);
+    }
 
     public async Task<Result<PairPrintAgentResponse>> PairAsync(PairPrintAgentRequest request, CancellationToken cancellationToken)
     {

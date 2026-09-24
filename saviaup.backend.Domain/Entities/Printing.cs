@@ -8,6 +8,13 @@ public static class PrintAgentStatuses
     public const string Disabled = "DISABLED";
 }
 
+public static class PrintAgentDiscoveryStatuses
+{
+    public const string Pending = "PENDING";
+    public const string Authorized = "AUTHORIZED";
+    public const string Consumed = "CONSUMED";
+}
+
 public static class PrinterConnectionTypes
 {
     public const string WindowsSpooler = "WINDOWS_SPOOLER";
@@ -105,6 +112,27 @@ public sealed class PrintAgentPairingCode
     public DateTimeOffset ExpiresAt { get; set; }
     public DateTimeOffset? ConsumedAt { get; set; }
     public Location? Location { get; set; }
+}
+
+public sealed class PrintAgentDiscovery
+{
+    public Guid Id { get; set; }
+    public string SecretHash { get; set; } = string.Empty;
+    public string NetworkFingerprint { get; set; } = string.Empty;
+    public string DeviceIdentifier { get; set; } = string.Empty;
+    public string Hostname { get; set; } = string.Empty;
+    public string OperatingSystem { get; set; } = string.Empty;
+    public string Version { get; set; } = string.Empty;
+    public string? LocalIpAddress { get; set; }
+    public string Status { get; set; } = PrintAgentDiscoveryStatuses.Pending;
+    public Guid? TenantId { get; set; }
+    public Guid? LocationId { get; set; }
+    public Guid? PrintAgentId { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset ExpiresAt { get; set; }
+    public DateTimeOffset? AuthorizedAt { get; set; }
+    public DateTimeOffset? LastCredentialIssuedAt { get; set; }
+    public DateTimeOffset? ConsumedAt { get; set; }
 }
 
 public sealed class Printer
