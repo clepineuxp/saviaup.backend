@@ -670,6 +670,20 @@ public interface IPrintingAdministrationUseCase
 
 public interface IPrintAgentUseCase
 {
+    Task<Result<RegisterPrintAgentDiscoveryResponse>> RegisterDiscoveryAsync(
+        DiscoverPrintAgentRequest request,
+        string? networkFingerprint,
+        CancellationToken cancellationToken);
+    Task<Result<PollPrintAgentDiscoveryResponse>> PollDiscoveryAsync(
+        Guid discoveryId,
+        PollPrintAgentDiscoveryRequest request,
+        string? networkFingerprint,
+        CancellationToken cancellationToken);
+    Task<Result> AcknowledgeDiscoveryAsync(
+        Guid discoveryId,
+        PollPrintAgentDiscoveryRequest request,
+        string? networkFingerprint,
+        CancellationToken cancellationToken);
     Task<Result<PairPrintAgentResponse>> PairAsync(PairPrintAgentRequest request, CancellationToken cancellationToken);
     Task<Result> HeartbeatAsync(Guid tenantId, Guid agentId, PrintAgentHeartbeatRequest request, CancellationToken cancellationToken);
     Task<Result<IReadOnlyCollection<AvailablePrinterDto>>> SyncPrintersAsync(Guid tenantId, Guid agentId, SyncDiscoveredPrintersRequest request, CancellationToken cancellationToken);

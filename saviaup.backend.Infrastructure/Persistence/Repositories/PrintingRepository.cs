@@ -9,6 +9,66 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
 public sealed class PrintingRepository(ApplicationDbContext dbContext) : IPrintingRepository
 {
+    public async Task DeleteExpiredDiscoveriesAsync(DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var expired = dbContext.PrintAgentDiscoveries.Where(x => x.ExpiresAt <= now);
+        if (dbContext.Database.IsRelational())
+        {
+            await expired.ExecuteDeleteAsync(cancellationToken);
+            return;
+        }
+
+        dbContext.PrintAgentDiscoveries.RemoveRange(await expired.ToListAsync(cancellationToken));
+    }
+
+    public Task AddDiscoveryAsync(PrintAgentDiscovery discovery, CancellationToken cancellationToken)
+        => dbContext.PrintAgentDiscoveries.AddAsync(discovery, cancellationToken).AsTask();
+
+    public async Task<IReadOnlyCollection<PrintAgentDiscovery>> GetPendingDiscoveriesAsync(
+        string networkFingerprint,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+        => await dbContext.PrintAgentDiscoveries.AsNoTracking()
+            .Where(x => x.NetworkFingerprint == networkFingerprint
+                && x.Status == PrintAgentDiscoveryStatuses.Pending
+                && x.ExpiresAt > now)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+    public async Task<PrintAgentDiscovery?> GetDiscoveryForUpdateAsync(
+        Guid discoveryId,
+        string networkFingerprint,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+        => (await DiscoveryForUpdateQuery(discoveryId, networkFingerprint, now)
+            .ToListAsync(cancellationToken)).SingleOrDefault();
+
+    public async Task<PrintAgentDiscovery?> GetDiscoveryBySecretForUpdateAsync(
+        Guid discoveryId,
+        string secretHash,
+        string networkFingerprint,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var discovery = (await DiscoveryForUpdateQuery(discoveryId, networkFingerprint, now)
+            .ToListAsync(cancellationToken)).SingleOrDefault();
+        return discovery?.SecretHash == secretHash ? discovery : null;
+    }
+
+    private IQueryable<PrintAgentDiscovery> DiscoveryForUpdateQuery(
+        Guid discoveryId,
+        string networkFingerprint,
+        DateTimeOffset now)
+    {
+        if (!dbContext.Database.IsRelational())
+            return dbContext.PrintAgentDiscoveries.Where(x => x.Id == discoveryId
+                && x.NetworkFingerprint == networkFingerprint
+                && x.ExpiresAt > now);
+
+        return dbContext.PrintAgentDiscoveries.FromSqlInterpolated(
+            $"SELECT * FROM print_agent_discoveries WHERE \"Id\" = {discoveryId} AND \"NetworkFingerprint\" = {networkFingerprint} AND \"ExpiresAt\" > {now} FOR UPDATE");
+    }
+
     public async Task<Location> GetOrCreateDefaultLocationAsync(Guid tenantId, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var location = await dbContext.Locations.IgnoreQueryFilters()

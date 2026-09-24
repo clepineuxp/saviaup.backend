@@ -7,7 +7,7 @@ namespace SaviaUp.Backend.IntegrationTests;
 public sealed class ClientNetworkAddressTests
 {
     [Fact]
-    public void From_UsesTheOriginalClientAddressFromForwardedFor()
+    public void From_IgnoresUnprocessedForwardedHeaders()
     {
         var context = new DefaultHttpContext();
         context.Connection.RemoteIpAddress = IPAddress.Parse("10.42.0.15");
@@ -15,7 +15,7 @@ public sealed class ClientNetworkAddressTests
 
         var address = ClientNetworkAddress.From(context);
 
-        Assert.Equal("203.0.113.15", address);
+        Assert.Equal("10.42.0.15", address);
     }
 
     [Fact]

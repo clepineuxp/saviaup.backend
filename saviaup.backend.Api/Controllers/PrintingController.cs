@@ -15,7 +15,8 @@ namespace SaviaUp.Backend.Api.Controllers;
 [RequireTenant]
 public sealed class PrintingController(
     IPrintingAdministrationUseCase useCase,
-    ICurrentUserContext currentUser) : ControllerBase
+    ICurrentUserContext currentUser,
+    INetworkFingerprintService networkFingerprint) : ControllerBase
 {
     [HttpGet("configuration")]
     [RequirePermission(PermissionCodes.PrintingAgentsRead, PermissionCodes.PrintingAgentsManage)]
@@ -45,7 +46,9 @@ public sealed class PrintingController(
     [RequirePermission(PermissionCodes.PrintingAgentsManage)]
     public async Task<ActionResult<IReadOnlyCollection<DiscoveredPrintAgentDto>>> GetDiscoveredAgents(CancellationToken cancellationToken)
         => this.FromResult(await useCase.ListDiscoveredAgentsAsync(
-            currentUser.TenantId!.Value, ClientNetworkAddress.From(HttpContext), cancellationToken));
+            currentUser.TenantId!.Value,
+            networkFingerprint.Compute(ClientNetworkAddress.From(HttpContext)),
+            cancellationToken));
 
     [HttpPost("agents/link-discovered")]
     [RequirePermission(PermissionCodes.PrintingAgentsManage)]
@@ -53,7 +56,10 @@ public sealed class PrintingController(
         [FromBody] LinkDiscoveredPrintAgentRequest request,
         CancellationToken cancellationToken)
         => this.FromResult(await useCase.LinkDiscoveredAgentAsync(
-            currentUser.TenantId!.Value, request, ClientNetworkAddress.From(HttpContext), cancellationToken));
+            currentUser.TenantId!.Value,
+            request,
+            networkFingerprint.Compute(ClientNetworkAddress.From(HttpContext)),
+            cancellationToken));
 
     [HttpGet("agents")]
     [RequirePermission(PermissionCodes.PrintingAgentsRead, PermissionCodes.PrintingAgentsManage, PermissionCodes.PrintingZonesRead,

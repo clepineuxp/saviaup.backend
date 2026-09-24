@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using SaviaUp.Backend.Api.Attributes;
 using SaviaUp.Backend.Api.Authentication;
+using SaviaUp.Backend.Api.Configuration;
 using SaviaUp.Backend.Api.Extensions;
 using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Ports;
@@ -11,8 +12,48 @@ namespace SaviaUp.Backend.Api.Controllers;
 
 [ApiController]
 [Route("api/printing/agent")]
-public sealed class PrintAgentController(IPrintAgentUseCase useCase, IPrintAgentContext context) : ControllerBase
+public sealed class PrintAgentController(
+    IPrintAgentUseCase useCase,
+    IPrintAgentContext context,
+    INetworkFingerprintService networkFingerprint) : ControllerBase
 {
+    [AllowAnonymous]
+    [EnableRateLimiting("discovery")]
+    [HttpPost("discovery")]
+    public async Task<ActionResult<RegisterPrintAgentDiscoveryResponse>> RegisterDiscovery(
+        [FromBody] DiscoverPrintAgentRequest request,
+        CancellationToken cancellationToken)
+        => this.FromResult(await useCase.RegisterDiscoveryAsync(
+            request,
+            networkFingerprint.Compute(ClientNetworkAddress.From(HttpContext)),
+            cancellationToken));
+
+    [AllowAnonymous]
+    [EnableRateLimiting("discovery")]
+    [HttpPost("discovery/{discoveryId:guid}/poll")]
+    public async Task<ActionResult<PollPrintAgentDiscoveryResponse>> PollDiscovery(
+        Guid discoveryId,
+        [FromBody] PollPrintAgentDiscoveryRequest request,
+        CancellationToken cancellationToken)
+        => this.FromResult(await useCase.PollDiscoveryAsync(
+            discoveryId,
+            request,
+            networkFingerprint.Compute(ClientNetworkAddress.From(HttpContext)),
+            cancellationToken));
+
+    [AllowAnonymous]
+    [EnableRateLimiting("discovery")]
+    [HttpPost("discovery/{discoveryId:guid}/acknowledge")]
+    public async Task<ActionResult> AcknowledgeDiscovery(
+        Guid discoveryId,
+        [FromBody] PollPrintAgentDiscoveryRequest request,
+        CancellationToken cancellationToken)
+        => this.FromResult(await useCase.AcknowledgeDiscoveryAsync(
+            discoveryId,
+            request,
+            networkFingerprint.Compute(ClientNetworkAddress.From(HttpContext)),
+            cancellationToken));
+
     [AllowAnonymous]
     [EnableRateLimiting("auth")]
     [HttpPost("pair")]
