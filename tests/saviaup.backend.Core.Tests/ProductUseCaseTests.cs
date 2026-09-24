@@ -80,6 +80,17 @@ public sealed class ProductUseCaseTests
         var tenantId = Guid.NewGuid();
         var category = Category(tenantId);
         var includedProduct = Product(tenantId);
+        var variation = new ProductVariation
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            ProductId = includedProduct.Id,
+            Name = "Grande",
+            NormalizedName = "GRANDE",
+            SalePrice = 150m,
+            IsActive = true
+        };
+        includedProduct.Variations.Add(variation);
         var categories = new Mock<ICategoryRepository>();
         var products = new Mock<IProductRepository>();
         Product? persisted = null;
@@ -100,7 +111,7 @@ public sealed class ProductUseCaseTests
         {
             new ProductComboGroupRequest(
                 "Elige acompañante", "MULTIPLE", true, 1, 2,
-                [new ProductComboOptionRequest(includedProduct.Id, 2, 1500m)])
+                [new ProductComboOptionRequest(includedProduct.Id, 2, 1500m, ProductVariationId: variation.Id)])
         };
         var result = await useCase.ExecuteAsync(
             tenantId,
@@ -118,6 +129,7 @@ public sealed class ProductUseCaseTests
         var group = Assert.Single(persisted.ComboGroups);
         var option = Assert.Single(group.Options);
         Assert.Equal((includedProduct.Id, 2, 1500m), (option.ProductId, option.ProductQuantity, option.PriceAdjustment));
+        Assert.Equal(variation.Id, option.ProductVariationId);
         Assert.Single(result.Value!.ComboGroups);
     }
 
@@ -137,6 +149,89 @@ public sealed class ProductUseCaseTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ErrorCodes.Validation, result.Error!.Code);
+    }
+
+    [Fact]
+    public async Task CreateCombo_WithVariationThatDoesNotBelongToTheProduct_ReturnsValidation()
+    {
+        var tenantId = Guid.NewGuid();
+        var category = Category(tenantId);
+        var includedProduct = Product(tenantId);
+        var categories = new Mock<ICategoryRepository>();
+        categories.Setup(value => value.GetByIdAsync(tenantId, category.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(category);
+        var products = new Mock<IProductRepository>();
+        products.Setup(value => value.GetByIdsWithRecipesAsync(
+                tenantId, It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([includedProduct]);
+        var useCase = new CreateProductUseCase(
+            products.Object, categories.Object, new FixedClock(TestSupport.Now), UnitOfWork().Object);
+        var groups = new[]
+        {
+            new ProductComboGroupRequest(
+                "Bebida", "SINGLE", true, 1, 1,
+                [new ProductComboOptionRequest(
+                    includedProduct.Id, 1, ProductVariationId: Guid.NewGuid())])
+        };
+
+        var result = await useCase.ExecuteAsync(
+            tenantId,
+            Guid.NewGuid(),
+            "admin@saviaup.test",
+            new CreateProductRequest(
+                "COMBO", "Combo", category.Id, 100m, null, null, null, false,
+                ComboGroups: groups),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorCodes.Validation, result.Error!.Code);
+        products.Verify(value => value.AddAsync(It.IsAny<Product>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateCombo_WithBaseOptionForProductThatHasVariations_ReturnsValidation()
+    {
+        var tenantId = Guid.NewGuid();
+        var category = Category(tenantId);
+        var includedProduct = Product(tenantId);
+        includedProduct.Variations.Add(new ProductVariation
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            ProductId = includedProduct.Id,
+            Name = "Grande",
+            NormalizedName = "GRANDE",
+            SalePrice = 150m,
+            IsActive = true
+        });
+        var categories = new Mock<ICategoryRepository>();
+        categories.Setup(value => value.GetByIdAsync(tenantId, category.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(category);
+        var products = new Mock<IProductRepository>();
+        products.Setup(value => value.GetByIdsWithRecipesAsync(
+                tenantId, It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([includedProduct]);
+        var useCase = new CreateProductUseCase(
+            products.Object, categories.Object, new FixedClock(TestSupport.Now), UnitOfWork().Object);
+        var groups = new[]
+        {
+            new ProductComboGroupRequest(
+                "Bebida", "SINGLE", true, 1, 1,
+                [new ProductComboOptionRequest(includedProduct.Id, 1)])
+        };
+
+        var result = await useCase.ExecuteAsync(
+            tenantId,
+            Guid.NewGuid(),
+            "admin@saviaup.test",
+            new CreateProductRequest(
+                "COMBO", "Combo", category.Id, 100m, null, null, null, false,
+                ComboGroups: groups),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorCodes.Validation, result.Error!.Code);
+        products.Verify(value => value.AddAsync(It.IsAny<Product>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -181,6 +276,24 @@ public sealed class ProductUseCaseTests
             Guid.NewGuid(),
             "admin@saviaup.test",
             new CreateProductRequest(type, "Producto", Guid.NewGuid(), price, null, null, null, false),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorCodes.Validation, result.Error!.Code);
+        categories.Verify(value => value.GetByIdAsync(
+            It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateNormalProduct_WithoutVariationsAndWithoutPrice_ReturnsValidation()
+    {
+        var categories = new Mock<ICategoryRepository>();
+        var useCase = new CreateProductUseCase(
+            Mock.Of<IProductRepository>(), categories.Object, new FixedClock(TestSupport.Now), UnitOfWork().Object);
+
+        var result = await useCase.ExecuteAsync(
+            Guid.NewGuid(), Guid.NewGuid(), "admin@saviaup.test",
+            new CreateProductRequest("NORMAL", "Producto", Guid.NewGuid(), null, null, null, null, false),
             default);
 
         Assert.False(result.IsSuccess);
@@ -364,11 +477,12 @@ public sealed class ProductUseCaseTests
             Guid.NewGuid(),
             "admin@saviaup.test",
             new CreateProductRequest(
-                "NORMAL", "Ron Viejo de Caldas", category.Id, 5000m, null, null, null, false, null, variations),
+                "NORMAL", "Ron Viejo de Caldas", category.Id, null, null, null, null, false, null, variations),
             default);
 
         Assert.True(result.IsSuccess);
         Assert.NotNull(persisted);
+        Assert.Null(persisted.SalePrice);
         Assert.Equal(2, persisted.Variations.Count);
         Assert.Contains(persisted.Variations, v => v.Name == "Copa" && v.SalePrice == 5000m && v.NormalizedName == "COPA");
         Assert.Contains(persisted.Variations, v => v.Name == "Botella" && v.SalePrice == 40000m && v.NormalizedName == "BOTELLA");
@@ -389,8 +503,10 @@ public sealed class ProductUseCaseTests
             .ReturnsAsync(category);
         products.Setup(value => value.GetByIdForUpdateAsync(tenantId, existing.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existing);
-        products.Setup(value => value.DeleteVariationsAsync(tenantId, existing.Id, It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        products.Setup(value => value.GetVariationsForUpdateAsync(tenantId, existing.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        products.Setup(value => value.GetVariationIdsUsedInComboAsync(tenantId, existing.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HashSet<Guid>());
         products.Setup(value => value.AddVariationsAsync(It.IsAny<IEnumerable<ProductVariation>>(), It.IsAny<CancellationToken>()))
             .Callback<IEnumerable<ProductVariation>, CancellationToken>((vars, _) => addedVariations = vars)
             .Returns(Task.CompletedTask);
@@ -409,14 +525,59 @@ public sealed class ProductUseCaseTests
             Guid.NewGuid(),
             "admin@saviaup.test",
             new UpdateProductRequest(
-                "NORMAL", "Ron Viejo de Caldas Actualizado", category.Id, 22000m, null, null, null, false, null, newVariations),
+                "NORMAL", "Ron Viejo de Caldas Actualizado", category.Id, null, null, null, null, false, null, newVariations),
             default);
 
         Assert.True(result.IsSuccess);
-        products.Verify(v => v.DeleteVariationsAsync(tenantId, existing.Id, It.IsAny<CancellationToken>()), Times.Once);
+        products.Verify(v => v.GetVariationsForUpdateAsync(tenantId, existing.Id, It.IsAny<CancellationToken>()), Times.Once);
         Assert.NotNull(addedVariations);
         Assert.Single(addedVariations);
         Assert.Equal("Media", addedVariations.First().Name);
         Assert.Equal(22000m, addedVariations.First().SalePrice);
+        Assert.Null(existing.SalePrice);
+    }
+
+    [Fact]
+    public async Task UpdateProduct_CannotRemoveVariationUsedByACombo()
+    {
+        var tenantId = Guid.NewGuid();
+        var category = Category(tenantId);
+        var existing = Product(tenantId);
+        var variation = new ProductVariation
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            ProductId = existing.Id,
+            Name = "Grande",
+            NormalizedName = "GRANDE",
+            SalePrice = 200m,
+            IsActive = true
+        };
+        var categories = new Mock<ICategoryRepository>();
+        categories.Setup(value => value.GetByIdAsNoTrackingAsync(tenantId, category.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(category);
+        var products = new Mock<IProductRepository>();
+        products.Setup(value => value.GetByIdForUpdateAsync(tenantId, existing.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+        products.Setup(value => value.GetVariationsForUpdateAsync(tenantId, existing.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([variation]);
+        products.Setup(value => value.GetVariationIdsUsedInComboAsync(tenantId, existing.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HashSet<Guid> { variation.Id });
+        var useCase = new UpdateProductUseCase(
+            products.Object, categories.Object, new FixedClock(TestSupport.Now), UnitOfWork().Object);
+
+        var result = await useCase.ExecuteAsync(
+            tenantId,
+            existing.Id,
+            Guid.NewGuid(),
+            "admin@saviaup.test",
+            new UpdateProductRequest(
+                "NORMAL", existing.Name, category.Id, existing.SalePrice, null, null, null, false,
+                Variations: []),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ErrorCodes.ProductInUse, result.Error!.Code);
+        products.Verify(value => value.RemoveVariations(It.IsAny<IEnumerable<ProductVariation>>()), Times.Never);
     }
 }

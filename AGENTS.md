@@ -490,13 +490,13 @@ El catálogo falla explícitamente si la base de datos devuelve un módulo sin c
 - `products.read` autoriza el listado; `products.manage` autoriza creación, actualización, cambio de estado y eliminación.
 - `Type` solo admite `NORMAL` o `COMBO`, sin distinguir mayúsculas/minúsculas en la entrada. Si se omite al crear o actualizar, el valor efectivo es `NORMAL`.
 - El nombre es obligatorio, se recorta y colapsa espacios internos, y tiene máximo 120 caracteres. No existe una restricción de unicidad de nombre para productos.
-- `SalePrice` es obligatorio, positivo y usa precisión `numeric(18,2)`. `PreparationTimeMinutes` es opcional y no negativo.
+- `SalePrice` usa precisión `numeric(18,2)` y es obligatorio/positivo para combos y productos normales sin variaciones. Un producto normal con variaciones guarda `SalePrice = null`, exige al menos una variación activa y toma siempre el precio de la variación elegida. `PreparationTimeMinutes` es opcional y no negativo.
 - `Description` es opcional y tiene máximo 1000 caracteres.
 - Las imágenes se procesan en Base64 mediante `ImageHelper.CreateStoredImage`, se persisten en `stored_images` y se asocian mediante la clave foránea `ImageRef`.
 - Las recetas de productos (`ProductRecipeItem`) permiten vincular ingredientes de inventario (`IngredientId`) o insumos manuales (`CustomIngredientName`) con cantidad requerida por porción.
 - Un producto `COMBO` exige al menos un grupo con una opción basada en un producto `NORMAL` activo del mismo tenant. No se admiten autorreferencias ni combos anidados.
 - Un producto usado como opción no puede desactivarse, convertirse en `COMBO` ni eliminarse hasta retirarlo de todas las composiciones.
-- Cada grupo define `SINGLE`, `MULTIPLE` o `FIXED`. Los seleccionables definen obligatoriedad y límites mínimo/máximo; `FIXED` es obligatorio e incorpora todas sus opciones una vez. Cada opción define unidades incluidas y un ajuste de precio opcional positivo o negativo.
+- Cada grupo define `SINGLE`, `MULTIPLE` o `FIXED`. Los seleccionables definen obligatoriedad y límites mínimo/máximo; `FIXED` es obligatorio e incorpora todas sus opciones una vez. Cada opción apunta al producto base solo si este no tiene variaciones; cuando las tiene debe apuntar a una variación activa específica. Además define unidades incluidas y un ajuste de precio opcional positivo o negativo. Una variación usada no puede desactivarse ni eliminarse hasta retirarla de las composiciones.
 - La venta envía ids de grupo/opción y cantidades solo para grupos seleccionables. Core vuelve a validar la configuración, incorpora los fijos, recalcula el precio y persiste una instantánea en `order_item_combo_selections`; nunca confía en nombres o ajustes enviados por el cliente.
 - `OrderItem.Notes` concatena la composición validada del combo y las observaciones adicionales para que ambos datos lleguen a operación e impresión.
 - Al cobrar y cerrar una orden (`PayAndCloseTableOrderUseCase`), el backend deduce de forma atómica y transaccional los ingredientes vinculados en las recetas de los productos pagados mediante movimientos de inventario (`Decrease`/`Sale`).
