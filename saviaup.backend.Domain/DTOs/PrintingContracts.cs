@@ -48,14 +48,25 @@ public sealed record PairPrintAgentResponse(
     int HeartbeatIntervalSeconds,
     string PrintingHubPath);
 
-// An agent publishes this metadata before it owns a tenant credential.  It is transient:
-// the backend keeps it only while the SignalR connection is alive.
 public sealed record DiscoverPrintAgentRequest(
+    [Required, MinLength(32), MaxLength(256)] string DiscoverySecret,
     [Required, MaxLength(200)] string DeviceIdentifier,
     [Required, MaxLength(200)] string Hostname,
     [Required, MaxLength(200)] string OperatingSystem,
     [Required, MaxLength(50)] string Version,
     [MaxLength(64)] string? LocalIpAddress);
+
+public sealed record RegisterPrintAgentDiscoveryResponse(
+    Guid DiscoveryId,
+    DateTimeOffset ExpiresAt,
+    int PollIntervalSeconds);
+
+public sealed record PollPrintAgentDiscoveryRequest(
+    [Required, MinLength(32), MaxLength(256)] string DiscoverySecret);
+
+public sealed record PollPrintAgentDiscoveryResponse(
+    string Status,
+    PairPrintAgentResponse? Pairing);
 
 public sealed record DiscoveredPrintAgentDto(
     Guid DiscoveryId,

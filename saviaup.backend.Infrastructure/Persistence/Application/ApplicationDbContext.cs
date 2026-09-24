@@ -42,6 +42,7 @@ public sealed class ApplicationDbContext(
     public DbSet<PrintAgent> PrintAgents => Set<PrintAgent>();
     public DbSet<PrintAgentCredential> PrintAgentCredentials => Set<PrintAgentCredential>();
     public DbSet<PrintAgentPairingCode> PrintAgentPairingCodes => Set<PrintAgentPairingCode>();
+    public DbSet<PrintAgentDiscovery> PrintAgentDiscoveries => Set<PrintAgentDiscovery>();
     public DbSet<PrintAgentDiscoveredPrinter> PrintAgentDiscoveredPrinters => Set<PrintAgentDiscoveredPrinter>();
     public DbSet<Printer> Printers => Set<Printer>();
     public DbSet<PrintingZone> PrintingZones => Set<PrintingZone>();

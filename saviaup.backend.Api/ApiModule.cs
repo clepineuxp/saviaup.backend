@@ -30,12 +30,31 @@ public static class ApiModule
 
     public static IServiceCollection AddApi(this IServiceCollection services, IConfiguration configuration)
     {
+        var knownNetworkValues = configuration.GetSection("ReverseProxy:KnownNetworks").Get<string[]>() ?? [];
+        var knownProxyValues = configuration.GetSection("ReverseProxy:KnownProxies").Get<string[]>() ?? [];
+        var configuredEnvironment = configuration["ASPNETCORE_ENVIRONMENT"];
+        if (string.Equals(configuredEnvironment, "Production", StringComparison.OrdinalIgnoreCase)
+            && knownNetworkValues.Length == 0
+            && knownProxyValues.Length == 0)
+            throw new InvalidOperationException(
+                "At least one trusted reverse proxy or network is required in Production.");
+
         services.Configure<ForwardedHeadersOptions>(options =>
         {
             options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
             options.ForwardLimit = 1;
-            options.KnownIPNetworks.Clear();
-            options.KnownProxies.Clear();
+            foreach (var value in knownNetworkValues)
+            {
+                if (!System.Net.IPNetwork.TryParse(value, out var network))
+                    throw new InvalidOperationException($"ReverseProxy:KnownNetworks contains an invalid CIDR: {value}");
+                options.KnownIPNetworks.Add(network);
+            }
+            foreach (var value in knownProxyValues)
+            {
+                if (!System.Net.IPAddress.TryParse(value, out var proxy))
+                    throw new InvalidOperationException($"ReverseProxy:KnownProxies contains an invalid IP address: {value}");
+                options.KnownProxies.Add(proxy);
+            }
         });
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserContext, CurrentUserContext>();
@@ -119,7 +138,6 @@ public static class ApiModule
         services.AddSignalR();
         services.AddScoped<ITableRealtimeNotifier, TableRealtimeNotifier>();
         services.AddScoped<IPrintingRealtimeNotifier, PrintingRealtimeNotifier>();
-        services.AddSingleton<IUnpairedPrintAgentRegistry, UnpairedPrintAgentRegistry>();
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -128,6 +146,15 @@ public static class ApiModule
                 _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                }));
+            options.AddPolicy("discovery", context => RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 60,
                     Window = TimeSpan.FromMinutes(1),
                     QueueLimit = 0,
                     AutoReplenishment = true
@@ -176,7 +203,6 @@ public static class ApiModule
         app.MapControllers();
         app.MapHub<TablesHub>("/hubs/tables");
         app.MapHub<PrintingHub>("/hubs/printing");
-        app.MapHub<PrintAgentDiscoveryHub>("/hubs/printing-discovery");
         app.MapHealthChecks("/health", new HealthCheckOptions { AllowCachingResponses = false });
         app.MapHealthChecks("/healthz", new HealthCheckOptions { AllowCachingResponses = false });
         return app;

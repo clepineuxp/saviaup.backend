@@ -344,6 +344,14 @@ public interface IDigitalMenuRepository
 
 public interface IPrintingRepository
 {
+    Task DeleteExpiredDiscoveriesAsync(DateTimeOffset now, CancellationToken cancellationToken);
+    Task AddDiscoveryAsync(PrintAgentDiscovery discovery, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<PrintAgentDiscovery>> GetPendingDiscoveriesAsync(
+        string networkFingerprint, DateTimeOffset now, CancellationToken cancellationToken);
+    Task<PrintAgentDiscovery?> GetDiscoveryForUpdateAsync(
+        Guid discoveryId, string networkFingerprint, DateTimeOffset now, CancellationToken cancellationToken);
+    Task<PrintAgentDiscovery?> GetDiscoveryBySecretForUpdateAsync(
+        Guid discoveryId, string secretHash, string networkFingerprint, DateTimeOffset now, CancellationToken cancellationToken);
     Task<Location> GetOrCreateDefaultLocationAsync(Guid tenantId, DateTimeOffset now, CancellationToken cancellationToken);
     Task<Location?> GetLocationAsync(Guid tenantId, Guid locationId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<Location>> GetLocationsAsync(Guid tenantId, CancellationToken cancellationToken);

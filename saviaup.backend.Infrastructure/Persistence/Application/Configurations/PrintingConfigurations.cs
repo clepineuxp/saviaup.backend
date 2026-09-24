@@ -83,6 +83,30 @@ public sealed class PrintAgentPairingCodeConfiguration : IEntityTypeConfiguratio
     }
 }
 
+public sealed class PrintAgentDiscoveryConfiguration : IEntityTypeConfiguration<PrintAgentDiscovery>
+{
+    public void Configure(EntityTypeBuilder<PrintAgentDiscovery> builder)
+    {
+        builder.ToTable("print_agent_discoveries", table =>
+            table.HasCheckConstraint(
+                "CK_print_agent_discoveries_Status",
+                "\"Status\" IN ('PENDING', 'AUTHORIZED', 'CONSUMED')"));
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.SecretHash).HasMaxLength(64).IsRequired();
+        builder.Property(x => x.NetworkFingerprint).HasMaxLength(64).IsRequired();
+        builder.Property(x => x.DeviceIdentifier).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Hostname).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.OperatingSystem).HasMaxLength(200).IsRequired();
+        builder.Property(x => x.Version).HasMaxLength(50).IsRequired();
+        builder.Property(x => x.LocalIpAddress).HasMaxLength(64);
+        builder.Property(x => x.Status).HasMaxLength(20).IsRequired();
+        builder.HasIndex(x => x.SecretHash).IsUnique();
+        builder.HasIndex(x => new { x.NetworkFingerprint, x.Status, x.ExpiresAt });
+        builder.HasIndex(x => new { x.DeviceIdentifier, x.ExpiresAt });
+    }
+}
+
 public sealed class PrinterConfiguration : IEntityTypeConfiguration<Printer>
 {
     public void Configure(EntityTypeBuilder<Printer> builder)
