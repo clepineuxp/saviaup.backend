@@ -365,15 +365,27 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
             type = "NORMAL",
             name = "Papas del combo",
             categoryId = inventoryCategoryId,
-            salePrice = 5000,
+            salePrice = (decimal?)null,
             description = (string?)null,
             image = (string?)null,
             preparationTimeMinutes = 5,
-            isInventoryTracked = true
+            isInventoryTracked = true,
+            variations = new[]
+            {
+                new { name = "Porción grande", salePrice = 7500, order = 1, isActive = true }
+            }
         });
         Assert.Equal(HttpStatusCode.OK, createComboComponent.StatusCode);
         var componentJson = await createComboComponent.Content.ReadFromJsonAsync<JsonElement>();
         var componentProductId = componentJson.GetProperty("id").GetGuid();
+        var componentVariationId = componentJson.GetProperty("variations")[0].GetProperty("id").GetGuid();
+        Assert.Equal(JsonValueKind.Null, componentJson.GetProperty("salePrice").ValueKind);
+
+        var variationSearch = await client.GetAsync(
+            "/api/products?page=1&pageSize=10&search=grande&type=NORMAL");
+        Assert.Equal(HttpStatusCode.OK, variationSearch.StatusCode);
+        Assert.Equal(1, (await variationSearch.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("totalCount").GetInt32());
 
         var updateProduct = await client.PutAsJsonAsync($"/api/products/{productId}", new
         {
@@ -396,7 +408,13 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
                     maxSelections = 1,
                     options = new[]
                     {
-                        new { productId = componentProductId, productQuantity = 1, priceAdjustment = 0 }
+                        new
+                        {
+                            productId = componentProductId,
+                            productVariationId = componentVariationId,
+                            productQuantity = 1,
+                            priceAdjustment = 0
+                        }
                     }
                 }
             }
@@ -405,7 +423,10 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         var updatedProductJson = await updateProduct.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("COMBO", updatedProductJson.GetProperty("type").GetString());
         Assert.False(updatedProductJson.GetProperty("isInventoryTracked").GetBoolean());
-        Assert.Single(updatedProductJson.GetProperty("comboGroups").EnumerateArray());
+        var comboGroup = Assert.Single(updatedProductJson.GetProperty("comboGroups").EnumerateArray());
+        var comboOption = Assert.Single(comboGroup.GetProperty("options").EnumerateArray());
+        Assert.Equal(componentVariationId, comboOption.GetProperty("productVariationId").GetGuid());
+        Assert.Equal("Porción grande", comboOption.GetProperty("productVariationName").GetString());
 
         var disableCategoryInventory = await client.PutAsJsonAsync(
             $"/api/categories/{inventoryCategoryId}", new

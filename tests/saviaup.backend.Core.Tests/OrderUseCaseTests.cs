@@ -70,6 +70,14 @@ public sealed class OrderUseCaseTests
     {
         var table = new RestaurantTable { Id = Guid.NewGuid(), TenantId = _tenantId, Status = TableStatus.Available };
         var includedProduct = new Product { Id = Guid.NewGuid(), TenantId = _tenantId, Type = ProductType.Normal, Name = "Arepa", IsActive = true };
+        var includedVariation = new ProductVariation
+        {
+            Id = Guid.NewGuid(),
+            TenantId = _tenantId,
+            ProductId = includedProduct.Id,
+            Name = "Grande",
+            IsActive = true
+        };
         var fixedProduct = new Product { Id = Guid.NewGuid(), TenantId = _tenantId, Type = ProductType.Normal, Name = "Café", IsActive = true };
         var combo = new Product
         {
@@ -98,6 +106,8 @@ public sealed class OrderUseCaseTests
             ComboGroupId = group.Id,
             ProductId = includedProduct.Id,
             Product = includedProduct,
+            ProductVariationId = includedVariation.Id,
+            ProductVariation = includedVariation,
             ProductQuantity = 1,
             PriceAdjustment = 1000m
         };
@@ -151,7 +161,7 @@ public sealed class OrderUseCaseTests
             _tenantId, table.Id, _userId, _userName,
             new AddOrderItemsRequest([
                 new CreateOrderItemRequest(
-                    combo.Id, combo.Name, combo.SalePrice, 1, "Sin azúcar", false,
+                    combo.Id, combo.Name, combo.SalePrice!.Value, 1, "Sin azúcar", false,
                     [new CreateOrderItemComboSelectionRequest(group.Id, option.Id, 2)])
             ]),
             default);
@@ -163,7 +173,7 @@ public sealed class OrderUseCaseTests
         Assert.Equal(2, orderItem.ComboSelections.Single(selection => selection.ComboGroupId == group.Id).SelectionQuantity);
         Assert.Equal(1, orderItem.ComboSelections.Single(selection => selection.ComboGroupId == fixedGroup.Id).SelectionQuantity);
         Assert.Equal(
-            "Combo: Acompañantes: 2× Arepa; Incluidos: 2× Café | Observaciones adicionales: Sin azúcar",
+            "Combo: Acompañantes: 2× Arepa - Grande; Incluidos: 2× Café | Observaciones adicionales: Sin azúcar",
             orderItem.Notes);
     }
 

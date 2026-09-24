@@ -16,7 +16,12 @@ public sealed class ProductComboOptionConfiguration : IEntityTypeConfiguration<P
         builder.Property(option => option.Id).ValueGeneratedNever();
         builder.Property(option => option.PriceAdjustment).HasPrecision(18, 2);
         builder.HasIndex(option => new { option.TenantId, option.ComboGroupId, option.Order });
-        builder.HasIndex(option => new { option.ComboGroupId, option.ProductId }).IsUnique();
+        builder.HasIndex(option => new { option.ComboGroupId, option.ProductId })
+            .IsUnique()
+            .HasFilter("\"ProductVariationId\" IS NULL");
+        builder.HasIndex(option => new { option.ComboGroupId, option.ProductVariationId })
+            .IsUnique()
+            .HasFilter("\"ProductVariationId\" IS NOT NULL");
         builder.HasOne(option => option.ComboGroup)
             .WithMany(group => group.Options)
             .HasForeignKey(option => option.ComboGroupId)
@@ -24,6 +29,10 @@ public sealed class ProductComboOptionConfiguration : IEntityTypeConfiguration<P
         builder.HasOne(option => option.Product)
             .WithMany()
             .HasForeignKey(option => option.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(option => option.ProductVariation)
+            .WithMany()
+            .HasForeignKey(option => option.ProductVariationId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

@@ -405,11 +405,11 @@ Creación y actualización reciben:
 }
 ```
 
-`type` acepta `NORMAL` y `COMBO`; al omitirse usa `NORMAL`. Nombre, categoría y precio positivo son obligatorios. La imagen puede enviarse como data URL en base64; el backend la almacena en `stored_images` y la vincula de forma atómica mediante `ImageRef`.
+`type` acepta `NORMAL` y `COMBO`; al omitirse usa `NORMAL`. Nombre y categoría son obligatorios. `salePrice` debe ser positivo para combos y productos normales sin variaciones. Cuando un producto normal incluye `variations`, cada variación define su propio precio y `salePrice` debe ser `null`; la migración normaliza de igual forma los productos existentes con variaciones. La imagen puede enviarse como data URL en base64; el backend la almacena en `stored_images` y la vincula de forma atómica mediante `ImageRef`.
 
 ### Composición y venta de combos
 
-Un producto `COMBO` conserva los mismos datos comerciales, pero exige `comboGroups` con al menos un grupo y una opción. Cada grupo define `selectionType=SINGLE|MULTIPLE|FIXED`. Los grupos seleccionables usan `isRequired` y límites `minSelections`/`maxSelections`; un grupo `FIXED` es siempre obligatorio e incluye automáticamente todas sus opciones, sin recibir selecciones del cliente. Las opciones referencian productos `NORMAL` activos del mismo tenant e indican `productQuantity` y un `priceAdjustment` opcional, positivo o negativo. Los combos no mantienen receta directa ni control de inventario propio; el consumo se deriva de los productos elegidos o incluidos.
+Un producto `COMBO` conserva los mismos datos comerciales, pero exige `comboGroups` con al menos un grupo y una opción. Cada grupo define `selectionType=SINGLE|MULTIPLE|FIXED`. Los grupos seleccionables usan `isRequired` y límites `minSelections`/`maxSelections`; un grupo `FIXED` es siempre obligatorio e incluye automáticamente todas sus opciones, sin recibir selecciones del cliente. Las opciones referencian productos `NORMAL` activos del mismo tenant y pueden fijar además una variación activa de ese producto mediante `productVariationId`; si el producto posee variaciones, elegir su opción base está prohibido y se debe indicar una variación activa. Cada opción indica `productQuantity` y un `priceAdjustment` opcional, positivo o negativo. Los combos no mantienen receta directa ni control de inventario propio; el consumo se deriva de la receta del producto elegido o incluido, también cuando se seleccionó una de sus variaciones.
 
 ```json
 {
@@ -427,6 +427,7 @@ Un producto `COMBO` conserva los mismos datos comerciales, pero exige `comboGrou
       "options": [
         {
           "productId": "22222222-2222-2222-2222-222222222222",
+          "productVariationId": "33333333-3333-3333-3333-333333333333",
           "productQuantity": 1,
           "priceAdjustment": 0
         }
@@ -436,7 +437,7 @@ Un producto `COMBO` conserva los mismos datos comerciales, pero exige `comboGrou
 }
 ```
 
-Al agregar el combo a una comanda, cada ítem envía `comboSelections: [{ comboGroupId, comboOptionId, quantity }]` únicamente para grupos seleccionables. `AddTableOrderItemsUseCase` vuelve a validar obligatoriedad, tipo y límites, incorpora por sí mismo todas las opciones `FIXED`, calcula `UnitPrice = SalePrice + Σ(PriceAdjustment × quantity)` y guarda una instantánea en `order_item_combo_selections`. También construye `OrderItem.Notes` con los productos seleccionados/fijos y las observaciones adicionales para operación e impresión. Las ediciones posteriores del combo no alteran la comanda existente. Un producto usado como opción responde `409 PRODUCT_IN_USE` al intentar desactivarlo, convertirlo en combo o eliminarlo; primero debe retirarse de todas las composiciones.
+Al agregar el combo a una comanda, cada ítem envía `comboSelections: [{ comboGroupId, comboOptionId, quantity }]` únicamente para grupos seleccionables. `AddTableOrderItemsUseCase` vuelve a validar obligatoriedad, tipo, variación activa y límites, incorpora por sí mismo todas las opciones `FIXED`, calcula `UnitPrice = SalePrice + Σ(PriceAdjustment × quantity)` y guarda una instantánea en `order_item_combo_selections`. También construye `OrderItem.Notes` con los productos y variaciones seleccionados/fijos y las observaciones adicionales para operación e impresión. Las ediciones posteriores del combo no alteran la comanda existente. Un producto usado como opción responde `409 PRODUCT_IN_USE` al intentar desactivarlo, convertirlo en combo o eliminarlo; una variación usada tampoco se puede desactivar o eliminar hasta retirarla de las composiciones.
 
 ### Recetas y deducción automática de inventario
 

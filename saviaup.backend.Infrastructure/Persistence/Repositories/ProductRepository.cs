@@ -26,6 +26,9 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
             .Include(product => product.ComboGroups)
                 .ThenInclude(group => group.Options)
                     .ThenInclude(option => option.Product)
+            .Include(product => product.ComboGroups)
+                .ThenInclude(group => group.Options)
+                    .ThenInclude(option => option.ProductVariation)
             .Where(product => product.TenantId == tenantId
                 && (request.IncludeInactive || product.IsActive));
         if (request.CategoryId.HasValue)
@@ -72,6 +75,9 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
             .Include(product => product.ComboGroups)
                 .ThenInclude(group => group.Options)
                     .ThenInclude(option => option.Product)
+            .Include(product => product.ComboGroups)
+                .ThenInclude(group => group.Options)
+                    .ThenInclude(option => option.ProductVariation)
             .Where(product => product.TenantId == tenantId
                 && product.IsActive
                 && product.Category.IsActive)
@@ -90,6 +96,9 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
             .Include(product => product.ComboGroups)
                 .ThenInclude(group => group.Options)
                     .ThenInclude(option => option.Product)
+            .Include(product => product.ComboGroups)
+                .ThenInclude(group => group.Options)
+                    .ThenInclude(option => option.ProductVariation)
             .SingleOrDefaultAsync(
                 product => product.TenantId == tenantId && product.Id == productId,
                 cancellationToken);
@@ -123,6 +132,9 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
             .Include(product => product.ComboGroups)
                 .ThenInclude(group => group.Options)
                     .ThenInclude(option => option.Product)
+            .Include(product => product.ComboGroups)
+                .ThenInclude(group => group.Options)
+                    .ThenInclude(option => option.ProductVariation)
             .Where(product => product.TenantId == tenantId && idList.Contains(product.Id))
             .ToArrayAsync(cancellationToken);
     }
@@ -163,16 +175,32 @@ public sealed class ProductRepository(ApplicationDbContext context) : IProductRe
     public async Task AddRecipeItemsAsync(IEnumerable<ProductRecipeItem> items, CancellationToken cancellationToken)
         => await context.ProductRecipeItems.AddRangeAsync(items, cancellationToken);
 
-    public async Task DeleteVariationsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
-    {
-        var variations = await context.ProductVariations
+    public async Task<IReadOnlyCollection<ProductVariation>> GetVariationsForUpdateAsync(
+        Guid tenantId,
+        Guid productId,
+        CancellationToken cancellationToken)
+        => await context.ProductVariations
             .Where(item => item.TenantId == tenantId && item.ProductId == productId)
             .ToArrayAsync(cancellationToken);
-        context.ProductVariations.RemoveRange(variations);
-    }
+
+    public async Task<IReadOnlySet<Guid>> GetVariationIdsUsedInComboAsync(
+        Guid tenantId,
+        Guid productId,
+        CancellationToken cancellationToken)
+        => (await context.ProductComboOptions.AsNoTracking()
+            .Where(option => option.TenantId == tenantId
+                && option.ProductId == productId
+                && option.ProductVariationId.HasValue)
+            .Select(option => option.ProductVariationId!.Value)
+            .Distinct()
+            .ToArrayAsync(cancellationToken))
+            .ToHashSet();
 
     public async Task AddVariationsAsync(IEnumerable<ProductVariation> variations, CancellationToken cancellationToken)
         => await context.ProductVariations.AddRangeAsync(variations, cancellationToken);
+
+    public void RemoveVariations(IEnumerable<ProductVariation> variations)
+        => context.ProductVariations.RemoveRange(variations);
 
     public async Task DeleteComboGroupsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
     {

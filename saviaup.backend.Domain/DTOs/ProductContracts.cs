@@ -51,7 +51,9 @@ public sealed record ProductComboOptionDto(
     string ProductName,
     int ProductQuantity,
     decimal PriceAdjustment,
-    int Order);
+    int Order,
+    Guid? ProductVariationId,
+    string? ProductVariationName);
 
 public sealed record ProductComboGroupDto(
     Guid Id,
@@ -67,7 +69,8 @@ public sealed record ProductComboOptionRequest(
     Guid ProductId,
     [Range(1, 1000)] int ProductQuantity,
     [Range(typeof(decimal), "-9999999999999999.99", "9999999999999999.99")] decimal PriceAdjustment = 0,
-    int Order = 0);
+    int Order = 0,
+    Guid? ProductVariationId = null);
 
 public sealed record ProductComboGroupRequest(
     [Required, MaxLength(120)] string Name,
@@ -85,7 +88,7 @@ public sealed record ProductDto(
     string? Description,
     string? Image,
     CategoryReferenceDto Category,
-    decimal SalePrice,
+    decimal? SalePrice,
     int? PreparationTimeMinutes,
     bool IsInventoryTracked,
     bool IsActive,
@@ -101,7 +104,7 @@ public sealed record CreateProductRequest(
     string? Type,
     [Required, MaxLength(120)] string Name,
     Guid CategoryId,
-    [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal SalePrice,
+    [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal? SalePrice,
     [MaxLength(1000)] string? Description,
     string? Image,
     [Range(0, int.MaxValue)] int? PreparationTimeMinutes,
@@ -114,7 +117,7 @@ public sealed record UpdateProductRequest(
     string? Type,
     [Required, MaxLength(120)] string Name,
     Guid CategoryId,
-    [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal SalePrice,
+    [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal? SalePrice,
     [MaxLength(1000)] string? Description,
     string? Image,
     [Range(0, int.MaxValue)] int? PreparationTimeMinutes,

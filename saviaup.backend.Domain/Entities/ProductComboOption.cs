@@ -6,6 +6,7 @@ public sealed class ProductComboOption
     public Guid TenantId { get; set; }
     public Guid ComboGroupId { get; set; }
     public Guid ProductId { get; set; }
+    public Guid? ProductVariationId { get; set; }
     public int ProductQuantity { get; set; } = 1;
     public decimal PriceAdjustment { get; set; }
     public int Order { get; set; }
@@ -14,4 +15,5 @@ public sealed class ProductComboOption
 
     public ProductComboGroup ComboGroup { get; set; } = null!;
     public Product Product { get; set; } = null!;
+    public ProductVariation? ProductVariation { get; set; }
 }
