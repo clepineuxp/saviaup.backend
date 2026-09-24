@@ -243,15 +243,24 @@ public sealed class PrintingUseCaseTests
         var locationId = Guid.NewGuid();
         var agent = new PrintAgent
         {
-            Id = Guid.NewGuid(), TenantId = tenantId, LocationId = locationId,
-            DeviceIdentifier = "device-1", Enabled = true
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            LocationId = locationId,
+            DeviceIdentifier = "device-1",
+            Enabled = true
         };
         var discovery = new PrintAgentDiscovery
         {
-            Id = Guid.NewGuid(), SecretHash = "secret-hash", NetworkFingerprint = "network-fingerprint",
-            DeviceIdentifier = agent.DeviceIdentifier, Status = PrintAgentDiscoveryStatuses.Authorized,
-            TenantId = tenantId, LocationId = locationId, PrintAgentId = agent.Id,
-            CreatedAt = Now, ExpiresAt = Now.AddMinutes(1)
+            Id = Guid.NewGuid(),
+            SecretHash = "secret-hash",
+            NetworkFingerprint = "network-fingerprint",
+            DeviceIdentifier = agent.DeviceIdentifier,
+            Status = PrintAgentDiscoveryStatuses.Authorized,
+            TenantId = tenantId,
+            LocationId = locationId,
+            PrintAgentId = agent.Id,
+            CreatedAt = Now,
+            ExpiresAt = Now.AddMinutes(1)
         };
         var repository = new Mock<IPrintingRepository>();
         repository.Setup(x => x.GetDiscoveryBySecretForUpdateAsync(
@@ -284,6 +293,41 @@ public sealed class PrintingUseCaseTests
         Assert.True(acknowledgement.IsSuccess);
         Assert.Equal(PrintAgentDiscoveryStatuses.Consumed, discovery.Status);
         Assert.Equal(Now, discovery.ConsumedAt);
+    }
+
+    [Fact]
+    public async Task PendingDiscovery_RenewsItsLeaseWhileTheAgentKeepsPolling()
+    {
+        var discovery = new PrintAgentDiscovery
+        {
+            Id = Guid.NewGuid(),
+            SecretHash = "secret-hash",
+            NetworkFingerprint = "network-fingerprint",
+            DeviceIdentifier = "device-1",
+            Status = PrintAgentDiscoveryStatuses.Pending,
+            CreatedAt = Now.AddMinutes(-2),
+            ExpiresAt = Now.AddSeconds(30)
+        };
+        var repository = new Mock<IPrintingRepository>();
+        repository.Setup(x => x.GetDiscoveryBySecretForUpdateAsync(
+                discovery.Id, "secret-hash", "network-fingerprint", Now, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(discovery);
+        var tokens = new Mock<ITokenGenerator>();
+        tokens.Setup(x => x.Hash("abcdefghijklmnopqrstuvwxyz-123456")).Returns("secret-hash");
+        var unitOfWork = UnitOfWork();
+        var useCase = new PrintAgentUseCase(repository.Object, tokens.Object, Clock(),
+            Options.Create(new PrintingOptions { DiscoveryExpirationSeconds = 120 }), unitOfWork.Object);
+
+        var result = await useCase.PollDiscoveryAsync(
+            discovery.Id,
+            new PollPrintAgentDiscoveryRequest("abcdefghijklmnopqrstuvwxyz-123456"),
+            "network-fingerprint",
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(PrintAgentDiscoveryStatuses.Pending, result.Value!.Status);
+        Assert.Equal(Now.AddSeconds(120), discovery.ExpiresAt);
+        unitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -533,14 +577,24 @@ public sealed class PrintingUseCaseTests
         var tenantId = Guid.NewGuid();
         var disabledDiscovery = new PrintAgentDiscovery
         {
-            Id = Guid.NewGuid(), DeviceIdentifier = "disabled-device", Hostname = "PC Cocina",
-            OperatingSystem = "Windows", Version = "1", NetworkFingerprint = "network", CreatedAt = Now,
+            Id = Guid.NewGuid(),
+            DeviceIdentifier = "disabled-device",
+            Hostname = "PC Cocina",
+            OperatingSystem = "Windows",
+            Version = "1",
+            NetworkFingerprint = "network",
+            CreatedAt = Now,
             ExpiresAt = Now.AddMinutes(1)
         };
         var activeDiscovery = new PrintAgentDiscovery
         {
-            Id = Guid.NewGuid(), DeviceIdentifier = "active-device", Hostname = "PC Barra",
-            OperatingSystem = "Windows", Version = "1", NetworkFingerprint = "network", CreatedAt = Now,
+            Id = Guid.NewGuid(),
+            DeviceIdentifier = "active-device",
+            Hostname = "PC Barra",
+            OperatingSystem = "Windows",
+            Version = "1",
+            NetworkFingerprint = "network",
+            CreatedAt = Now,
             ExpiresAt = Now.AddMinutes(1)
         };
         var repository = new Mock<IPrintingRepository>();
@@ -549,7 +603,11 @@ public sealed class PrintingUseCaseTests
         repository.Setup(x => x.GetAgentsAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(
         [
             new PrintAgent { TenantId = tenantId, DeviceIdentifier = "disabled-device", Enabled = false },
-            new PrintAgent { TenantId = tenantId, DeviceIdentifier = "active-device", Enabled = true }
+            new PrintAgent
+            {
+                TenantId = tenantId, DeviceIdentifier = "active-device", Enabled = true,
+                LastSeenAt = Now, Status = PrintAgentStatuses.Online
+            }
         ]);
 
         var result = await Administration(repository, new Mock<IPrintingRealtimeNotifier>())
@@ -557,6 +615,41 @@ public sealed class PrintingUseCaseTests
 
         var agent = Assert.Single(result.Value!);
         Assert.Equal("disabled-device", agent.DeviceIdentifier);
+        Assert.True(agent.IsReactivation);
+    }
+
+    [Fact]
+    public async Task ListDiscoveredAgents_ReturnsAnEnabledAgentWhenItsCredentialIsMissingAndItIsOffline()
+    {
+        var tenantId = Guid.NewGuid();
+        var discovery = new PrintAgentDiscovery
+        {
+            Id = Guid.NewGuid(),
+            DeviceIdentifier = "offline-device",
+            Hostname = "PC Caja",
+            OperatingSystem = "Windows",
+            Version = "1",
+            NetworkFingerprint = "network",
+            CreatedAt = Now,
+            ExpiresAt = Now.AddMinutes(1)
+        };
+        var repository = new Mock<IPrintingRepository>();
+        repository.Setup(x => x.GetPendingDiscoveriesAsync("network", Now, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([discovery]);
+        repository.Setup(x => x.GetAgentsAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            new PrintAgent
+            {
+                TenantId = tenantId, DeviceIdentifier = discovery.DeviceIdentifier, Enabled = true,
+                LastSeenAt = Now.AddMinutes(-5), Status = PrintAgentStatuses.Online
+            }
+        ]);
+
+        var result = await Administration(repository, new Mock<IPrintingRealtimeNotifier>())
+            .ListDiscoveredAgentsAsync(tenantId, "network", CancellationToken.None);
+
+        var agent = Assert.Single(result.Value!);
+        Assert.Equal(discovery.DeviceIdentifier, agent.DeviceIdentifier);
         Assert.True(agent.IsReactivation);
     }
 
