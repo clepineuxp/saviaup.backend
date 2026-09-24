@@ -249,7 +249,7 @@ Desde la configuración se puede solicitar al agente que vuelva a consultar las 
 
 Los ítems nuevos de una comanda y sus trabajos de impresión se guardan en la misma transacción de la base de datos de aplicación. Al instalarse sin credencial, el agente crea un secreto efímero, registra su disponibilidad por HTTP y consulta la autorización periódicamente. El estado temporal vive en `print_agent_discoveries`, por lo que cualquier réplica puede atender el registro, el listado administrativo o el polling. `GET /api/printing/agents/discovered` y el enlace posterior solo aceptan agentes cuya huella HMAC de red coincida con la del frontend administrador; la IP original se obtiene exclusivamente de `RemoteIpAddress` después de `ForwardedHeadersMiddleware` y solo se aceptan cabeceras reenviadas por proxies configurados como confiables. La interfaz actualiza activamente los equipos disponibles y únicamente un usuario con `printing.agents.manage` puede autorizar uno. La credencial se emite al agente que demuestra el secreto, se confirma después de guardarla con DPAPI y nunca se persiste en texto plano. El código de un solo uso continúa como respaldo. Una vez vinculado, consulta trabajos pendientes, mantiene una cola local SQLite idempotente y reporta los estados `PROCESSING`, `PRINTED` o `FAILED`. Reintentar reutiliza el trabajo fallido; reimprimir crea un trabajo auditado nuevo con referencia al original.
 
-Configura `Printing:AgentDownloadUrl` con la URL del instalador publicado. `Printing:DiscoveryExpirationSeconds`, `Printing:DiscoveryPollIntervalSeconds` y, opcionalmente, `Printing:NetworkFingerprintKey` controlan el descubrimiento; si la clave dedicada no existe se usa la clave JWT como compatibilidad de despliegue. Los límites de heartbeat y detección offline se controlan con las demás opciones `Printing`. El servicio Windows y su instalación se documentan en `saviaup.print-agent/install.MD`; la arquitectura completa está en `saviaup.print-agent/ARCHITECTURE.md`.
+Configura `Printing:AgentDownloadUrl` con la URL del instalador publicado. `Printing:DiscoveryExpirationSeconds`, `Printing:DiscoveryPollIntervalSeconds` y, opcionalmente, `Printing:NetworkFingerprintKey` controlan el descubrimiento; si la clave dedicada no existe se usa la clave JWT como compatibilidad de despliegue. Mientras el agente continúa consultando, el backend renueva la vigencia del anuncio para que no desaparezca periódicamente; si el proceso deja de responder, el anuncio expira normalmente. Un agente habilitado que perdió su credencial vuelve a estar disponible para vinculación cuando supera el tiempo de detección offline. Los límites de heartbeat y detección offline se controlan con las demás opciones `Printing`. El servicio Windows y su instalación se documentan en `saviaup.print-agent/install.MD`; la arquitectura completa está en `saviaup.print-agent/ARCHITECTURE.md`.
 
 ### Contexto visible y navegación
 
@@ -405,11 +405,11 @@ Creación y actualización reciben:
 }
 ```
 
-`type` acepta `NORMAL` y `COMBO`; al omitirse usa `NORMAL`. Nombre, categoría y precio positivo son obligatorios. La imagen puede enviarse como data URL en base64; el backend la almacena en `stored_images` y la vincula de forma atómica mediante `ImageRef`.
+`type` acepta `NORMAL` y `COMBO`; al omitirse usa `NORMAL`. Nombre y categoría son obligatorios. `salePrice` debe ser positivo para combos y productos normales sin variaciones. Cuando un producto normal incluye `variations`, cada variación define su propio precio y `salePrice` debe ser `null`; la migración normaliza de igual forma los productos existentes con variaciones. La imagen puede enviarse como data URL en base64; el backend la almacena en `stored_images` y la vincula de forma atómica mediante `ImageRef`.
 
 ### Composición y venta de combos
 
-Un producto `COMBO` conserva los mismos datos comerciales, pero exige `comboGroups` con al menos un grupo y una opción. Cada grupo define `selectionType=SINGLE|MULTIPLE|FIXED`. Los grupos seleccionables usan `isRequired` y límites `minSelections`/`maxSelections`; un grupo `FIXED` es siempre obligatorio e incluye automáticamente todas sus opciones, sin recibir selecciones del cliente. Las opciones referencian productos `NORMAL` activos del mismo tenant e indican `productQuantity` y un `priceAdjustment` opcional, positivo o negativo. Los combos no mantienen receta directa ni control de inventario propio; el consumo se deriva de los productos elegidos o incluidos.
+Un producto `COMBO` conserva los mismos datos comerciales, pero exige `comboGroups` con al menos un grupo y una opción. Cada grupo define `selectionType=SINGLE|MULTIPLE|FIXED`. Los grupos seleccionables usan `isRequired` y límites `minSelections`/`maxSelections`; un grupo `FIXED` es siempre obligatorio e incluye automáticamente todas sus opciones, sin recibir selecciones del cliente. Las opciones referencian productos `NORMAL` activos del mismo tenant y pueden fijar además una variación activa de ese producto mediante `productVariationId`; si el producto posee variaciones, elegir su opción base está prohibido y se debe indicar una variación activa. Cada opción indica `productQuantity` y un `priceAdjustment` opcional, positivo o negativo. Los combos no mantienen receta directa ni control de inventario propio; el consumo se deriva de la receta del producto elegido o incluido, también cuando se seleccionó una de sus variaciones.
 
 ```json
 {
@@ -427,6 +427,7 @@ Un producto `COMBO` conserva los mismos datos comerciales, pero exige `comboGrou
       "options": [
         {
           "productId": "22222222-2222-2222-2222-222222222222",
+          "productVariationId": "33333333-3333-3333-3333-333333333333",
           "productQuantity": 1,
           "priceAdjustment": 0
         }
@@ -436,7 +437,7 @@ Un producto `COMBO` conserva los mismos datos comerciales, pero exige `comboGrou
 }
 ```
 
-Al agregar el combo a una comanda, cada ítem envía `comboSelections: [{ comboGroupId, comboOptionId, quantity }]` únicamente para grupos seleccionables. `AddTableOrderItemsUseCase` vuelve a validar obligatoriedad, tipo y límites, incorpora por sí mismo todas las opciones `FIXED`, calcula `UnitPrice = SalePrice + Σ(PriceAdjustment × quantity)` y guarda una instantánea en `order_item_combo_selections`. También construye `OrderItem.Notes` con los productos seleccionados/fijos y las observaciones adicionales para operación e impresión. Las ediciones posteriores del combo no alteran la comanda existente. Un producto usado como opción responde `409 PRODUCT_IN_USE` al intentar desactivarlo, convertirlo en combo o eliminarlo; primero debe retirarse de todas las composiciones.
+Al agregar el combo a una comanda, cada ítem envía `comboSelections: [{ comboGroupId, comboOptionId, quantity }]` únicamente para grupos seleccionables. `AddTableOrderItemsUseCase` vuelve a validar obligatoriedad, tipo, variación activa y límites, incorpora por sí mismo todas las opciones `FIXED`, calcula `UnitPrice = SalePrice + Σ(PriceAdjustment × quantity)` y guarda una instantánea en `order_item_combo_selections`. También construye `OrderItem.Notes` con los productos y variaciones seleccionados/fijos y las observaciones adicionales para operación e impresión. Las ediciones posteriores del combo no alteran la comanda existente. Un producto usado como opción responde `409 PRODUCT_IN_USE` al intentar desactivarlo, convertirlo en combo o eliminarlo; una variación usada tampoco se puede desactivar o eliminar hasta retirarla de las composiciones.
 
 ### Recetas y deducción automática de inventario
 

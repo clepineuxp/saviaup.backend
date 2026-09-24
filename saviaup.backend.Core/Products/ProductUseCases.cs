@@ -45,9 +45,16 @@ public sealed class CreateProductUseCase(
                 request.SalePrice,
                 request.PreparationTimeMinutes,
                 out var values)
+            || !ProductRules.TryValidateVariations(
+                values.Type,
+                values.SalePrice,
+                request.Variations,
+                out var effectiveSalePrice)
             || !ProductRules.TryValidateComboGroups(values.Type, request.ComboGroups)
             || (values.Type == ProductType.Combo && request.Recipe is { Count: > 0 }))
             return Result<ProductDto>.Failure(Errors.Validation);
+
+        values = values with { SalePrice = effectiveSalePrice };
 
         var category = await categoryRepository.GetByIdAsync(tenantId, request.CategoryId, cancellationToken);
         if (category is null || !category.IsActive)
@@ -130,10 +137,9 @@ public sealed class CreateProductUseCase(
             foreach (var v in request.Variations)
             {
                 var vName = v.Name?.Trim() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(vName) || v.SalePrice <= 0) continue;
                 product.Variations.Add(new ProductVariation
                 {
-                    Id = v.Id.HasValue && v.Id.Value != Guid.Empty ? v.Id.Value : Guid.NewGuid(),
+                    Id = Guid.NewGuid(),
                     TenantId = tenantId,
                     ProductId = productId,
                     Name = vName,
@@ -176,7 +182,15 @@ public sealed class CreateProductUseCase(
         if (products.Count != ids.Length
             || products.Any(product => product.Id == comboProductId || !product.IsActive || product.Type != ProductType.Normal))
             return null;
-        return products.ToDictionary(product => product.Id);
+        var productsById = products.ToDictionary(product => product.Id);
+        if (groups!.SelectMany(group => group.Options).Any(option =>
+                !productsById.TryGetValue(option.ProductId, out var product)
+                || (option.ProductVariationId.HasValue
+                    ? product.Variations.All(variation =>
+                        variation.Id != option.ProductVariationId.Value || !variation.IsActive)
+                    : product.Variations.Count > 0)))
+            return null;
+        return productsById;
     }
 }
 
@@ -200,9 +214,16 @@ public sealed class UpdateProductUseCase(
                 request.SalePrice,
                 request.PreparationTimeMinutes,
                 out var values)
+            || !ProductRules.TryValidateVariations(
+                values.Type,
+                values.SalePrice,
+                request.Variations,
+                out var effectiveSalePrice)
             || !ProductRules.TryValidateComboGroups(values.Type, request.ComboGroups)
             || (values.Type == ProductType.Combo && request.Recipe is { Count: > 0 }))
             return Result<ProductDto>.Failure(Errors.Validation);
+
+        values = values with { SalePrice = effectiveSalePrice };
 
         // GetByIdForUpdateAsync carga el producto SIN RecipeItems en el ChangeTracker.
         // Esto evita el DbUpdateConcurrencyException que ocurría al intentar gestionar
@@ -292,19 +313,36 @@ public sealed class UpdateProductUseCase(
             }
         }
 
-        if (request.Variations is not null)
+        if (request.Variations is not null || values.Type == ProductType.Combo)
         {
-            await productRepository.DeleteVariationsAsync(tenantId, productId, cancellationToken);
-
+            var existingVariations = await productRepository.GetVariationsForUpdateAsync(
+                tenantId, productId, cancellationToken);
+            var existingById = existingVariations.ToDictionary(variation => variation.Id);
+            var usedVariationIds = await productRepository.GetVariationIdsUsedInComboAsync(
+                tenantId, productId, cancellationToken);
             var varsToAdd = new List<ProductVariation>();
+            var retainedIds = new HashSet<Guid>();
             var varIdx = 0;
-            foreach (var v in request.Variations)
+            foreach (var v in request.Variations ?? [])
             {
                 var vName = v.Name?.Trim() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(vName) || v.SalePrice <= 0) continue;
+                if (v.Id.HasValue && existingById.TryGetValue(v.Id.Value, out var existingVariation))
+                {
+                    if (!v.IsActive && usedVariationIds.Contains(existingVariation.Id))
+                        return Result<ProductDto>.Failure(Errors.ProductInUse);
+                    existingVariation.Name = vName;
+                    existingVariation.NormalizedName = vName.ToUpperInvariant();
+                    existingVariation.SalePrice = v.SalePrice;
+                    existingVariation.Order = v.Order > 0 ? v.Order : varIdx++;
+                    existingVariation.IsActive = v.IsActive;
+                    existingVariation.UpdatedAt = now;
+                    retainedIds.Add(existingVariation.Id);
+                    continue;
+                }
+
                 varsToAdd.Add(new ProductVariation
                 {
-                    Id = v.Id.HasValue && v.Id.Value != Guid.Empty ? v.Id.Value : Guid.NewGuid(),
+                    Id = Guid.NewGuid(),
                     TenantId = tenantId,
                     ProductId = product.Id,
                     Name = vName,
@@ -316,6 +354,13 @@ public sealed class UpdateProductUseCase(
                     UpdatedAt = now
                 });
             }
+
+            var variationsToRemove = existingVariations
+                .Where(variation => !retainedIds.Contains(variation.Id))
+                .ToArray();
+            if (variationsToRemove.Any(variation => usedVariationIds.Contains(variation.Id)))
+                return Result<ProductDto>.Failure(Errors.ProductInUse);
+            productRepository.RemoveVariations(variationsToRemove);
 
             if (varsToAdd.Count > 0)
             {
@@ -355,7 +400,15 @@ public sealed class UpdateProductUseCase(
         if (products.Count != ids.Length
             || products.Any(product => product.Id == comboProductId || !product.IsActive || product.Type != ProductType.Normal))
             return null;
-        return products.ToDictionary(product => product.Id);
+        var productsById = products.ToDictionary(product => product.Id);
+        if (groups!.SelectMany(group => group.Options).Any(option =>
+                !productsById.TryGetValue(option.ProductId, out var product)
+                || (option.ProductVariationId.HasValue
+                    ? product.Variations.All(variation =>
+                        variation.Id != option.ProductVariationId.Value || !variation.IsActive)
+                    : product.Variations.Count > 0)))
+            return null;
+        return productsById;
     }
 }
 

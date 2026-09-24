@@ -55,7 +55,7 @@ public sealed record PublicProductDto(
     Guid Id,
     string Name,
     string? Description,
-    decimal SalePrice,
+    decimal? SalePrice,
     Guid? ImageRef,
     string? Image,
     int SortOrder,

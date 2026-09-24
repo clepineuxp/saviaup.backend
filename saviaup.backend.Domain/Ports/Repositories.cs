@@ -138,8 +138,16 @@ public interface IProductRepository
     Task AddAsync(Product product, CancellationToken cancellationToken);
     Task DeleteRecipeItemsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
     Task AddRecipeItemsAsync(IEnumerable<ProductRecipeItem> items, CancellationToken cancellationToken);
-    Task DeleteVariationsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<ProductVariation>> GetVariationsForUpdateAsync(
+        Guid tenantId,
+        Guid productId,
+        CancellationToken cancellationToken);
+    Task<IReadOnlySet<Guid>> GetVariationIdsUsedInComboAsync(
+        Guid tenantId,
+        Guid productId,
+        CancellationToken cancellationToken);
     Task AddVariationsAsync(IEnumerable<ProductVariation> variations, CancellationToken cancellationToken);
+    void RemoveVariations(IEnumerable<ProductVariation> variations);
     Task DeleteComboGroupsAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
     Task AddComboGroupsAsync(IEnumerable<ProductComboGroup> groups, CancellationToken cancellationToken);
     Task<bool> IsUsedInComboAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);

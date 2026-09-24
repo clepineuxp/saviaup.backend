@@ -10,7 +10,9 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
     {
         builder.ToTable("products", table =>
         {
-            table.HasCheckConstraint("CK_products_SalePrice_Positive", "\"SalePrice\" > 0");
+            table.HasCheckConstraint(
+                "CK_products_SalePrice_Positive",
+                "\"SalePrice\" IS NULL OR \"SalePrice\" > 0");
             table.HasCheckConstraint("CK_products_Type", "\"Type\" IN ('NORMAL', 'COMBO')");
             table.HasCheckConstraint(
                 "CK_products_PreparationTime_NonNegative",

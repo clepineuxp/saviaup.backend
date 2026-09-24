@@ -289,10 +289,11 @@ public sealed class AddTableOrderItemsUseCase(
         out decimal unitPrice,
         out IReadOnlyCollection<OrderItemComboSelection> selections)
     {
-        unitPrice = combo.SalePrice;
+        unitPrice = combo.SalePrice ?? 0;
         var result = new List<OrderItemComboSelection>();
         var requested = requests ?? [];
-        if (combo.ComboGroups.Count == 0
+        if (combo.SalePrice is null or <= 0
+            || combo.ComboGroups.Count == 0
             || combo.ComboGroups.Any(group => group.Options.Count == 0)
             || requested.Any(request => request.Quantity <= 0)
             || requested.Select(request => request.ComboOptionId).Distinct().Count() != requested.Count)
@@ -324,7 +325,7 @@ public sealed class AddTableOrderItemsUseCase(
 
                 foreach (var option in group.Options.OrderBy(option => option.Order))
                 {
-                    if (!option.Product.IsActive || option.Product.Type != ProductType.Normal)
+                    if (!IsAvailableComboOption(option))
                     {
                         selections = [];
                         return false;
@@ -358,7 +359,7 @@ public sealed class AddTableOrderItemsUseCase(
             foreach (var request in groupRequests)
             {
                 var option = group.Options.SingleOrDefault(candidate => candidate.Id == request.ComboOptionId);
-                if (option is null || !option.Product.IsActive || option.Product.Type != ProductType.Normal)
+                if (option is null || !IsAvailableComboOption(option))
                 {
                     selections = [];
                     return false;
@@ -390,13 +391,22 @@ public sealed class AddTableOrderItemsUseCase(
             ComboOptionId = option.Id,
             ProductId = option.ProductId,
             GroupName = group.Name,
-            ProductName = option.Product.Name,
+            ProductName = option.ProductVariation is null
+                ? option.Product.Name
+                : $"{option.Product.Name} - {option.ProductVariation.Name}",
             ProductQuantity = option.ProductQuantity,
             SelectionQuantity = selectionQuantity,
             PriceAdjustment = option.PriceAdjustment,
             Order = order,
             CreatedAt = now
         };
+
+    private static bool IsAvailableComboOption(ProductComboOption option)
+        => option.Product.IsActive
+            && option.Product.Type == ProductType.Normal
+            && (option.ProductVariation is null
+                || (option.ProductVariation.IsActive
+                    && option.ProductVariation.ProductId == option.ProductId));
 
     private static string? BuildOrderItemNotes(
         string? additionalNotes,

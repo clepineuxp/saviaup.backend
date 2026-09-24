@@ -11,7 +11,7 @@ internal sealed record ProductValues(
     string NormalizedName,
     string? Description,
     string? Image,
-    decimal SalePrice,
+    decimal? SalePrice,
     int? PreparationTimeMinutes);
 
 internal static class ProductRules
@@ -35,7 +35,7 @@ internal static class ProductRules
         string? name,
         string? description,
         string? image,
-        decimal salePrice,
+        decimal? salePrice,
         int? preparationTimeMinutes,
         out ProductValues values)
     {
@@ -61,8 +61,40 @@ internal static class ProductRules
             && cleanName.Length is > 0 and <= 120
             && (cleanDescription?.Length ?? 0) <= 1000
             && validImage
-            && salePrice is > 0 and <= MaximumSalePrice
+            && (salePrice is null or > 0 and <= MaximumSalePrice)
             && preparationTimeMinutes is null or >= 0;
+    }
+
+    public static bool TryValidateVariations(
+        ProductType type,
+        decimal? salePrice,
+        IReadOnlyCollection<ProductVariationRequest>? variations,
+        out decimal? effectiveSalePrice)
+    {
+        var hasVariations = variations is { Count: > 0 };
+        effectiveSalePrice = hasVariations && type == ProductType.Normal ? null : salePrice;
+
+        if (type == ProductType.Combo)
+            return !hasVariations && salePrice is > 0 and <= MaximumSalePrice;
+
+        if (!hasVariations)
+            return salePrice is > 0 and <= MaximumSalePrice;
+
+        var requestedVariations = variations!;
+        return requestedVariations.Any(variation => variation.IsActive)
+            && requestedVariations.All(variation =>
+                CleanWords(variation.Name).Length is > 0 and <= 120
+                && variation.SalePrice is > 0 and <= MaximumSalePrice
+                && variation.Id != Guid.Empty)
+            && requestedVariations
+                .Select(variation => CleanWords(variation.Name).ToUpperInvariant())
+                .Distinct()
+                .Count() == requestedVariations.Count
+            && requestedVariations
+                .Where(variation => variation.Id.HasValue)
+                .Select(variation => variation.Id)
+                .Distinct()
+                .Count() == requestedVariations.Count(variation => variation.Id.HasValue);
     }
 
     public static ProductDto ToDto(Product product) => new(
@@ -113,7 +145,9 @@ internal static class ProductRules
                 option.Product?.Name ?? string.Empty,
                 option.ProductQuantity,
                 option.PriceAdjustment,
-                option.Order))
+                option.Order,
+                option.ProductVariationId,
+                option.ProductVariation?.Name))
             .ToArray());
 
     public static bool TryValidateComboGroups(
@@ -131,7 +165,10 @@ internal static class ProductRules
                 || group.Options is null
                 || group.Options.Count == 0
                 || group.Options.Any(option => option.ProductId == Guid.Empty || option.ProductQuantity <= 0)
-                || group.Options.Select(option => option.ProductId).Distinct().Count() != group.Options.Count)
+                || group.Options
+                    .Select(option => (option.ProductId, option.ProductVariationId))
+                    .Distinct()
+                    .Count() != group.Options.Count)
                 return false;
 
             if (selectionType == ProductComboSelectionType.Fixed)
@@ -193,6 +230,7 @@ internal static class ProductRules
                     TenantId = tenantId,
                     ComboGroupId = group.Id,
                     ProductId = optionRequest.ProductId,
+                    ProductVariationId = optionRequest.ProductVariationId,
                     ProductQuantity = optionRequest.ProductQuantity,
                     PriceAdjustment = optionRequest.PriceAdjustment,
                     Order = optionRequest.Order > 0 ? optionRequest.Order : ++optionIndex,

@@ -11,7 +11,7 @@ public sealed class Product
     public string? Description { get; set; }
     public Guid? ImageRef { get; set; }
     public StoredImage? ImageStored { get; set; }
-    public decimal SalePrice { get; set; }
+    public decimal? SalePrice { get; set; }
     public int? PreparationTimeMinutes { get; set; }
     public bool IsInventoryTracked { get; set; }
     public bool IsActive { get; set; } = true;

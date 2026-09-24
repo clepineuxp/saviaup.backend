@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SaviaUp.Backend.Infrastructure.Persistence.Application;
@@ -11,9 +12,11 @@ using SaviaUp.Backend.Infrastructure.Persistence.Application;
 namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260924193541_AddComboProductVariations")]
+    partial class AddComboProductVariations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1614,7 +1617,7 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Property<int?>("PreparationTimeMinutes")
                         .HasColumnType("integer");
 
-                    b.Property<decimal?>("SalePrice")
+                    b.Property<decimal>("SalePrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
@@ -1646,7 +1649,7 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         {
                             t.HasCheckConstraint("CK_products_PreparationTime_NonNegative", "\"PreparationTimeMinutes\" IS NULL OR \"PreparationTimeMinutes\" >= 0");
 
-                            t.HasCheckConstraint("CK_products_SalePrice_Positive", "\"SalePrice\" IS NULL OR \"SalePrice\" > 0");
+                            t.HasCheckConstraint("CK_products_SalePrice_Positive", "\"SalePrice\" > 0");
 
                             t.HasCheckConstraint("CK_products_Type", "\"Type\" IN ('NORMAL', 'COMBO')");
                         });

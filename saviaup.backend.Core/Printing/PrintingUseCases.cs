@@ -253,17 +253,21 @@ public sealed class PrintingAdministrationUseCase(
         string? sourceIpAddress,
         CancellationToken cancellationToken)
     {
+        var now = clock.UtcNow;
         var knownAgents = (await repository.GetAgentsAsync(tenantId, cancellationToken))
             .GroupBy(agent => agent.DeviceIdentifier, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.OrderByDescending(agent => agent.Enabled).First(), StringComparer.Ordinal);
         if (string.IsNullOrWhiteSpace(sourceIpAddress))
             return Result<IReadOnlyCollection<DiscoveredPrintAgentDto>>.Success([]);
-        var discovered = await repository.GetPendingDiscoveriesAsync(sourceIpAddress, clock.UtcNow, cancellationToken);
+        var discovered = await repository.GetPendingDiscoveriesAsync(sourceIpAddress, now, cancellationToken);
         return Result<IReadOnlyCollection<DiscoveredPrintAgentDto>>.Success(
             discovered
                 .GroupBy(agent => agent.DeviceIdentifier, StringComparer.Ordinal)
                 .Select(group => group.OrderByDescending(agent => agent.CreatedAt).First())
-                .Where(agent => !knownAgents.TryGetValue(agent.DeviceIdentifier, out var existing) || !existing.Enabled)
+                .Where(agent => !knownAgents.TryGetValue(agent.DeviceIdentifier, out var existing)
+                    || !existing.Enabled
+                    || !existing.LastSeenAt.HasValue
+                    || existing.LastSeenAt.Value.AddSeconds(Options.OfflineTimeoutSeconds) < now)
                 .Select(agent => new DiscoveredPrintAgentDto(
                     agent.Id,
                     agent.DeviceIdentifier,
@@ -272,7 +276,7 @@ public sealed class PrintingAdministrationUseCase(
                     agent.Version,
                     agent.LocalIpAddress,
                     agent.CreatedAt,
-                    knownAgents.TryGetValue(agent.DeviceIdentifier, out var existing) && !existing.Enabled))
+                    knownAgents.ContainsKey(agent.DeviceIdentifier)))
                 .ToArray());
     }
 
@@ -817,7 +821,15 @@ public sealed class PrintAgentUseCase(
             if (discovery is null || discovery.Status == PrintAgentDiscoveryStatuses.Consumed)
                 return Result<PollPrintAgentDiscoveryResponse>.Failure(Errors.PrintAgentPairingInvalid);
             if (discovery.Status == PrintAgentDiscoveryStatuses.Pending)
+            {
+                var expirationSeconds = Math.Clamp(Options.DiscoveryExpirationSeconds, 30, 600);
+                if (discovery.ExpiresAt <= now.AddSeconds(expirationSeconds / 2d))
+                {
+                    discovery.ExpiresAt = now.AddSeconds(expirationSeconds);
+                    await unitOfWork.SaveChangesAsync(transactionToken);
+                }
                 return Result<PollPrintAgentDiscoveryResponse>.Success(new(PrintAgentDiscoveryStatuses.Pending, null));
+            }
             if (discovery.Status != PrintAgentDiscoveryStatuses.Authorized
                 || !discovery.TenantId.HasValue
                 || !discovery.LocationId.HasValue
