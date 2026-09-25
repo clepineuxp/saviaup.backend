@@ -537,7 +537,7 @@ El frontend conectado está en `../saviaup.frontend`: desarrollo usa `useMockApi
 
 La venta en mesas sincroniza su catálogo mediante un contrato independiente del listado administrativo: `/api/tables/sales-catalog/version` expone la versión vigente y `/api/tables/sales-catalog/sync` devuelve en una sola instantánea las categorías, productos con variaciones/recetas y salas/mesas activas del tenant. El parámetro interno `sales.catalog.lastModifiedAt` no se expone como ajuste editable; el backend lo crea o actualiza mediante EF al persistir cambios relevantes de categorías, productos, variaciones, salas o configuración de mesas, sin triggers de base de datos. Las transiciones operativas disponible/ocupada no invalidan el catálogo; activar o desactivar administrativamente una mesa sí lo hace.
 
-`TablesHub` se publica en `/hubs/tables`, valida sesión/tenant/permiso y aísla cada conexión en un grupo por tenant. Emite `OnTableStatusChanged`, `OnTableOrderUpdated` y `OnTableSalesDataInvalidated` después de persistir los cambios correspondientes. Si `RequiresOpenCashRegister` está activo, las mutaciones se bloquean hasta que exista un turno sin fecha de cierre.
+`TablesHub` se publica en `/hubs/tables`, valida sesión/tenant/permiso y aísla cada conexión en un grupo por tenant. Expone `Ping` para comprobar el canal sin recargar el estado operativo y emite `OnTableStatusChanged`, `OnTableOrderUpdated` y `OnTableSalesDataInvalidated` después de persistir los cambios correspondientes. Si `RequiresOpenCashRegister` está activo, las mutaciones se bloquean hasta que exista un turno sin fecha de cierre.
 
 ## Gastos y proveedores
 
