@@ -10,4 +10,4 @@
 !.env.example
 TestResults/
 coverage/
-**/storage/
+saviaup.backend.Api/storage/
