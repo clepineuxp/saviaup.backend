@@ -11,3 +11,6 @@
 TestResults/
 coverage/
 saviaup.backend.Api/storage/
+__pycache__/
+*.py[cod]
+.venv-image-migration/
