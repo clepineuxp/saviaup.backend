@@ -107,6 +107,13 @@ public sealed class DigitalMenuRepository(
         var rawProducts = await appContext.Products
             .AsNoTracking()
             .IgnoreQueryFilters()
+            .AsSplitQuery()
+            .Include(product => product.ComboGroups.Where(group => group.TenantId == tenantId))
+                .ThenInclude(group => group.Options.Where(option => option.TenantId == tenantId))
+                    .ThenInclude(option => option.Product)
+            .Include(product => product.ComboGroups.Where(group => group.TenantId == tenantId))
+                .ThenInclude(group => group.Options.Where(option => option.TenantId == tenantId))
+                    .ThenInclude(option => option.ProductVariation)
             .Where(p => p.TenantId == tenantId && p.IsActive)
             .ToListAsync(cancellationToken);
 
@@ -197,7 +204,40 @@ public sealed class DigitalMenuRepository(
                     x.Product.ImageRef,
                     Image: null,
                     x.SortOrder,
-                    variationsByProductId.GetValueOrDefault(x.Product.Id, [])
+                    variationsByProductId.GetValueOrDefault(x.Product.Id, []),
+                    x.Product.ComboGroups
+                        .Where(group => group.TenantId == tenantId)
+                        .OrderBy(group => group.Order)
+                        .ThenBy(group => group.CreatedAt)
+                        .Select(group => new ProductComboGroupDto(
+                            group.Id,
+                            group.Name,
+                            group.SelectionType.ToString().ToUpperInvariant(),
+                            group.IsRequired,
+                            group.MinSelections,
+                            group.MaxSelections,
+                            group.Order,
+                            group.Options
+                                .Where(option => option.TenantId == tenantId
+                                    && option.Product.TenantId == tenantId
+                                    && option.Product.IsActive
+                                    && (option.ProductVariationId == null
+                                        || option.ProductVariation is { IsActive: true } variation
+                                            && variation.TenantId == tenantId))
+                                .OrderBy(option => option.Order)
+                                .ThenBy(option => option.CreatedAt)
+                                .Select(option => new ProductComboOptionDto(
+                                    option.Id,
+                                    option.ProductId,
+                                    option.Product.Name,
+                                    option.ProductQuantity,
+                                    option.PriceAdjustment,
+                                    option.Order,
+                                    option.ProductVariationId,
+                                    option.ProductVariation?.Name))
+                                .ToArray()))
+                        .Where(group => group.Options.Count > 0)
+                        .ToArray()
                 ))
                 .ToList();
 
