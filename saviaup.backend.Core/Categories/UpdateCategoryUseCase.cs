@@ -11,7 +11,7 @@ public sealed class UpdateCategoryUseCase(
     IProductRepository productRepository,
     IDateTimeProvider dateTimeProvider,
     IUnitOfWork unitOfWork,
-    IStoredImageRepository? imageRepository = null,
+    IFileStorage? fileStorage = null,
     ITableRealtimeNotifier? realtime = null) : IUpdateCategoryUseCase
 {
     public async Task<Result<CategoryDto>> ExecuteAsync(
@@ -30,6 +30,9 @@ public sealed class UpdateCategoryUseCase(
             return Result<CategoryDto>.Failure(Errors.Validation);
         }
 
+        if (!ImageHelper.IsReferenceOwnedByTenant(values.Image, tenantId))
+            return Result<CategoryDto>.Failure(Errors.Validation);
+
         var category = await categoryRepository.GetByIdAsync(tenantId, categoryId, cancellationToken);
         if (category is null) return Result<CategoryDto>.Failure(Errors.CategoryNotFound);
         if (await categoryRepository.NameExistsAsync(
@@ -43,21 +46,35 @@ public sealed class UpdateCategoryUseCase(
 
         var now = dateTimeProvider.UtcNow;
         var inventoryTrackingWasDisabled = category.IsInventoryTracked && !values.IsInventoryTracked;
+        var previousImagePath = category.ImagePath;
 
-        if (imageRepository != null
-            && !string.IsNullOrWhiteSpace(values.Image)
+        if (!string.IsNullOrWhiteSpace(values.Image)
             && values.Image.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
         {
-            var storedImage = ImageHelper.CreateStoredImage(tenantId, "categories", categoryId.ToString(), values.Image, now);
-            if (storedImage != null)
+            if (fileStorage is null) return Result<CategoryDto>.Failure(Errors.Validation);
+            try
             {
-                await imageRepository.AddAsync(storedImage, cancellationToken);
-                category.ImageRef = storedImage.Id;
-                category.ImageStored = storedImage;
+                var storedImage = await ImageHelper.SaveDataUrlAsync(
+                    fileStorage, tenantId, "categories", categoryId.ToString("D"), values.Image, cancellationToken);
+                if (storedImage is null) return Result<CategoryDto>.Failure(Errors.Validation);
+                category.ImagePath = storedImage.Reference;
+                category.ImageRef = null;
+                category.ImageStored = null;
+            }
+            catch (InvalidDataException)
+            {
+                return Result<CategoryDto>.Failure(Errors.Validation);
             }
         }
         else if (string.IsNullOrWhiteSpace(values.Image))
         {
+            category.ImagePath = null;
+            category.ImageRef = null;
+            category.ImageStored = null;
+        }
+        else if (!values.Image.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+        {
+            category.ImagePath = values.Image;
             category.ImageRef = null;
             category.ImageStored = null;
         }
@@ -76,6 +93,10 @@ public sealed class UpdateCategoryUseCase(
                 cancellationToken);
         }
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (fileStorage is not null
+            && previousImagePath != category.ImagePath
+            && ImageHelper.IsManagedReference(previousImagePath))
+            await fileStorage.DeleteAsync(tenantId, previousImagePath, cancellationToken);
         if (realtime is not null)
             await realtime.SalesDataInvalidatedAsync(tenantId, new(["categories", "products"], now), cancellationToken);
         var usageCounts = await categoryRepository.GetUsageCountsAsync(tenantId, categoryId, cancellationToken);

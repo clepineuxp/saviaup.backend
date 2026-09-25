@@ -30,7 +30,7 @@ public sealed class CreateProductUseCase(
     ICategoryRepository categoryRepository,
     IDateTimeProvider clock,
     IUnitOfWork unitOfWork,
-    IStoredImageRepository? imageRepository = null,
+    IFileStorage? fileStorage = null,
     ITableRealtimeNotifier? realtime = null) : ICreateProductUseCase
 {
     public async Task<Result<ProductDto>> ExecuteAsync(
@@ -54,6 +54,9 @@ public sealed class CreateProductUseCase(
             || (values.Type == ProductType.Combo && request.Recipe is { Count: > 0 }))
             return Result<ProductDto>.Failure(Errors.Validation);
 
+        if (!ImageHelper.IsReferenceOwnedByTenant(values.Image, tenantId))
+            return Result<ProductDto>.Failure(Errors.Validation);
+
         values = values with { SalePrice = effectiveSalePrice };
 
         var category = await categoryRepository.GetByIdAsync(tenantId, request.CategoryId, cancellationToken);
@@ -66,20 +69,27 @@ public sealed class CreateProductUseCase(
         if (comboProducts is null) return Result<ProductDto>.Failure(Errors.Validation);
 
         var now = clock.UtcNow;
-        Guid? imageRef = null;
-        StoredImage? imageStored = null;
+        string? imagePath = null;
 
-        if (imageRepository != null
-            && !string.IsNullOrWhiteSpace(values.Image)
+        if (!string.IsNullOrWhiteSpace(values.Image)
             && values.Image.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
         {
-            imageStored = ImageHelper.CreateStoredImage(tenantId, "products", productId.ToString(), values.Image, now);
-            if (imageStored != null)
+            if (fileStorage is null) return Result<ProductDto>.Failure(Errors.Validation);
+            try
             {
-                await imageRepository.AddAsync(imageStored, cancellationToken);
-                imageRef = imageStored.Id;
+                var storedImage = await ImageHelper.SaveDataUrlAsync(
+                    fileStorage, tenantId, "products", productId.ToString("D"), values.Image, cancellationToken);
+                if (storedImage is null) return Result<ProductDto>.Failure(Errors.Validation);
+                imagePath = storedImage.Reference;
+            }
+            catch (InvalidDataException)
+            {
+                return Result<ProductDto>.Failure(Errors.Validation);
             }
         }
+        else if (!string.IsNullOrWhiteSpace(values.Image)
+            && !values.Image.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+            imagePath = values.Image;
 
         var product = new Product
         {
@@ -91,8 +101,7 @@ public sealed class CreateProductUseCase(
             Name = values.Name,
             NormalizedName = values.NormalizedName,
             Description = values.Description,
-            ImageRef = imageRef,
-            ImageStored = imageStored,
+            ImagePath = imagePath,
             SalePrice = values.SalePrice,
             PreparationTimeMinutes = values.PreparationTimeMinutes,
             IsInventoryTracked = values.Type == ProductType.Normal && category.IsInventoryTracked && request.IsInventoryTracked,
@@ -199,7 +208,7 @@ public sealed class UpdateProductUseCase(
     ICategoryRepository categoryRepository,
     IDateTimeProvider clock,
     IUnitOfWork unitOfWork,
-    IStoredImageRepository? imageRepository = null,
+    IFileStorage? fileStorage = null,
     ITableRealtimeNotifier? realtime = null) : IUpdateProductUseCase
 {
     public async Task<Result<ProductDto>> ExecuteAsync(
@@ -221,6 +230,9 @@ public sealed class UpdateProductUseCase(
                 out var effectiveSalePrice)
             || !ProductRules.TryValidateComboGroups(values.Type, request.ComboGroups)
             || (values.Type == ProductType.Combo && request.Recipe is { Count: > 0 }))
+            return Result<ProductDto>.Failure(Errors.Validation);
+
+        if (!ImageHelper.IsReferenceOwnedByTenant(values.Image, tenantId))
             return Result<ProductDto>.Failure(Errors.Validation);
 
         values = values with { SalePrice = effectiveSalePrice };
@@ -245,24 +257,35 @@ public sealed class UpdateProductUseCase(
         if (comboProducts is null) return Result<ProductDto>.Failure(Errors.Validation);
 
         var now = clock.UtcNow;
+        var previousImagePath = product.ImagePath;
 
-        if (imageRepository != null
-            && !string.IsNullOrWhiteSpace(values.Image)
+        if (!string.IsNullOrWhiteSpace(values.Image)
             && values.Image.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
         {
-            if (product.ImageStored == null || product.ImageStored.Base64Content != values.Image)
+            if (fileStorage is null) return Result<ProductDto>.Failure(Errors.Validation);
+            try
             {
-                var storedImage = ImageHelper.CreateStoredImage(tenantId, "products", productId.ToString(), values.Image, now);
-                if (storedImage != null)
-                {
-                    await imageRepository.AddAsync(storedImage, cancellationToken);
-                    product.ImageRef = storedImage.Id;
-                    product.ImageStored = storedImage;
-                }
+                var storedImage = await ImageHelper.SaveDataUrlAsync(
+                    fileStorage, tenantId, "products", productId.ToString("D"), values.Image, cancellationToken);
+                if (storedImage is null) return Result<ProductDto>.Failure(Errors.Validation);
+                product.ImagePath = storedImage.Reference;
+                product.ImageRef = null;
+                product.ImageStored = null;
+            }
+            catch (InvalidDataException)
+            {
+                return Result<ProductDto>.Failure(Errors.Validation);
             }
         }
         else if (string.IsNullOrWhiteSpace(values.Image))
         {
+            product.ImagePath = null;
+            product.ImageRef = null;
+            product.ImageStored = null;
+        }
+        else if (!values.Image.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+        {
+            product.ImagePath = values.Image;
             product.ImageRef = null;
             product.ImageStored = null;
         }
@@ -380,6 +403,10 @@ public sealed class UpdateProductUseCase(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (fileStorage is not null
+            && previousImagePath != product.ImagePath
+            && ImageHelper.IsManagedReference(previousImagePath))
+            await fileStorage.DeleteAsync(tenantId, previousImagePath, cancellationToken);
         if (realtime is not null)
             await realtime.SalesDataInvalidatedAsync(tenantId, new(["products"], now), cancellationToken);
         var reloaded = await productRepository.GetByIdAsync(tenantId, product.Id, cancellationToken);
@@ -437,7 +464,8 @@ public sealed class SetProductStatusUseCase(
 public sealed class DeleteProductUseCase(
     IProductRepository repository,
     IUnitOfWork unitOfWork,
-    ITableRealtimeNotifier? realtime = null) : IDeleteProductUseCase
+    ITableRealtimeNotifier? realtime = null,
+    IFileStorage? fileStorage = null) : IDeleteProductUseCase
 {
     public async Task<Result> ExecuteAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken)
     {
@@ -447,6 +475,8 @@ public sealed class DeleteProductUseCase(
             return Result.Failure(Errors.ProductInUse);
         repository.Remove(product);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (fileStorage is not null && ImageHelper.IsManagedReference(product.ImagePath))
+            await fileStorage.DeleteAsync(tenantId, product.ImagePath, cancellationToken);
         if (realtime is not null)
             await realtime.SalesDataInvalidatedAsync(tenantId, new(["products"], product.UpdatedAt), cancellationToken);
         return Result.Success();

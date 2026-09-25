@@ -407,7 +407,7 @@ Creación y actualización reciben:
 }
 ```
 
-`type` acepta `NORMAL` y `COMBO`; al omitirse usa `NORMAL`. Nombre y categoría son obligatorios. `salePrice` debe ser positivo para combos y productos normales sin variaciones. Cuando un producto normal incluye `variations`, cada variación define su propio precio y `salePrice` debe ser `null`; la migración normaliza de igual forma los productos existentes con variaciones. La imagen puede enviarse como data URL en base64; el backend la almacena en `stored_images` y la vincula de forma atómica mediante `ImageRef`.
+`type` acepta `NORMAL` y `COMBO`; al omitirse usa `NORMAL`. Nombre y categoría son obligatorios. `salePrice` debe ser positivo para combos y productos normales sin variaciones. Cuando un producto normal incluye `variations`, cada variación define su propio precio y `salePrice` debe ser `null`; la migración normaliza de igual forma los productos existentes con variaciones. La imagen puede enviarse como data URL en base64; el backend la convierte a WebP mediante `IFileStorage` y guarda en `ImagePath` una referencia estable `/pvc/{tenant}/products/{productId}/{file}.webp`.
 
 ### Composición y venta de combos
 
@@ -555,7 +555,24 @@ El módulo de Gastos permite controlar egresos operativos de la organización:
 
 ## Almacenamiento optimizado de imágenes
 
-Para evitar dependencias de almacenamiento externo en etapas tempranas y agilizar la respuesta del cliente:
-- Se implementó la tabla `stored_images` con entidad `StoredImage`, que conserva el contenido binario comprimido en base64 junto con metadata técnica (mime type, peso, tenant).
-- Entidades como `Category` y `Product` utilizan la clave foránea `ImageRef` hacia `stored_images`.
-- Las consultas principales realizan una proyección en una única consulta SQL (evitando llamadas N+1 o endpoints adicionales), entregando la imagen lista para visualización inmediata en el frontend.
+Las nuevas imágenes se almacenan fuera de PostgreSQL a través del puerto `IFileStorage`. La implementación actual (`LocalFileStorage`) escribe sobre el volumen configurado por `FileStorage:RootPath`; puede sustituirse por S3 u otro proveedor sin cambiar los casos de uso. Todo archivo entrante se valida, auto-orienta, limita a `1920x1920` por defecto, elimina metadata y se codifica como WebP.
+
+- `Product.ImagePath`, `Category.ImagePath` y `Tenant.LogoPath` guardan referencias `/pvc/{tenant}/...`; nunca rutas físicas del nodo.
+- Cada referencia contiene un nombre inmutable, por lo que `/pvc` puede responder con `Cache-Control: public, max-age=31536000, immutable`.
+- La implementación local valida que lectura y eliminación pertenezcan al tenant indicado y evita escapes fuera de la raíz configurada.
+- `stored_images`, `ImageRef` y `LogoData` se conservan temporalmente solo para leer datos históricos. Los flujos nuevos de productos, categorías y logos no escriben allí. Tras migrar esos datos históricos al volumen podrá retirarse la tabla en una migración posterior.
+
+Configuración local de ejemplo:
+
+```json
+{
+  "FileStorage": {
+    "RootPath": "storage",
+    "PublicBaseUrl": "http://localhost:5000/pvc",
+    "WebpQuality": 82,
+    "MaximumWidth": 1920,
+    "MaximumHeight": 1920,
+    "CacheDurationDays": 365
+  }
+}
+```

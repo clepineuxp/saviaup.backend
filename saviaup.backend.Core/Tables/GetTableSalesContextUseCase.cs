@@ -35,7 +35,10 @@ public sealed class GetTableSalesContextUseCase(
         var canManage = await permissions.IsAllowedAsync(tenantId, roleId, PermissionCodes.TablesManage, cancellationToken);
 
         return Result<TableSalesContextDto>.Success(new(
-            new TableSalesOrganizationDto(tenant.Name, tenant.LogoData is not null, tenant.UpdatedAt.ToUnixTimeMilliseconds()),
+            new TableSalesOrganizationDto(
+                tenant.Name,
+                !string.IsNullOrWhiteSpace(tenant.LogoPath) || tenant.LogoData is not null,
+                tenant.UpdatedAt.ToUnixTimeMilliseconds()),
             new TableSalesBusinessDto(
                 businessResult.Value!.EnableCustomSales,
                 businessResult.Value.ShowVoluntaryTip,

@@ -1,49 +1,72 @@
-using SaviaUp.Backend.Domain.Entities;
+using SaviaUp.Backend.Domain.Ports;
 
 namespace SaviaUp.Backend.Core.Images;
 
 public static class ImageHelper
 {
-    public static StoredImage? CreateStoredImage(Guid tenantId, string module, string entityId, string base64DataUrl, DateTimeOffset now)
+    private const int MaximumImageBytes = 2 * 1024 * 1024;
+
+    public static async Task<StoredFileReference?> SaveDataUrlAsync(
+        IFileStorage fileStorage,
+        Guid tenantId,
+        string scope,
+        string entityId,
+        string base64DataUrl,
+        CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(base64DataUrl)) return null;
+        if (!TryDecodeDataUrl(base64DataUrl, out var content, out var contentType)) return null;
+        return await fileStorage.SaveImageAsync(
+            tenantId,
+            scope,
+            entityId,
+            content,
+            contentType,
+            $"{scope}-{entityId}.webp",
+            cancellationToken);
+    }
 
-        string rawBase64 = base64DataUrl;
-        string contentType = "image/png";
+    public static bool IsManagedReference(string? reference)
+        => !string.IsNullOrWhiteSpace(reference)
+            && (!Uri.TryCreate(reference, UriKind.Absolute, out _)
+                || reference.Contains("/pvc/", StringComparison.OrdinalIgnoreCase));
 
-        if (rawBase64.Contains(";base64,"))
+    public static bool IsReferenceOwnedByTenant(string? reference, Guid tenantId)
+    {
+        if (string.IsNullOrWhiteSpace(reference)
+            || !reference.Contains("/pvc/", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var path = Uri.TryCreate(reference, UriKind.Absolute, out var uri)
+            ? uri.AbsolutePath
+            : reference.Trim();
+        return path.StartsWith($"/pvc/{tenantId:D}/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool TryDecodeDataUrl(
+        string dataUrl,
+        out byte[] content,
+        out string contentType)
+    {
+        content = [];
+        contentType = "image/png";
+        if (string.IsNullOrWhiteSpace(dataUrl)) return false;
+
+        var rawBase64 = dataUrl.Trim();
+        var separatorIndex = rawBase64.IndexOf(";base64,", StringComparison.OrdinalIgnoreCase);
+        if (separatorIndex >= 0)
         {
-            var parts = rawBase64.Split(";base64,");
-            if (parts.Length == 2)
-            {
-                contentType = parts[0].Replace("data:", "").Trim();
-                rawBase64 = parts[1];
-            }
+            contentType = rawBase64[5..separatorIndex].Trim();
+            rawBase64 = rawBase64[(separatorIndex + 8)..];
         }
 
-        byte[] imageBytes;
         try
         {
-            imageBytes = Convert.FromBase64String(rawBase64);
+            content = Convert.FromBase64String(rawBase64);
+            return content.Length is > 0 and <= MaximumImageBytes;
         }
-        catch
+        catch (FormatException)
         {
-            return null;
+            return false;
         }
-
-        var imageId = Guid.NewGuid();
-        return new StoredImage
-        {
-            Id = imageId,
-            TenantId = tenantId,
-            Module = module.ToLowerInvariant().Trim(),
-            EntityId = entityId,
-            FileName = $"{module}_{entityId}_{now.Ticks}.png",
-            ContentType = string.IsNullOrWhiteSpace(contentType) ? "image/png" : contentType,
-            Base64Content = base64DataUrl,
-            FileSize = imageBytes.Length,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
     }
 }

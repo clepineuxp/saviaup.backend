@@ -1,4 +1,5 @@
 using SaviaUp.Backend.Core.Common;
+using SaviaUp.Backend.Core.Images;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Domain.Results;
 
@@ -7,7 +8,8 @@ namespace SaviaUp.Backend.Core.Categories;
 public sealed class DeleteCategoryUseCase(
     ICategoryRepository categoryRepository,
     IUnitOfWork unitOfWork,
-    ITableRealtimeNotifier? realtime = null) : IDeleteCategoryUseCase
+    ITableRealtimeNotifier? realtime = null,
+    IFileStorage? fileStorage = null) : IDeleteCategoryUseCase
 {
     public async Task<Result> ExecuteAsync(
         Guid tenantId,
@@ -21,6 +23,8 @@ public sealed class DeleteCategoryUseCase(
 
         categoryRepository.Remove(category);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (fileStorage is not null && ImageHelper.IsManagedReference(category.ImagePath))
+            await fileStorage.DeleteAsync(tenantId, category.ImagePath, cancellationToken);
         if (realtime is not null)
             await realtime.SalesDataInvalidatedAsync(tenantId, new(["categories", "products"], category.UpdatedAt), cancellationToken);
         return Result.Success();

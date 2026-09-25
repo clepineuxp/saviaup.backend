@@ -10,3 +10,4 @@
 !.env.example
 TestResults/
 coverage/
+**/storage/
