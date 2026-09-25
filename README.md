@@ -353,6 +353,8 @@ La fuente de verdad es `Core/Navigation/NavigationCatalog.cs`. Cada módulo nuev
 
 El módulo `digital_menu` requiere `digital-menu.access` para aparecer en la navegación y consultar su configuración. Las mutaciones requieren también un permiso específico: `digital-menu.enable` para habilitar o deshabilitar el menú y administrar el slug, `digital-menu.style.manage` para estilo y plantillas, y `digital-menu.items.manage` para productos y categorías. Al asignar cualquiera de los permisos específicos a un rol, el permiso de acceso es obligatorio.
 
+El contrato público `GET /api/public/menu/{slug}` incluye en cada producto sus `variations` y `comboGroups`. Cada grupo de combo conserva nombre, tipo de selección (`SINGLE`, `MULTIPLE` o `FIXED`), obligatoriedad, límites mínimo/máximo y opciones ordenadas. Cada opción publica el producto, la variación cuando aplica, las unidades incluidas y el ajuste positivo, negativo o neutro sobre el precio base, para que el menú explique la composición sin recalcular reglas de negocio.
+
 ## Categorías
 
 Las categorías se administran dentro del tenant activo y se mostrarán en frontend bajo `Inventario → Categorías`. El listado requiere `categories.read`; las mutaciones requieren `categories.manage`.

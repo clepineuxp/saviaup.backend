@@ -59,7 +59,8 @@ public sealed record PublicProductDto(
     Guid? ImageRef,
     string? Image,
     int SortOrder,
-    IReadOnlyCollection<PublicProductVariationDto> Variations);
+    IReadOnlyCollection<PublicProductVariationDto> Variations,
+    IReadOnlyCollection<ProductComboGroupDto> ComboGroups);
 
 public sealed record PublicProductVariationDto(
     Guid Id,
