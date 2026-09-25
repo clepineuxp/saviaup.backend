@@ -59,7 +59,7 @@ public sealed class DigitalMenuUseCase(
                     Name: c.Name,
                     Description: c.Description,
                     Price: null,
-                    ImageRef: c.ImageRef,
+                    ImageRef: c.ImagePath ?? c.ImageRef?.ToString("D"),
                     SortOrder: hasConfig ? config!.SortOrder : 999,
                     IsActive: !hasConfig || config!.IsActive
                 );
@@ -80,7 +80,7 @@ public sealed class DigitalMenuUseCase(
                     Name: p.Name,
                     Description: p.Description,
                     Price: p.SalePrice,
-                    ImageRef: p.ImageRef,
+                    ImageRef: p.ImagePath ?? p.ImageRef?.ToString("D"),
                     SortOrder: hasConfig ? config!.SortOrder : 999,
                     IsActive: !hasConfig || config!.IsActive
                 );

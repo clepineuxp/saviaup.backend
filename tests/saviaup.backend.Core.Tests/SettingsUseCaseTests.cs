@@ -94,6 +94,47 @@ public sealed class SettingsUseCaseTests
     }
 
     [Fact]
+    public async Task OrganizationLogo_IsStoredAsWebpFileReference()
+    {
+        var tenant = new Tenant { Id = Guid.NewGuid(), Name = "Savia", UpdatedAt = TestSupport.Now };
+        var repository = new Mock<ISettingsRepository>();
+        var storage = new Mock<IFileStorage>();
+        repository.Setup(value => value.GetTenantForUpdateAsync(tenant.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(tenant);
+        storage.Setup(value => value.SaveImageAsync(
+                tenant.Id,
+                "logos",
+                "organization",
+                It.IsAny<byte[]>(),
+                "image/png",
+                "logo.png",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StoredFileReference(
+                $"/pvc/{tenant.Id:D}/logos/organization/logo.webp",
+                "image/webp",
+                "logo.webp",
+                120));
+        var useCase = new OrganizationSettingsUseCase(
+            repository.Object,
+            Mock.Of<IRoleRepository>(),
+            new FixedClock(TestSupport.Now),
+            Mock.Of<IUnitOfWork>(),
+            TestSupport.TimeZones(),
+            storage.Object);
+
+        var result = await useCase.UploadLogoAsync(
+            tenant.Id,
+            new UploadOrganizationLogoRequest([1, 2, 3], "image/png", "logo.png"),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal($"/pvc/{tenant.Id:D}/logos/organization/logo.webp", tenant.LogoPath);
+        Assert.Equal("image/webp", tenant.LogoContentType);
+        Assert.Equal("logo.webp", tenant.LogoFileName);
+        Assert.Null(tenant.LogoData);
+    }
+
+    [Fact]
     public async Task Business_UpdatePersistsTypedParametersAndCashRule()
     {
         var tenant = new Tenant { Id = Guid.NewGuid(), Name = "Savia" };

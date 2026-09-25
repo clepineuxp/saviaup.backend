@@ -28,6 +28,34 @@ public interface IEmailSender
     Task SendOrganizationInvitationAsync(string email, string language, string organizationName, string invitationLink, CancellationToken cancellationToken);
 }
 
+public sealed record StoredFileReference(
+    string Reference,
+    string ContentType,
+    string FileName,
+    long Length);
+
+public sealed record StoredFileContent(
+    byte[] Content,
+    string ContentType,
+    string FileName,
+    DateTimeOffset LastModified);
+
+public interface IFileStorage
+{
+    Task<StoredFileReference> SaveImageAsync(
+        Guid tenantId,
+        string scope,
+        string entityId,
+        byte[] content,
+        string contentType,
+        string? fileName,
+        CancellationToken cancellationToken);
+
+    Task<StoredFileContent?> GetAsync(Guid tenantId, string reference, CancellationToken cancellationToken);
+    Task DeleteAsync(Guid tenantId, string? reference, CancellationToken cancellationToken);
+    string? GetPublicUrl(string? reference);
+}
+
 public interface IDateTimeProvider
 {
     DateTimeOffset UtcNow { get; }

@@ -10,7 +10,9 @@ public sealed class OrganizationSettingsUseCase(
     ISettingsRepository repository,
     IRoleRepository roleRepository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork, ITimeZoneService timeZones) : IOrganizationSettingsUseCase
+    IUnitOfWork unitOfWork,
+    ITimeZoneService timeZones,
+    IFileStorage? fileStorage = null) : IOrganizationSettingsUseCase
 {
     private static readonly HashSet<string> LogoTypes = new(StringComparer.OrdinalIgnoreCase) { "image/png", "image/jpeg", "image/webp" };
 
@@ -55,8 +57,23 @@ public sealed class OrganizationSettingsUseCase(
     public async Task<Result<OrganizationLogoDto>> GetLogoAsync(Guid tenantId, CancellationToken cancellationToken)
     {
         var tenant = await repository.GetTenantForUpdateAsync(tenantId, cancellationToken);
-        if (tenant?.LogoData is null || tenant.LogoContentType is null) return Result<OrganizationLogoDto>.Failure(Errors.TenantNotFound);
-        return Result<OrganizationLogoDto>.Success(new OrganizationLogoDto(tenant.LogoData, tenant.LogoContentType, tenant.LogoFileName ?? "logo"));
+        if (tenant is null) return Result<OrganizationLogoDto>.Failure(Errors.TenantNotFound);
+        if (fileStorage is not null && !string.IsNullOrWhiteSpace(tenant.LogoPath))
+        {
+            var storedLogo = await fileStorage.GetAsync(tenantId, tenant.LogoPath, cancellationToken);
+            if (storedLogo is not null)
+                return Result<OrganizationLogoDto>.Success(new OrganizationLogoDto(
+                    storedLogo.Content,
+                    storedLogo.ContentType,
+                    storedLogo.FileName));
+        }
+
+        if (tenant.LogoData is null || tenant.LogoContentType is null)
+            return Result<OrganizationLogoDto>.Failure(Errors.TenantNotFound);
+        return Result<OrganizationLogoDto>.Success(new OrganizationLogoDto(
+            tenant.LogoData,
+            tenant.LogoContentType,
+            tenant.LogoFileName ?? "logo"));
     }
 
     public async Task<Result> UploadLogoAsync(Guid tenantId, UploadOrganizationLogoRequest request, CancellationToken cancellationToken)
@@ -64,11 +81,34 @@ public sealed class OrganizationSettingsUseCase(
         if (request.Content.Length is 0 or > 2_097_152 || !LogoTypes.Contains(request.ContentType)) return Result.Failure(Errors.OrganizationLogoInvalid);
         var tenant = await repository.GetTenantForUpdateAsync(tenantId, cancellationToken);
         if (tenant is null) return Result.Failure(Errors.TenantNotFound);
-        tenant.LogoData = request.Content;
-        tenant.LogoContentType = request.ContentType;
-        tenant.LogoFileName = Path.GetFileName(request.FileName ?? "logo");
+        if (fileStorage is null) return Result.Failure(Errors.OrganizationLogoInvalid);
+
+        StoredFileReference storedLogo;
+        try
+        {
+            storedLogo = await fileStorage.SaveImageAsync(
+                tenantId,
+                "logos",
+                "organization",
+                request.Content,
+                request.ContentType,
+                request.FileName,
+                cancellationToken);
+        }
+        catch (InvalidDataException)
+        {
+            return Result.Failure(Errors.OrganizationLogoInvalid);
+        }
+
+        var previousLogoPath = tenant.LogoPath;
+        tenant.LogoPath = storedLogo.Reference;
+        tenant.LogoData = null;
+        tenant.LogoContentType = storedLogo.ContentType;
+        tenant.LogoFileName = storedLogo.FileName;
         tenant.UpdatedAt = clock.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (previousLogoPath != tenant.LogoPath)
+            await fileStorage.DeleteAsync(tenantId, previousLogoPath, cancellationToken);
         return Result.Success();
     }
 
@@ -76,14 +116,21 @@ public sealed class OrganizationSettingsUseCase(
     {
         var tenant = await repository.GetTenantForUpdateAsync(tenantId, cancellationToken);
         if (tenant is null) return Result.Failure(Errors.TenantNotFound);
-        tenant.LogoData = null; tenant.LogoContentType = null; tenant.LogoFileName = null; tenant.UpdatedAt = clock.UtcNow;
+        var previousLogoPath = tenant.LogoPath;
+        tenant.LogoPath = null;
+        tenant.LogoData = null;
+        tenant.LogoContentType = null;
+        tenant.LogoFileName = null;
+        tenant.UpdatedAt = clock.UtcNow;
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        if (fileStorage is not null) await fileStorage.DeleteAsync(tenantId, previousLogoPath, cancellationToken);
         return Result.Success();
     }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     private static OrganizationSettingsDto Map(Tenant tenant, bool canEditDocument) => new(
         tenant.Id, tenant.Name, tenant.ResponsibleName, tenant.Document, tenant.ContactName, tenant.Email, tenant.Address,
-        tenant.Country, tenant.State, tenant.City, tenant.Phone, tenant.Website, tenant.LogoData is not null,
+        tenant.Country, tenant.State, tenant.City, tenant.Phone, tenant.Website,
+        !string.IsNullOrWhiteSpace(tenant.LogoPath) || tenant.LogoData is not null,
         tenant.UpdatedAt.ToUnixTimeMilliseconds(), canEditDocument, tenant.TimeZoneId);
 }
