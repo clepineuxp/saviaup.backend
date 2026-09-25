@@ -39,7 +39,7 @@ public sealed class DigitalMenuController(
             TenantId,
             request,
             currentUser.UserId,
-            currentUser.UserEmail,
+            currentUser.UserDisplayName ?? currentUser.UserEmail,
             cancellationToken));
 
     [HttpPut("style")]

@@ -347,7 +347,7 @@ GET                 /api/billing/receipts/{id}
 
 Componentes HTTP importantes:
 
-- `CurrentUserContext`: encapsula lectura de `sub`, `sid`, `tenant_id` y `role_id`.
+- `CurrentUserContext`: encapsula lectura de `sub`, `sid`, `tenant_id`, `role_id`, `email` y `display_name`; la auditoría usa `display_name` y solo conserva email como fallback para tokens anteriores.
 - `CorrelationIdMiddleware`: valida/genera `X-Correlation-Id`.
 - `GlobalExceptionMiddleware`: registra errores inesperados y responde `INTERNAL_ERROR` sin stack trace.
 - `PermissionAuthorizationMiddleware`: valida autenticación, sesión, tenant y permisos.
@@ -397,6 +397,7 @@ sid
 tenant_id (opcional)
 role_id (opcional)
 email (informativo)
+display_name (primera palabra de FirstName + primera palabra de LastName)
 ```
 
 No incluir permisos en el JWT. La lista de permisos puede cambiar antes de que expire un access token y siempre debe comprobarse en backend.

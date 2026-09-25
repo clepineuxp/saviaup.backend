@@ -13,6 +13,14 @@ public sealed class CurrentUserContext(IHttpContextAccessor accessor) : ICurrent
     public string? UserEmail => User?.FindFirst(JwtRegisteredClaimNames.Email)?.Value
         ?? User?.FindFirst(ClaimTypes.Email)?.Value
         ?? User?.FindFirst("email")?.Value;
+    public string? UserDisplayName
+    {
+        get
+        {
+            var value = User?.FindFirst(ClaimNames.DisplayName)?.Value;
+            return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+    }
     public Guid? SessionId => ReadGuid(ClaimNames.SessionId);
     public Guid? TenantId => ReadGuid(ClaimNames.TenantId);
     public Guid? RoleId => ReadGuid(ClaimNames.RoleId);
