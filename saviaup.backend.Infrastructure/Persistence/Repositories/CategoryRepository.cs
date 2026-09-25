@@ -64,8 +64,8 @@ public sealed class CategoryRepository(ApplicationDbContext context) : ICategory
         Guid tenantId,
         Guid categoryId,
         CancellationToken cancellationToken)
-        => UsageCountsQuery(tenantId)
-            .SingleOrDefaultAsync(counts => counts.CategoryId == categoryId, cancellationToken);
+        => UsageCountsQuery(tenantId, categoryId)
+            .SingleOrDefaultAsync(cancellationToken);
 
     public async Task AddAsync(Category category, CancellationToken cancellationToken)
         => await context.Categories.AddAsync(category, cancellationToken);
@@ -80,13 +80,19 @@ public sealed class CategoryRepository(ApplicationDbContext context) : ICategory
 
     public void Remove(Category category) => context.Categories.Remove(category);
 
-    private IQueryable<CategoryUsageCounts> UsageCountsQuery(Guid tenantId)
-        => context.Categories
+    internal IQueryable<CategoryUsageCounts> UsageCountsQuery(Guid tenantId, Guid? categoryId = null)
+    {
+        var categories = context.Categories
             .AsNoTracking()
-            .Where(category => category.TenantId == tenantId)
-            .Select(category => new CategoryUsageCounts(
+            .Where(category => category.TenantId == tenantId);
+
+        if (categoryId.HasValue)
+            categories = categories.Where(category => category.Id == categoryId.Value);
+
+        return categories.Select(category => new CategoryUsageCounts(
                 category.Id,
                 category.Products.Count(),
                 category.Products.SelectMany(product => product.Variations).Count(),
                 category.Ingredients.Count()));
+    }
 }

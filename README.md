@@ -576,3 +576,5 @@ Configuración local de ejemplo:
   }
 }
 ```
+
+Las imágenes históricas que aún usan `ImageRef` pueden migrarse desde un equipo de backoffice, sin desplegar procesos temporales en k3s, mediante [scripts/migrate_images_to_pvc.py](scripts/migrate_images_to_pvc.py). La preparación, vista previa y ejecución están documentadas en [scripts/README-image-migration.md](scripts/README-image-migration.md).
