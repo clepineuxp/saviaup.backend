@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaviaUp.Backend.Api.Attributes;
@@ -138,20 +136,8 @@ public sealed class OrdersController(
             cancellationToken));
 
     private string GetUserName()
-    {
-        if (!string.IsNullOrWhiteSpace(currentUser.UserEmail)) return currentUser.UserEmail;
-
-        var emailClaim = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue(JwtRegisteredClaimNames.Email) ?? User.FindFirstValue("email");
-        if (!string.IsNullOrWhiteSpace(emailClaim)) return emailClaim;
-
-        var nameClaim = User.FindFirstValue(ClaimTypes.Name) ?? User.FindFirstValue("name");
-        if (!string.IsNullOrWhiteSpace(nameClaim)) return nameClaim;
-
-        var givenName = User.FindFirstValue(ClaimTypes.GivenName);
-        var surname = User.FindFirstValue(ClaimTypes.Surname);
-        var fullName = $"{givenName} {surname}".Trim();
-        if (!string.IsNullOrWhiteSpace(fullName)) return fullName;
-
-        return currentUser.UserId?.ToString() ?? "usuario@saviaup.com";
-    }
+        => currentUser.UserDisplayName
+            ?? currentUser.UserEmail
+            ?? currentUser.UserId?.ToString()
+            ?? "Usuario";
 }
