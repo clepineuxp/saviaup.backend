@@ -13,6 +13,7 @@ public sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
         builder.Property(category => category.Name).HasMaxLength(120).IsRequired();
         builder.Property(category => category.NormalizedName).HasMaxLength(120).IsRequired();
         builder.Property(category => category.Description).HasMaxLength(1000);
+        builder.Property(category => category.ImagePath).HasMaxLength(1024);
         builder.Property(category => category.ImageRef);
         builder.HasOne(category => category.ImageStored)
             .WithMany()

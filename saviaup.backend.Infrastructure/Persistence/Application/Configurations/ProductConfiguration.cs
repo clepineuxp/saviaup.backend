@@ -31,6 +31,7 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property(product => product.Name).HasMaxLength(120).IsRequired();
         builder.Property(product => product.NormalizedName).HasMaxLength(120).IsRequired();
         builder.Property(product => product.Description).HasMaxLength(1000);
+        builder.Property(product => product.ImagePath).HasMaxLength(1024);
         builder.Property(product => product.ImageRef);
         builder.HasOne(product => product.ImageStored)
             .WithMany()

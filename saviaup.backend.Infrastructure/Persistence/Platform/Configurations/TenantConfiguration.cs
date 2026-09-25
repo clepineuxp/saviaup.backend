@@ -22,6 +22,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(tenant => tenant.City).HasMaxLength(120);
         builder.Property(tenant => tenant.Phone).HasMaxLength(50);
         builder.Property(tenant => tenant.Website).HasMaxLength(2048);
+        builder.Property(tenant => tenant.LogoPath).HasMaxLength(1024);
         builder.Property(tenant => tenant.LogoContentType).HasMaxLength(100);
         builder.Property(tenant => tenant.LogoFileName).HasMaxLength(255);
         builder.Property(tenant => tenant.RequiresOpenCashRegister).HasDefaultValue(false);

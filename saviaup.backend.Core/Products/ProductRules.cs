@@ -44,6 +44,7 @@ internal static class ProductRules
         var cleanImage = CleanOptional(image);
         var validImage = cleanImage is null
             || cleanImage.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase)
+            || cleanImage.StartsWith("/pvc/", StringComparison.OrdinalIgnoreCase)
             || cleanImage.StartsWith("/api/images/", StringComparison.OrdinalIgnoreCase)
             || (Uri.TryCreate(cleanImage, UriKind.Absolute, out var uri)
                 && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps));
@@ -102,7 +103,7 @@ internal static class ProductRules
         product.Type.ToString().ToUpperInvariant(),
         product.Name,
         product.Description,
-        product.ImageStored?.Base64Content,
+        product.ImagePath ?? product.ImageStored?.Base64Content,
         new CategoryReferenceDto(product.Category.Id, product.Category.Name, product.Category.IsInventoryTracked),
         product.SalePrice,
         product.PreparationTimeMinutes,

@@ -14,7 +14,8 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 
 public sealed class DigitalMenuRepository(
     PlatformDbContext platformContext,
-    ApplicationDbContext appContext) : IDigitalMenuRepository
+    ApplicationDbContext appContext,
+    IFileStorage? fileStorage = null) : IDigitalMenuRepository
 {
     private const int PublicImageMaxSize = 640;
     private const int PublicImageCompactSize = 480;
@@ -78,7 +79,8 @@ public sealed class DigitalMenuRepository(
             {
                 item.Id,
                 item.Name,
-                HasLogo = item.LogoData != null && item.LogoData.Length > 0,
+                HasLogo = item.LogoPath != null || item.LogoData != null && item.LogoData.Length > 0,
+                item.LogoPath,
                 item.LogoData,
                 item.LogoContentType,
                 item.Phone,
@@ -201,7 +203,7 @@ public sealed class DigitalMenuRepository(
                     x.Product.Name,
                     x.Product.Description,
                     x.Product.SalePrice,
-                    x.Product.ImageRef,
+                    x.Product.ImagePath ?? x.Product.ImageRef?.ToString("D"),
                     Image: null,
                     x.SortOrder,
                     variationsByProductId.GetValueOrDefault(x.Product.Id, []),
@@ -246,7 +248,7 @@ public sealed class DigitalMenuRepository(
                 category.Id,
                 category.Name,
                 category.Description,
-                category.ImageRef,
+                category.ImagePath ?? category.ImageRef?.ToString("D"),
                 Image: null,
                 categoryOrder,
                 categoryProducts
@@ -262,9 +264,10 @@ public sealed class DigitalMenuRepository(
             TenantId: tenant.Id,
             OrganizationName: tenant.Name,
             HasLogo: tenant.HasLogo,
-            Logo: tenant.HasLogo && tenant.LogoData is { Length: > 0 }
-                ? ToOptimizedDataUrl(tenant.LogoData, tenant.LogoContentType)
-                : null,
+            Logo: fileStorage?.GetPublicUrl(tenant.LogoPath)
+                ?? (tenant.LogoData is { Length: > 0 }
+                    ? ToOptimizedDataUrl(tenant.LogoData, tenant.LogoContentType)
+                    : null),
             LogoVersion: tenant.UpdatedAt.ToUnixTimeMilliseconds(),
             Phone: tenant.Phone,
             Address: tenant.Address,
@@ -288,7 +291,7 @@ public sealed class DigitalMenuRepository(
             .Where(item => item.TenantId == tenantId.Value
                 && item.Id == categoryId
                 && item.IsActive)
-            .Select(item => new { item.Id, item.ImageRef })
+            .Select(item => new { item.Id, item.ImagePath, item.ImageRef })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (category is null) return null;
@@ -314,7 +317,7 @@ public sealed class DigitalMenuRepository(
             .Where(product => product.TenantId == tenantId.Value
                 && product.CategoryId == categoryId
                 && product.IsActive)
-            .Select(product => new { product.Id, product.ImageRef })
+            .Select(product => new { product.Id, product.ImagePath, product.ImageRef })
             .ToListAsync(cancellationToken))
             .Where(product => !productConfigs.TryGetValue(product.Id, out var config) || config.IsActive)
             .ToArray();
@@ -355,17 +358,18 @@ public sealed class DigitalMenuRepository(
         var productImages = products
             .Select(product => new PublicDigitalMenuProductImageDto(
                 product.Id,
-                ToOptimizedDataUrl(ResolveStoredImage(
-                    product.ImageRef,
-                    "products",
-                    product.Id,
-                    imagesById,
-                    imagesByEntity))))
+                fileStorage?.GetPublicUrl(product.ImagePath)
+                    ?? ToOptimizedDataUrl(ResolveStoredImage(
+                        product.ImageRef,
+                        "products",
+                        product.Id,
+                        imagesById,
+                        imagesByEntity))))
             .ToArray();
 
         return new PublicDigitalMenuCategoryImagesDto(
             categoryId,
-            ToOptimizedDataUrl(categoryImage),
+            fileStorage?.GetPublicUrl(category.ImagePath) ?? ToOptimizedDataUrl(categoryImage),
             productImages);
     }
 

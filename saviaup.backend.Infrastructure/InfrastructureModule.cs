@@ -10,6 +10,7 @@ using SaviaUp.Backend.Infrastructure.Persistence.Application;
 using SaviaUp.Backend.Infrastructure.Persistence.Platform;
 using SaviaUp.Backend.Infrastructure.Persistence.Repositories;
 using SaviaUp.Backend.Infrastructure.Security;
+using SaviaUp.Backend.Infrastructure.Storage;
 using SaviaUp.Backend.Infrastructure.Time;
 
 namespace SaviaUp.Backend.Infrastructure;
@@ -37,6 +38,7 @@ public static class InfrastructureModule
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
         services.Configure<AdminApiOptions>(configuration.GetSection(AdminApiOptions.SectionName));
         services.Configure<PrintingOptions>(configuration.GetSection(PrintingOptions.SectionName));
+        services.Configure<FileStorageOptions>(configuration.GetSection(FileStorageOptions.SectionName));
 
         services.AddHttpClient<IAdminPlanClient, SaviaUp.Backend.Infrastructure.Clients.AdminPlanClient>((serviceProvider, client) =>
         {
@@ -76,6 +78,7 @@ public static class InfrastructureModule
         services.AddSingleton<IPasswordHasher, PasswordHasherAdapter>();
         services.AddSingleton<ITokenGenerator, TokenGenerator>();
         services.AddSingleton<INetworkFingerprintService, NetworkFingerprintService>();
+        services.AddSingleton<IFileStorage, LocalFileStorage>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
 

@@ -11,7 +11,7 @@ public sealed class CreateCategoryUseCase(
     ICategoryRepository categoryRepository,
     IDateTimeProvider dateTimeProvider,
     IUnitOfWork unitOfWork,
-    IStoredImageRepository? imageRepository = null,
+    IFileStorage? fileStorage = null,
     ITableRealtimeNotifier? realtime = null) : ICreateCategoryUseCase
 {
     public async Task<Result<CategoryDto>> ExecuteAsync(
@@ -29,6 +29,9 @@ public sealed class CreateCategoryUseCase(
             return Result<CategoryDto>.Failure(Errors.Validation);
         }
 
+        if (!ImageHelper.IsReferenceOwnedByTenant(values.Image, tenantId))
+            return Result<CategoryDto>.Failure(Errors.Validation);
+
         if (await categoryRepository.NameExistsAsync(
                 tenantId,
                 values.NormalizedName,
@@ -40,20 +43,27 @@ public sealed class CreateCategoryUseCase(
 
         var now = dateTimeProvider.UtcNow;
         var categoryId = Guid.NewGuid();
-        Guid? imageRef = null;
-        StoredImage? imageStored = null;
+        string? imagePath = null;
 
-        if (imageRepository != null
-            && !string.IsNullOrWhiteSpace(values.Image)
+        if (!string.IsNullOrWhiteSpace(values.Image)
             && values.Image.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
         {
-            imageStored = ImageHelper.CreateStoredImage(tenantId, "categories", categoryId.ToString(), values.Image, now);
-            if (imageStored != null)
+            if (fileStorage is null) return Result<CategoryDto>.Failure(Errors.Validation);
+            try
             {
-                await imageRepository.AddAsync(imageStored, cancellationToken);
-                imageRef = imageStored.Id;
+                var storedImage = await ImageHelper.SaveDataUrlAsync(
+                    fileStorage, tenantId, "categories", categoryId.ToString("D"), values.Image, cancellationToken);
+                if (storedImage is null) return Result<CategoryDto>.Failure(Errors.Validation);
+                imagePath = storedImage.Reference;
+            }
+            catch (InvalidDataException)
+            {
+                return Result<CategoryDto>.Failure(Errors.Validation);
             }
         }
+        else if (!string.IsNullOrWhiteSpace(values.Image)
+            && !values.Image.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase))
+            imagePath = values.Image;
 
         var category = new Category
         {
@@ -62,8 +72,7 @@ public sealed class CreateCategoryUseCase(
             Name = values.Name,
             NormalizedName = values.NormalizedName,
             Description = values.Description,
-            ImageRef = imageRef,
-            ImageStored = imageStored,
+            ImagePath = imagePath,
             IsInventoryTracked = values.IsInventoryTracked,
             IsActive = true,
             CreatedAt = now,

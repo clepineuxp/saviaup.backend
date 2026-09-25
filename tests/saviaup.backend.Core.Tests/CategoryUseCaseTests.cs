@@ -35,7 +35,7 @@ public sealed class CategoryUseCaseTests
             new CreateCategoryRequest(
                 "  Bebidas   frías  ",
                 "  Para la barra  ",
-                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+                null,
                 true),
             default);
 
@@ -48,6 +48,78 @@ public sealed class CategoryUseCaseTests
         Assert.True(persisted.IsActive);
         Assert.Equal(TestSupport.Now, persisted.CreatedAt);
         unitOfWork.Verify(value => value.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task CreateCategory_WithImage_PersistsFileReferenceInsteadOfStoredImage()
+    {
+        var tenantId = Guid.NewGuid();
+        var repository = new Mock<ICategoryRepository>();
+        var fileStorage = new Mock<IFileStorage>();
+        Category? persisted = null;
+        repository.Setup(value => value.NameExistsAsync(
+                tenantId, "BEBIDAS", null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        repository.Setup(value => value.AddAsync(It.IsAny<Category>(), It.IsAny<CancellationToken>()))
+            .Callback<Category, CancellationToken>((category, _) => persisted = category)
+            .Returns(Task.CompletedTask);
+        fileStorage.Setup(value => value.SaveImageAsync(
+                tenantId,
+                "categories",
+                It.IsAny<string>(),
+                It.IsAny<byte[]>(),
+                "image/png",
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StoredFileReference(
+                $"/pvc/{tenantId:D}/categories/category/image.webp",
+                "image/webp",
+                "image.webp",
+                100));
+        var useCase = new CreateCategoryUseCase(
+            repository.Object,
+            new FixedClock(TestSupport.Now),
+            UnitOfWork().Object,
+            fileStorage.Object);
+
+        var result = await useCase.ExecuteAsync(
+            tenantId,
+            new CreateCategoryRequest(
+                "Bebidas",
+                null,
+                "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+                false),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal($"/pvc/{tenantId:D}/categories/category/image.webp", persisted!.ImagePath);
+        Assert.Null(persisted.ImageRef);
+        Assert.Null(persisted.ImageStored);
+        Assert.Equal(persisted.ImagePath, result.Value!.Image);
+    }
+
+    [Fact]
+    public async Task CreateCategory_WithAnotherTenantFileReference_ReturnsValidationError()
+    {
+        var tenantId = Guid.NewGuid();
+        var repository = new Mock<ICategoryRepository>();
+        var useCase = new CreateCategoryUseCase(
+            repository.Object,
+            new FixedClock(TestSupport.Now),
+            UnitOfWork().Object);
+
+        var result = await useCase.ExecuteAsync(
+            tenantId,
+            new CreateCategoryRequest(
+                "Bebidas",
+                null,
+                $"/pvc/{Guid.NewGuid():D}/categories/category/image.webp",
+                false),
+            default);
+
+        Assert.False(result.IsSuccess);
+        repository.Verify(value => value.AddAsync(
+            It.IsAny<Category>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

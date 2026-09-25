@@ -15,6 +15,7 @@ public sealed class Tenant
     public string? City { get; set; }
     public string? Phone { get; set; }
     public string? Website { get; set; }
+    public string? LogoPath { get; set; }
     public byte[]? LogoData { get; set; }
     public string? LogoContentType { get; set; }
     public string? LogoFileName { get; set; }

@@ -25,7 +25,7 @@ public sealed record DigitalMenuItemSummaryDto(
     string Name,
     string? Description,
     decimal? Price,
-    Guid? ImageRef,
+    string? ImageRef,
     int SortOrder,
     bool IsActive);
 
@@ -56,7 +56,7 @@ public sealed record PublicProductDto(
     string Name,
     string? Description,
     decimal? SalePrice,
-    Guid? ImageRef,
+    string? ImageRef,
     string? Image,
     int SortOrder,
     IReadOnlyCollection<PublicProductVariationDto> Variations,
@@ -72,7 +72,7 @@ public sealed record PublicCategoryDto(
     Guid Id,
     string Name,
     string? Description,
-    Guid? ImageRef,
+    string? ImageRef,
     string? Image,
     int SortOrder,
     IReadOnlyCollection<PublicProductDto> Products);

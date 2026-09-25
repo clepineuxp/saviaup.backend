@@ -25,6 +25,7 @@ internal static class CategoryRules
         var cleanImage = CleanOptional(image);
         var validImage = cleanImage is null
             || cleanImage.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase)
+            || cleanImage.StartsWith("/pvc/", StringComparison.OrdinalIgnoreCase)
             || cleanImage.StartsWith("/api/images/", StringComparison.OrdinalIgnoreCase)
             || (Uri.TryCreate(cleanImage, UriKind.Absolute, out var uri)
                 && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps));
@@ -45,7 +46,7 @@ internal static class CategoryRules
         category.Id,
         category.Name,
         category.Description,
-        category.ImageStored?.Base64Content,
+        category.ImagePath ?? category.ImageStored?.Base64Content,
         category.IsInventoryTracked,
         category.IsActive,
         category.CreatedAt,

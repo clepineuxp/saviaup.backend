@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <InternalsVisibleTo Include="saviaup.backend.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\saviaup.backend.Domain\saviaup.backend.Domain.csproj" />
     <ProjectReference Include="..\saviaup.backend.Shared\saviaup.backend.Shared.csproj" />
   </ItemGroup>

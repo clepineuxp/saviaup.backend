@@ -92,19 +92,35 @@ jobs:
             NAMESPACE="${{ steps.env-detect.outputs.ns }}"
             BASE_PATH="/opt/saviaup/deploys/$DEPLOY_ENV"
             COMPONENT_PATH="$BASE_PATH/backend"
+            MEDIA_MANIFEST="$BASE_PATH/media/media-storage.yaml"
 
             echo "========================================================"
             echo " Iniciando despliegue de backend en ambiente: $DEPLOY_ENV"
             echo " Namespace de Kubernetes: $NAMESPACE"
             echo "========================================================"
 
-            # 1. Aplicar ingress si existe
+            # 1. Crear o reconciliar el PVC y el servidor de archivos del ambiente
+            if [ ! -f "$MEDIA_MANIFEST" ]; then
+              echo "ERROR: No se encontró $MEDIA_MANIFEST"
+              exit 1
+            fi
+            if kubectl get pvc media-storage -n "$NAMESPACE" >/dev/null 2>&1; then
+              echo "El PVC media-storage ya existe; se reconciliarán cambios declarativos."
+            else
+              echo "El PVC media-storage no existe; será creado."
+            fi
+            echo "Aplicando $MEDIA_MANIFEST (create/update idempotente)..."
+            kubectl apply -f "$MEDIA_MANIFEST"
+            kubectl wait --for=jsonpath='{.status.phase}'=Bound pvc/media-storage -n "$NAMESPACE" --timeout=120s
+            kubectl rollout status deployment/media-server -n "$NAMESPACE" --timeout=120s
+
+            # 2. Aplicar ingress si existe
             if [ -f "$BASE_PATH/ingress.yaml" ]; then
               echo "Aplicando $BASE_PATH/ingress.yaml..."
               kubectl apply -f "$BASE_PATH/ingress.yaml"
             fi
 
-            # 2. Aplicar manifiestos específicos del componente (secret.yaml primero si existe)
+            # 3. Aplicar manifiestos específicos del componente (secret.yaml primero si existe)
             if [ -d "$COMPONENT_PATH" ]; then
               if [ -f "$COMPONENT_PATH/secret.yaml" ]; then
                 echo "Aplicando $COMPONENT_PATH/secret.yaml..."
@@ -116,7 +132,7 @@ jobs:
               echo "ADVERTENCIA: No se encontró la carpeta $COMPONENT_PATH"
             fi
 
-            # 3. Reiniciar el deployment específico y validar estatus
+            # 4. Reiniciar el deployment específico y validar estatus
             echo "Reiniciando deployment/backend en namespace $NAMESPACE..."
             kubectl rollout restart deployment/backend -n "$NAMESPACE"
             kubectl rollout status deployment/backend -n "$NAMESPACE" --timeout=120s
