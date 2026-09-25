@@ -20,6 +20,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IDateTimeProvi
             throw new InvalidOperationException("Jwt:SigningKey must contain at least 32 bytes and must be supplied through secret configuration.");
         var now = dateTimeProvider.UtcNow;
         var expiresAt = now.AddMinutes(_options.AccessTokenExpirationMinutes);
+        var displayName = BuildDisplayName(user.FirstName, user.LastName);
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
@@ -28,6 +29,8 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IDateTimeProvi
             new(JwtRegisteredClaimNames.Email, user.Email),
             new(ClaimTypes.Email, user.Email)
         };
+        if (!string.IsNullOrWhiteSpace(displayName))
+            claims.Add(new Claim(ClaimNames.DisplayName, displayName));
         if (tenantId.HasValue) claims.Add(new Claim(ClaimNames.TenantId, tenantId.Value.ToString()));
         if (roleId.HasValue) claims.Add(new Claim(ClaimNames.RoleId, roleId.Value.ToString()));
         var credentials = new SigningCredentials(
@@ -42,4 +45,16 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IDateTimeProvi
             credentials);
         return new AccessToken(new JwtSecurityTokenHandler().WriteToken(jwt), expiresAt);
     }
+
+    internal static string BuildDisplayName(string? firstName, string? lastName)
+    {
+        var firstWord = FirstWord(firstName);
+        var lastWord = FirstWord(lastName);
+        return string.Join(' ', new[] { firstWord, lastWord }.Where(value => value.Length > 0));
+    }
+
+    private static string FirstWord(string? value)
+        => (value ?? string.Empty)
+            .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault() ?? string.Empty;
 }

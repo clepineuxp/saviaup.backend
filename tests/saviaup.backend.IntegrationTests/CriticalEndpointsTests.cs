@@ -1,7 +1,9 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using SaviaUp.Backend.Shared.Constants;
 
 namespace SaviaUp.Backend.IntegrationTests;
 
@@ -16,8 +18,8 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
 
         var register = await client.PostAsJsonAsync("/api/auth/register", new
         {
-            firstName = "Ana",
-            lastName = "Prueba",
+            firstName = "Ana María",
+            lastName = "Prueba López",
             email,
             password
         });
@@ -25,12 +27,14 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         var registerJson = await register.Content.ReadFromJsonAsync<JsonElement>();
         var initialAccessToken = registerJson.GetProperty("session").GetProperty("accessToken").GetString();
         var initialRefreshToken = registerJson.GetProperty("session").GetProperty("refreshToken").GetString();
+        Assert.Equal("Ana Prueba", ReadClaim(initialAccessToken, ClaimNames.DisplayName));
         Assert.True(registerJson.GetProperty("session").GetProperty("requiresTenantSelection").GetBoolean());
 
         var refresh = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = initialRefreshToken });
         Assert.Equal(HttpStatusCode.OK, refresh.StatusCode);
         var refreshJson = await refresh.Content.ReadFromJsonAsync<JsonElement>();
         var refreshedAccessToken = refreshJson.GetProperty("accessToken").GetString();
+        Assert.Equal("Ana Prueba", ReadClaim(refreshedAccessToken, ClaimNames.DisplayName));
         Assert.NotEqual(initialRefreshToken, refreshJson.GetProperty("refreshToken").GetString());
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", refreshedAccessToken);
@@ -43,6 +47,7 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         var createJson = await create.Content.ReadFromJsonAsync<JsonElement>();
         var tenantId = createJson.GetProperty("tenant").GetProperty("id").GetGuid();
         var contextualAccessToken = createJson.GetProperty("tokens").GetProperty("accessToken").GetString();
+        Assert.Equal("Ana Prueba", ReadClaim(contextualAccessToken, ClaimNames.DisplayName));
         Assert.Equal("Secret Garden", createJson.GetProperty("tenant").GetProperty("name").GetString());
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", contextualAccessToken);
@@ -77,8 +82,8 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         var userInfo = await client.GetAsync("/api/users/me/info");
         Assert.Equal(HttpStatusCode.OK, userInfo.StatusCode);
         var userInfoJson = await userInfo.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("Ana", userInfoJson.GetProperty("firstName").GetString());
-        Assert.Equal("Prueba", userInfoJson.GetProperty("lastName").GetString());
+        Assert.Equal("Ana María", userInfoJson.GetProperty("firstName").GetString());
+        Assert.Equal("Prueba López", userInfoJson.GetProperty("lastName").GetString());
         Assert.Equal("Secret Garden", userInfoJson.GetProperty("organization").GetProperty("name").GetString());
         Assert.Equal("TENANT_OWNER", userInfoJson.GetProperty("role").GetProperty("code").GetString());
 
@@ -352,6 +357,7 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         var productId = productJson.GetProperty("id").GetGuid();
         Assert.Equal("NORMAL", productJson.GetProperty("type").GetString());
         Assert.False(productJson.GetProperty("isInventoryTracked").GetBoolean());
+        Assert.Equal("Ana Prueba", productJson.GetProperty("createdByUserName").GetString());
 
         var productList = await client.GetAsync(
             $"/api/products?page=1&pageSize=10&search=hamburguesa&categoryId={productCategoryId}&type=NORMAL");
@@ -540,9 +546,19 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         var login = await client.PostAsJsonAsync("/api/auth/login", new { email, password });
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         var loginJson = await login.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(
+            "Ana Prueba",
+            ReadClaim(loginJson.GetProperty("accessToken").GetString(), ClaimNames.DisplayName));
         Assert.False(loginJson.GetProperty("requiresTenantSelection").GetBoolean());
         Assert.Equal(tenantId, loginJson.GetProperty("activeTenant").GetProperty("id").GetGuid());
     }
+
+    private static string? ReadClaim(string? token, string claimType)
+        => new JwtSecurityTokenHandler()
+            .ReadJwtToken(token)
+            .Claims
+            .SingleOrDefault(claim => claim.Type == claimType)
+            ?.Value;
 
     [Fact]
     public async Task Protected_Endpoint_Without_Jwt_Returns_Uniform_401()

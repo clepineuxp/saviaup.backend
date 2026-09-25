@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaviaUp.Backend.Api.Attributes;
@@ -87,5 +85,5 @@ public sealed class SuppliersController(
             cancellationToken));
 
     private string GetUserName() =>
-        currentUser.UserEmail ?? User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue(JwtRegisteredClaimNames.Email) ?? currentUser.UserId?.ToString() ?? "Usuario";
+        currentUser.UserDisplayName ?? currentUser.UserEmail ?? currentUser.UserId?.ToString() ?? "Usuario";
 }

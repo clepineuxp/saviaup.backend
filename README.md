@@ -473,7 +473,7 @@ Los permisos son `inventory.stock.read`, `inventory.ingredients.read/manage`, `i
 
 ## JWT, sesiones y multi-tenancy
 
-El access token es corto y contiene `sub`, `jti`, `sid` y, cuando existe contexto, `tenant_id` y `role_id`. No contiene la lista de permisos.
+El access token es corto y contiene `sub`, `jti`, `sid`, `email`, `display_name` y, cuando existe contexto, `tenant_id` y `role_id`. `display_name` se construye con la primera palabra de `FirstName` y la primera de `LastName`; los campos de auditoría lo prefieren sobre el correo. Login, registro, refresh y selección/creación de organización emiten esta misma identidad. El token no contiene la lista de permisos.
 
 Registro crea usuario y sesión sin tenant. Login reutiliza `LastTenantId` solo cuando todavía existe una membership activa; en otro caso devuelve `requiresTenantSelection: true`. Crear o seleccionar un tenant actualiza `LastTenantId`, conserva la sesión, revoca sus refresh tokens anteriores y entrega un par nuevo contextualizado.
 

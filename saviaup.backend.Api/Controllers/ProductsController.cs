@@ -1,5 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SaviaUp.Backend.Api.Attributes;
@@ -40,7 +38,7 @@ public sealed class ProductsController(
         => this.FromResult(await createUseCase.ExecuteAsync(
             currentUser.TenantId!.Value,
             currentUser.UserId!.Value,
-            currentUser.UserEmail ?? User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue(JwtRegisteredClaimNames.Email) ?? currentUser.UserId?.ToString() ?? "Sistema",
+            currentUser.UserDisplayName ?? currentUser.UserEmail ?? currentUser.UserId?.ToString() ?? "Sistema",
             request,
             cancellationToken));
 
@@ -54,7 +52,7 @@ public sealed class ProductsController(
             currentUser.TenantId!.Value,
             productId,
             currentUser.UserId!.Value,
-            currentUser.UserEmail ?? User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue(JwtRegisteredClaimNames.Email) ?? currentUser.UserId?.ToString() ?? "Sistema",
+            currentUser.UserDisplayName ?? currentUser.UserEmail ?? currentUser.UserId?.ToString() ?? "Sistema",
             request,
             cancellationToken));
 
