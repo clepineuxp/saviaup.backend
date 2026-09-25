@@ -174,7 +174,7 @@ public sealed class GetTableOperationUseCase(
         if (tenant is null) return Result<TableOperationSnapshotDto>.Failure(Errors.TenantNotFound);
         var areas = await tableRepository.GetOperationAreasAsync(tenantId, cancellationToken);
         var openShift = await shiftRepository.GetOpenShiftAsync(tenantId, null, cancellationToken);
-        var hasOpenShift = !tenant.RequiresOpenCashRegister || openShift is not null;
+        var hasOpenShift = openShift is not null;
 
         var tableDtos = areas.SelectMany(area => area.Tables).Select(TableRules.ToDto).ToArray();
         var responseAreas = areas.Select(area => new DiningAreaTablesDto(
@@ -194,7 +194,7 @@ public sealed class GetTableOperationUseCase(
             FromDate = todayStart,
             ToDate = todayEnd
         }, cancellationToken);
-        var todaySalesTotal = todayOrdersPage.Items.Sum(o => o.TotalAmount);
+        var todaySalesTotal = todayOrdersPage.Items.Sum(o => o.SubtotalAmount);
 
         var todayExpensesPage = await expenseRepository.GetPageAsync(
             tenantId,
@@ -237,7 +237,7 @@ public sealed class GetTableOperationUseCase(
                 FromDate = openShift.OpenedAt,
                 ToDate = utcNow
             }, cancellationToken);
-            openShiftSalesTotal = shiftOrdersPage.Items.Sum(o => o.TotalAmount);
+            openShiftSalesTotal = shiftOrdersPage.Items.Sum(o => o.SubtotalAmount);
         }
 
         return Result<TableOperationSnapshotDto>.Success(new TableOperationSnapshotDto(

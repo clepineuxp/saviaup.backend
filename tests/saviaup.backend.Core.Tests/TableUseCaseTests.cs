@@ -215,7 +215,44 @@ public sealed class TableUseCaseTests
             .ReturnsAsync(new Tenant { Id = tenantId });
         var orderRepo = new Mock<IOrderRepository>();
         orderRepo.Setup(r => r.GetOrdersPageAsync(tenantId, It.IsAny<OrderQueryRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PageData<OrderDto>([], 0));
+            .ReturnsAsync(new PageData<OrderDto>(
+                [new OrderDto(
+                    Guid.NewGuid(),
+                    tenantId,
+                    null,
+                    null,
+                    101,
+                    "PAID",
+                    41600m,
+                    0m,
+                    4150m,
+                    45750m,
+                    "Efectivo",
+                    null,
+                    null,
+                    Guid.NewGuid(),
+                    "Cajero",
+                    null,
+                    null,
+                    Guid.NewGuid(),
+                    "Cajero",
+                    TestSupport.Now,
+                    TestSupport.Now,
+                    TestSupport.Now,
+                    [])],
+                1));
+
+        var shiftRepo = new Mock<ICashRegisterShiftRepository>();
+        shiftRepo.Setup(r => r.GetOpenShiftAsync(tenantId, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new CashRegisterShift
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantId,
+                CashRegisterId = Guid.NewGuid(),
+                OpenedByUserId = Guid.NewGuid(),
+                OpenedByUserName = "Cajero",
+                OpenedAt = TestSupport.Now.AddHours(-1)
+            });
 
         var expenseRepo = new Mock<IExpenseRepository>();
         expenseRepo.Setup(r => r.GetPageAsync(tenantId, It.IsAny<DateTimeOffset?>(), It.IsAny<DateTimeOffset?>(), It.IsAny<string?>(), It.IsAny<Guid?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<bool>(), It.IsAny<DateOnly?>(), It.IsAny<DateOnly?>()))
@@ -225,7 +262,7 @@ public sealed class TableUseCaseTests
         clock.Setup(c => c.UtcNow).Returns(TestSupport.Now);
 
         var useCase = new GetTableOperationUseCase(
-            tables.Object, tenants.Object, Mock.Of<ICashRegisterShiftRepository>(), orderRepo.Object, expenseRepo.Object, clock.Object, TestSupport.TimeZones());
+            tables.Object, tenants.Object, shiftRepo.Object, orderRepo.Object, expenseRepo.Object, clock.Object, TestSupport.TimeZones());
 
         var result = await useCase.ExecuteAsync(tenantId, default);
 
@@ -233,6 +270,9 @@ public sealed class TableUseCaseTests
         Assert.Equal(1, result.Value!.Metrics.Available);
         Assert.Equal(1, result.Value.Metrics.Occupied);
         Assert.Equal(42000m, result.Value.Metrics.ActiveSalesTotal);
+        Assert.Equal(41600m, result.Value.Metrics.TodaySalesTotal);
+        Assert.Equal(41600m, result.Value.Metrics.OpenShiftSalesTotal);
+        Assert.True(result.Value.CashRegister.HasOpenShift);
         Assert.False(result.Value.CashRegister.IsInteractionBlocked);
     }
 
