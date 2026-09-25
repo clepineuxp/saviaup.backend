@@ -13,6 +13,8 @@ public sealed class TablesHub(ICurrentUserContext currentUser) : Hub
 {
     public static string TenantGroup(Guid tenantId) => $"tables:tenant:{tenantId:D}";
 
+    public bool Ping() => true;
+
     public override async Task OnConnectedAsync()
     {
         if (currentUser.TenantId.HasValue)
