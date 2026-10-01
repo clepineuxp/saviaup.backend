@@ -154,4 +154,7 @@ public sealed record OrderReceiptDto(
     IReadOnlyCollection<OrderReceiptItemDto> Items,
     Guid IssuedByUserId,
     string IssuedByUserName,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    int? OrderNumber = null,
+    string? TableName = null,
+    string? PaidByUserName = null);

@@ -1009,7 +1009,10 @@ public sealed class GenerateSummaryReceiptUseCase(
             itemsDto,
             receipt.IssuedByUserId,
             receipt.IssuedByUserName,
-            receipt.CreatedAt));
+            receipt.CreatedAt,
+            order.OrderNumber,
+            order.Table?.Name ?? "Sin Mesa",
+            order.PaidByUserName));
     }
 }
 

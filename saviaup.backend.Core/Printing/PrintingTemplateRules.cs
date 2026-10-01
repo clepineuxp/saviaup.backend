@@ -42,8 +42,7 @@ public static class PrintingTemplateRules
                 TotalFontSize = Math.Clamp(receipt.TotalFontSize, 10, 28),
                 VoluntaryTipFontSize = Math.Clamp(receipt.VoluntaryTipFontSize, 8, 24),
                 VoluntaryTipAlignment = Choice(receipt.VoluntaryTipAlignment, "LEFT", "CENTER", "RIGHT"),
-                VoluntaryTipPosition = Choice(receipt.VoluntaryTipPosition, "BEFORE_TOTAL", "AFTER_TOTAL"),
-                LogoWidthMm = Math.Clamp(receipt.LogoWidthMm, 20, 72)
+                VoluntaryTipPosition = Choice(receipt.VoluntaryTipPosition, "BEFORE_TOTAL", "AFTER_TOTAL")
             },
             kitchen with
             {

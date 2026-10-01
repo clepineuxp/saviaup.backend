@@ -162,6 +162,7 @@ public sealed class BillingRepository(ApplicationDbContext dbContext) : IBilling
     {
         var receipt = await dbContext.OrderReceipts
             .Include(r => r.Order)
+                .ThenInclude(o => o!.Table)
             .FirstOrDefaultAsync(r => r.TenantId == tenantId && r.Id == receiptId, cancellationToken);
 
         return receipt is null ? null : MapToReceiptDto(receipt);
@@ -188,7 +189,10 @@ public sealed class BillingRepository(ApplicationDbContext dbContext) : IBilling
             items,
             r.IssuedByUserId,
             r.IssuedByUserName,
-            r.CreatedAt);
+            r.CreatedAt,
+            r.Order?.OrderNumber,
+            r.Order?.Table?.Name ?? "Sin Mesa",
+            r.Order?.PaidByUserName ?? r.IssuedByUserName);
     }
 
     private static IReadOnlyCollection<OrderReceiptItemDto> DeserializeItems(string json)
