@@ -229,7 +229,38 @@ public sealed record KitchenOrderPrintPayload(
     bool IsReprint,
     string? PrinterName = null,
     string? OrganizationName = null,
-    string? FooterMessage = null);
+    string? FooterMessage = null,
+    KitchenPrintTemplateDto? Template = null);
+
+public sealed record ReceiptPrintTemplateDto(
+    [Range(58, 80)] int PaperWidthMm = 80,
+    [Range(8, 18)] int BaseFontSize = 11,
+    [Range(10, 28)] int HeaderFontSize = 13,
+    [Range(8, 22)] int ItemFontSize = 11,
+    [Range(10, 28)] int TotalFontSize = 13,
+    [Range(8, 24)] int VoluntaryTipFontSize = 11,
+    [RegularExpression("^(LEFT|CENTER|RIGHT)$")] string VoluntaryTipAlignment = "LEFT",
+    [RegularExpression("^(BEFORE_TOTAL|AFTER_TOTAL)$")] string VoluntaryTipPosition = "BEFORE_TOTAL",
+    bool WrapLongItemNames = true,
+    bool ShowLogo = true);
+
+public sealed record KitchenPrintTemplateDto(
+    [Range(1, 2)] int HeaderFontScale = 2,
+    [Range(1, 2)] int MetadataFontScale = 1,
+    [Range(1, 2)] int ItemFontScale = 1,
+    [Range(1, 2)] int NotesFontScale = 1,
+    [RegularExpression("^(LEFT|CENTER|RIGHT)$")] string HeaderAlignment = "CENTER",
+    [RegularExpression("^(COMPACT|STANDARD|SPACIOUS)$")] string Layout = "STANDARD",
+    bool WrapLongItemNames = true,
+    [Range(1, 3)] int MaxItemNameLines = 2,
+    bool ShowTable = true,
+    bool ShowWaiter = true,
+    bool ShowTimestamp = true,
+    bool UppercaseItemNames = false);
+
+public sealed record PrintingTemplateSettingsDto(
+    ReceiptPrintTemplateDto Receipt,
+    KitchenPrintTemplateDto Kitchen);
 
 public sealed record PrintingDestination(
     Guid LocationId,

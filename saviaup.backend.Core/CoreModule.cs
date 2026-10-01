@@ -96,6 +96,7 @@ public static class CoreModule
         services.AddScoped<IListCashRegisterShiftsUseCase, ListCashRegisterShiftsUseCase>();
         services.AddScoped<IOrganizationSettingsUseCase, OrganizationSettingsUseCase>();
         services.AddScoped<IBusinessSettingsUseCase, BusinessSettingsUseCase>();
+        services.AddScoped<IPrintingTemplateSettingsUseCase, PrintingTemplateSettingsUseCase>();
         services.AddScoped<IPaymentMethodsSettingsUseCase, PaymentMethodsSettingsUseCase>();
         services.AddScoped<IAccessSettingsUseCase, AccessSettingsUseCase>();
         services.AddScoped<IGetStatisticsUseCase, GetStatisticsUseCase>();

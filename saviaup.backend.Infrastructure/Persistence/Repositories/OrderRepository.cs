@@ -256,6 +256,8 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
         CancellationToken cancellationToken)
     {
         var receipts = await dbContext.OrderReceipts
+            .Include(r => r.Order)
+                .ThenInclude(o => o!.Table)
             .Where(r => r.TenantId == tenantId && r.OrderId == orderId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(cancellationToken);
@@ -276,7 +278,10 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
             ParseReceiptItems(r.ItemsJson),
             r.IssuedByUserId,
             r.IssuedByUserName,
-            r.CreatedAt)).ToList();
+            r.CreatedAt,
+            r.Order?.OrderNumber,
+            r.Order?.Table?.Name ?? "Sin Mesa",
+            r.Order?.PaidByUserName ?? r.IssuedByUserName)).ToList();
     }
 
     private static readonly System.Text.Json.JsonSerializerOptions ReceiptJsonOptions = new()
