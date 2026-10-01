@@ -118,6 +118,11 @@ public sealed class PrintJobFactory(
         var parameter = (await settingsRepository.GetParametersAsync(tenantId, cancellationToken))
             .FirstOrDefault(item => item.Key == SettingsDefaults.EnableOrderPrintZones);
         if (!bool.TryParse(parameter?.Value, out var enabled) || !enabled) return [];
+        var kitchenTemplate = PrintingTemplateRules.Parse(
+            await settingsRepository.GetParameterValueAsync(
+                tenantId,
+                SettingsDefaults.PrintingTemplates,
+                cancellationToken)).Kitchen;
         var productIds = newItems.Where(x => x.ProductId.HasValue).Select(x => x.ProductId!.Value).Distinct().ToArray();
         var routes = await printingRepository.ResolveDestinationsAsync(tenantId, productIds, cancellationToken);
         var defaultDestination = await printingRepository.GetDefaultDestinationAsync(tenantId, cancellationToken);
@@ -149,7 +154,8 @@ public sealed class PrintJobFactory(
                 now,
                 bucket.Value.Items.Select(x => new KitchenOrderPrintItem(x.Quantity, x.ProductName, [], x.Notes)).ToArray(),
                 order.Observations,
-                false);
+                false,
+                Template: kitchenTemplate);
             var json = JsonSerializer.Serialize(payload, JsonOptions);
             foreach (var printerId in destination.PrinterIds)
             {
@@ -183,6 +189,7 @@ public sealed class PrintingAdministrationUseCase(
     ICategoryRepository categoryRepository,
     IProductRepository productRepository,
     ITenantRepository tenantRepository,
+    ISettingsRepository settingsRepository,
     ITokenGenerator tokenGenerator,
     IDateTimeProvider clock,
     IPrintingRealtimeNotifier realtime,
@@ -658,9 +665,14 @@ public sealed class PrintingAdministrationUseCase(
         var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
         if (tenant is null) return Result<PrintJobDto>.Failure(Errors.TenantNotFound);
         var now = clock.UtcNow;
+        var kitchenTemplate = PrintingTemplateRules.Parse(
+            await settingsRepository.GetParameterValueAsync(
+                tenantId,
+                SettingsDefaults.PrintingTemplates,
+                cancellationToken)).Kitchen;
         var payload = new KitchenOrderPrintPayload(
             "TEST_PRINT", "PRUEBA", null, "Savia Up", now, [], null, false,
-            printer.Name, tenant.Name, "Prueba de impresión de Savia Up");
+            printer.Name, tenant.Name, "Prueba de impresión de Savia Up", kitchenTemplate);
         var job = new PrintJob
         {
             Id = Guid.NewGuid(),

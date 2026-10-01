@@ -229,7 +229,39 @@ public sealed record KitchenOrderPrintPayload(
     bool IsReprint,
     string? PrinterName = null,
     string? OrganizationName = null,
-    string? FooterMessage = null);
+    string? FooterMessage = null,
+    KitchenPrintTemplateDto? Template = null);
+
+public sealed record ReceiptPrintTemplateDto(
+    [property: Range(58, 80)] int PaperWidthMm = 80,
+    [property: Range(8, 18)] int BaseFontSize = 11,
+    [property: Range(10, 28)] int HeaderFontSize = 13,
+    [property: Range(8, 22)] int ItemFontSize = 11,
+    [property: Range(10, 28)] int TotalFontSize = 13,
+    [property: Range(8, 24)] int VoluntaryTipFontSize = 11,
+    [property: RegularExpression("^(LEFT|CENTER|RIGHT)$")] string VoluntaryTipAlignment = "LEFT",
+    [property: RegularExpression("^(BEFORE_TOTAL|AFTER_TOTAL)$")] string VoluntaryTipPosition = "BEFORE_TOTAL",
+    bool WrapLongItemNames = true,
+    bool ShowLogo = true,
+    [property: Range(20, 72)] int LogoWidthMm = 48);
+
+public sealed record KitchenPrintTemplateDto(
+    [property: Range(1, 2)] int HeaderFontScale = 2,
+    [property: Range(1, 2)] int MetadataFontScale = 1,
+    [property: Range(1, 2)] int ItemFontScale = 1,
+    [property: Range(1, 2)] int NotesFontScale = 1,
+    [property: RegularExpression("^(LEFT|CENTER|RIGHT)$")] string HeaderAlignment = "CENTER",
+    [property: RegularExpression("^(COMPACT|STANDARD|SPACIOUS)$")] string Layout = "STANDARD",
+    bool WrapLongItemNames = true,
+    [property: Range(1, 3)] int MaxItemNameLines = 2,
+    bool ShowTable = true,
+    bool ShowWaiter = true,
+    bool ShowTimestamp = true,
+    bool UppercaseItemNames = false);
+
+public sealed record PrintingTemplateSettingsDto(
+    ReceiptPrintTemplateDto Receipt,
+    KitchenPrintTemplateDto Kitchen);
 
 public sealed record PrintingDestination(
     Guid LocationId,

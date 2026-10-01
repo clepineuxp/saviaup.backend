@@ -231,6 +231,7 @@ HUB  /hubs/printing
 
 GET    /api/settings/organization
 PUT    /api/settings/organization
+GET/PUT /api/settings/printing
 GET    /api/settings/access/permissions
 GET    /api/settings/users
 POST   /api/settings/users/invite
@@ -244,6 +245,8 @@ Los endpoints de tenants y `/users/me` requieren usuario y sesión válidos, per
 ## Impresión automática
 
 El backend conserva la cola durable en PostgreSQL y SignalR solo avisa que hay trabajo disponible. Un agente Windows se vincula mediante un código de un solo uso; el servidor guarda únicamente hashes SHA-256 de sus credenciales. Cada agente puede atender varias zonas y cada zona varias impresoras. La ruta específica de producto prevalece sobre la ruta de categoría.
+
+`GET/PUT /api/settings/printing` administra una plantilla tenant-aware para el comprobante térmico y otra para la etiqueta de comanda. La configuración se persiste como parámetro JSON tipado. Cada trabajo de comanda recibe una instantánea de la plantilla vigente, por lo que una edición posterior no altera trabajos ya en cola ni reimpresiones históricas.
 
 Desde la configuración se puede solicitar al agente que vuelva a consultar las colas instaladas en Windows. El backend envía la solicitud por el grupo SignalR autenticado del agente y conserva el resultado en `print_agent_discovered_printers`. Este inventario es independiente de `printers`: descubrir una cola nunca la configura ni le asigna permisos; el registro de configuración se crea únicamente cuando el administrador selecciona una opción y guarda el formulario.
 

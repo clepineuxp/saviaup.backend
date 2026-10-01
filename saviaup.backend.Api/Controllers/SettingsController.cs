@@ -15,6 +15,7 @@ namespace SaviaUp.Backend.Api.Controllers;
 public sealed class SettingsController(
     IOrganizationSettingsUseCase organization,
     IBusinessSettingsUseCase business,
+    IPrintingTemplateSettingsUseCase printingTemplates,
     IPaymentMethodsSettingsUseCase payments,
     IAccessSettingsUseCase access,
     ICurrentUserContext currentUser) : ControllerBase
@@ -32,7 +33,8 @@ public sealed class SettingsController(
         => this.FromResult(await organization.UpdateAsync(TenantId, currentUser.RoleId!.Value, request, cancellationToken));
 
     [HttpGet("organization/logo")]
-    [RequirePermission(PermissionCodes.SettingsOrganizationRead)]
+    [RequirePermission(PermissionCodes.SettingsOrganizationRead, PermissionCodes.DigitalMenuAccess,
+        PermissionCodes.DigitalMenuStyleManage, PermissionCodes.BillingRead, PermissionCodes.BillingManage)]
     public async Task<ActionResult> GetOrganizationLogo(CancellationToken cancellationToken)
     {
         var result = await organization.GetLogoAsync(TenantId, cancellationToken);
@@ -65,6 +67,20 @@ public sealed class SettingsController(
     [RequirePermission(PermissionCodes.SettingsBusinessManage)]
     public async Task<ActionResult<BusinessSettingsDto>> UpdateBusiness(UpdateBusinessSettingsRequest request, CancellationToken cancellationToken)
         => this.FromResult(await business.UpdateAsync(TenantId, request, cancellationToken));
+
+    [HttpGet("printing")]
+    [RequirePermission(PermissionCodes.SettingsBusinessRead, PermissionCodes.SettingsBusinessManage,
+        PermissionCodes.BillingRead, PermissionCodes.BillingManage, PermissionCodes.OrdersCreate,
+        PermissionCodes.OrdersRead, PermissionCodes.TablesOperate, PermissionCodes.TablesRead)]
+    public async Task<ActionResult<PrintingTemplateSettingsDto>> GetPrintingTemplates(CancellationToken cancellationToken)
+        => this.FromResult(await printingTemplates.GetAsync(TenantId, cancellationToken));
+
+    [HttpPut("printing")]
+    [RequirePermission(PermissionCodes.SettingsBusinessManage)]
+    public async Task<ActionResult<PrintingTemplateSettingsDto>> UpdatePrintingTemplates(
+        PrintingTemplateSettingsDto request,
+        CancellationToken cancellationToken)
+        => this.FromResult(await printingTemplates.UpdateAsync(TenantId, request, cancellationToken));
 
     [HttpGet("business/expense-editing-policy")]
     [RequirePermission(PermissionCodes.ExpensesRead, PermissionCodes.ExpensesEdit, PermissionCodes.SettingsBusinessRead, PermissionCodes.SettingsExpenseFinancialFieldsManage)]

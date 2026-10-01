@@ -546,6 +546,15 @@ public interface IBusinessSettingsUseCase
     Task<Result<ExpenseEditingPolicyDto>> UpdateExpenseEditingPolicyAsync(Guid tenantId, UpdateExpenseEditingPolicyRequest request, CancellationToken cancellationToken);
 }
 
+public interface IPrintingTemplateSettingsUseCase
+{
+    Task<Result<PrintingTemplateSettingsDto>> GetAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<PrintingTemplateSettingsDto>> UpdateAsync(
+        Guid tenantId,
+        PrintingTemplateSettingsDto request,
+        CancellationToken cancellationToken);
+}
+
 public interface IPaymentMethodsSettingsUseCase
 {
     Task<Result<IReadOnlyCollection<PaymentMethodDto>>> ListAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);

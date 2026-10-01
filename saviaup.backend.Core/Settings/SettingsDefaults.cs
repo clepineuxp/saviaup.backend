@@ -1,3 +1,4 @@
+using SaviaUp.Backend.Core.Printing;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Shared.Constants;
 
@@ -16,6 +17,7 @@ public static class SettingsDefaults
     public const string DigitalMenuSlug = OrganizationParameterKeys.DigitalMenuSlug;
     public const string DigitalMenuStyle = OrganizationParameterKeys.DigitalMenuStyle;
     public const string EnableOrderPrintZones = OrganizationParameterKeys.EnableOrderPrintZones;
+    public const string PrintingTemplates = OrganizationParameterKeys.PrintingTemplates;
     public const string LockExpenseFinancialFieldsAfterCreation = OrganizationParameterKeys.LockExpenseFinancialFieldsAfterCreation;
     public const string SalesCatalogLastModifiedAt = OrganizationParameterKeys.SalesCatalogLastModifiedAt;
 
@@ -34,6 +36,7 @@ public static class SettingsDefaults
         Parameter(tenantId, DigitalMenuSlug, "", "string", now),
         Parameter(tenantId, DigitalMenuStyle, DefaultMenuStyleJson, "json", now),
         Parameter(tenantId, EnableOrderPrintZones, "false", "boolean", now),
+        Parameter(tenantId, PrintingTemplates, PrintingTemplateRules.DefaultJson, "json", now),
         Parameter(tenantId, LockExpenseFinancialFieldsAfterCreation, "true", "boolean", now),
         Parameter(tenantId, SalesCatalogLastModifiedAt, now.ToString("O"), "datetime", now)
     ];
