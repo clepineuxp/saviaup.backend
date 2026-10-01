@@ -105,7 +105,8 @@ public sealed class PrintingController(
 
     [HttpGet("printers")]
     [RequirePermission(PermissionCodes.PrintingAgentsRead, PermissionCodes.PrintingAgentsManage, PermissionCodes.PrintingZonesRead,
-        PermissionCodes.PrintingZonesManage, PermissionCodes.PrintingQueueRead)]
+        PermissionCodes.PrintingZonesManage, PermissionCodes.PrintingQueueRead,
+        PermissionCodes.SettingsBusinessRead, PermissionCodes.SettingsBusinessManage)]
     public async Task<ActionResult<IReadOnlyCollection<PrinterDto>>> GetPrinters(CancellationToken cancellationToken)
         => this.FromResult(await useCase.ListPrintersAsync(currentUser.TenantId!.Value, null, cancellationToken));
 
@@ -125,7 +126,7 @@ public sealed class PrintingController(
         => this.FromResult(await useCase.DeletePrinterAsync(currentUser.TenantId!.Value, printerId, cancellationToken));
 
     [HttpPost("agents/{agentId:guid}/test-print")]
-    [RequirePermission(PermissionCodes.PrintingAgentsManage)]
+    [RequirePermission(PermissionCodes.PrintingAgentsManage, PermissionCodes.SettingsBusinessManage)]
     public async Task<ActionResult<PrintJobDto>> TestPrint(Guid agentId, [FromQuery] Guid printerId, CancellationToken cancellationToken)
         => this.FromResult(await useCase.CreateTestJobAsync(
             currentUser.TenantId!.Value, agentId, printerId, currentUser.UserId!.Value, cancellationToken));

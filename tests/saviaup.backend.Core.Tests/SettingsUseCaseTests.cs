@@ -12,6 +12,67 @@ namespace SaviaUp.Backend.Core.Tests;
 public sealed class SettingsUseCaseTests
 {
     [Fact]
+    public async Task PrintingTemplates_UpdateCreatesMissingTypedParameterAndNormalizesValues()
+    {
+        var tenantId = Guid.NewGuid();
+        var repository = new Mock<ISettingsRepository>();
+        var unitOfWork = new Mock<IUnitOfWork>();
+        OrganizationParameter? created = null;
+        repository.Setup(value => value.GetParametersAsync(tenantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        repository.Setup(value => value.AddParametersAsync(
+                It.IsAny<IEnumerable<OrganizationParameter>>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<OrganizationParameter>, CancellationToken>((items, _) => created = items.Single())
+            .Returns(Task.CompletedTask);
+        var useCase = new PrintingTemplateSettingsUseCase(
+            repository.Object,
+            new FixedClock(TestSupport.Now),
+            unitOfWork.Object);
+
+        var result = await useCase.UpdateAsync(
+            tenantId,
+            new PrintingTemplateSettingsDto(
+                new ReceiptPrintTemplateDto(BaseFontSize: 99, VoluntaryTipAlignment: "center"),
+                new KitchenPrintTemplateDto(ItemFontScale: 9, Layout: "compact")),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(18, result.Value!.Receipt.BaseFontSize);
+        Assert.Equal("CENTER", result.Value.Receipt.VoluntaryTipAlignment);
+        Assert.Equal(2, result.Value.Kitchen.ItemFontScale);
+        Assert.Equal("COMPACT", result.Value.Kitchen.Layout);
+        Assert.NotNull(created);
+        Assert.Equal(SettingsDefaults.PrintingTemplates, created.Key);
+        Assert.Equal("json", created.ValueType);
+        Assert.Contains("\"itemFontScale\":2", created.Value);
+        unitOfWork.Verify(value => value.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task PrintingTemplates_GetFallsBackToSafeDefaultsWhenStoredJsonIsInvalid()
+    {
+        var tenantId = Guid.NewGuid();
+        var repository = new Mock<ISettingsRepository>();
+        repository.Setup(value => value.GetParameterValueAsync(
+                tenantId,
+                SettingsDefaults.PrintingTemplates,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("{invalid-json");
+        var useCase = new PrintingTemplateSettingsUseCase(
+            repository.Object,
+            new FixedClock(TestSupport.Now),
+            Mock.Of<IUnitOfWork>());
+
+        var result = await useCase.GetAsync(tenantId, default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(80, result.Value!.Receipt.PaperWidthMm);
+        Assert.Equal(2, result.Value.Kitchen.HeaderFontScale);
+        Assert.True(result.Value.Receipt.WrapLongItemNames);
+    }
+
+    [Fact]
     public void BusinessDefaults_LockExpenseFinancialFieldsForNewOrganizations()
     {
         var parameter = SettingsDefaults.CreateBusinessParameters(Guid.NewGuid(), TestSupport.Now)

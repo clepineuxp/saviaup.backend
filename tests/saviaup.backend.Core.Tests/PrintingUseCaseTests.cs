@@ -80,6 +80,10 @@ public sealed class PrintingUseCaseTests
         var settings = new Mock<ISettingsRepository>();
         settings.Setup(x => x.GetParametersAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(
             [new OrganizationParameter { Key = SettingsDefaults.EnableOrderPrintZones, Value = "true" }]);
+        settings.Setup(x => x.GetParameterValueAsync(tenantId, SettingsDefaults.PrintingTemplates, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(PrintingTemplateRules.Serialize(new PrintingTemplateSettingsDto(
+                new ReceiptPrintTemplateDto(),
+                new KitchenPrintTemplateDto(ItemFontScale: 2, Layout: "SPACIOUS"))));
         repository.Setup(x => x.GetDefaultDestinationAsync(tenantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((PrintingDestination?)null);
 
@@ -101,6 +105,8 @@ public sealed class PrintingUseCaseTests
         using var payload = JsonDocument.Parse(saved[0].PayloadJson);
         Assert.Equal("CMD-000042", payload.RootElement.GetProperty("orderNumber").GetString());
         Assert.Equal("Mesa 12", payload.RootElement.GetProperty("table").GetString());
+        Assert.Equal(2, payload.RootElement.GetProperty("template").GetProperty("itemFontScale").GetInt32());
+        Assert.Equal("SPACIOUS", payload.RootElement.GetProperty("template").GetProperty("layout").GetString());
     }
 
     [Fact]
@@ -658,7 +664,7 @@ public sealed class PrintingUseCaseTests
         Mock<IPrintingRealtimeNotifier> realtime,
         ITenantRepository? tenantRepository = null)
         => new(repository.Object, Mock.Of<ICategoryRepository>(), Mock.Of<IProductRepository>(),
-            tenantRepository ?? Mock.Of<ITenantRepository>(), Mock.Of<ITokenGenerator>(), Clock(), realtime.Object, Mock.Of<IOrganizationTimeZone>(),
+            tenantRepository ?? Mock.Of<ITenantRepository>(), Mock.Of<ISettingsRepository>(), Mock.Of<ITokenGenerator>(), Clock(), realtime.Object, Mock.Of<IOrganizationTimeZone>(),
             Mock.Of<ITimeZoneService>(), Options.Create(new PrintingOptions()), UnitOfWork().Object);
 
     private static Mock<IUnitOfWork> UnitOfWork()
