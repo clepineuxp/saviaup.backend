@@ -636,6 +636,10 @@ public interface IDeleteImageUseCase
 public interface IDigitalMenuUseCase
 {
     Task<Result<DigitalMenuConfigDto>> GetConfigAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<PublicDigitalMenuCategoryImagesDto>> GetPrintCategoryImagesAsync(
+        Guid tenantId,
+        Guid categoryId,
+        CancellationToken cancellationToken);
     Task<Result> UpdateParametersAsync(Guid tenantId, UpdateDigitalMenuParametersRequest request, CancellationToken cancellationToken);
     Task<Result> UpdateItemsAsync(Guid tenantId, SaveDigitalMenuItemsRequest request, Guid? userId, string? userName, CancellationToken cancellationToken);
     Task<Result> UpdateStyleAsync(Guid tenantId, DigitalMenuStyleDto request, CancellationToken cancellationToken);

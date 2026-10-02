@@ -82,7 +82,17 @@ public sealed class DigitalMenuUseCase(
                     Price: p.SalePrice,
                     ImageRef: p.ImagePath ?? p.ImageRef?.ToString("D"),
                     SortOrder: hasConfig ? config!.SortOrder : 999,
-                    IsActive: !hasConfig || config!.IsActive
+                    IsActive: !hasConfig || config!.IsActive,
+                    Variations: p.Variations
+                        .Where(variation => variation.IsActive)
+                        .OrderBy(variation => variation.Order)
+                        .ThenBy(variation => variation.Name)
+                        .Select(variation => new PublicProductVariationDto(
+                            variation.Id,
+                            variation.Name,
+                            variation.SalePrice,
+                            variation.Order))
+                        .ToArray()
                 );
             })
             .OrderBy(p => p.SortOrder)
@@ -99,6 +109,23 @@ public sealed class DigitalMenuUseCase(
         );
 
         return Result<DigitalMenuConfigDto>.Success(configDto);
+    }
+
+    public async Task<Result<PublicDigitalMenuCategoryImagesDto>> GetPrintCategoryImagesAsync(
+        Guid tenantId,
+        Guid categoryId,
+        CancellationToken cancellationToken)
+    {
+        if (await settingsRepository.GetTenantForUpdateAsync(tenantId, cancellationToken) is null)
+        {
+            return Result<PublicDigitalMenuCategoryImagesDto>.Failure(Errors.TenantNotFound);
+        }
+
+        var images = await digitalMenuRepository.GetMenuCategoryImagesForTenantAsync(
+            tenantId, categoryId, cancellationToken);
+        return images is null
+            ? Result<PublicDigitalMenuCategoryImagesDto>.Failure(Errors.DigitalMenuNotFound)
+            : Result<PublicDigitalMenuCategoryImagesDto>.Success(images);
     }
 
     public async Task<Result> UpdateParametersAsync(Guid tenantId, UpdateDigitalMenuParametersRequest request, CancellationToken cancellationToken)

@@ -27,7 +27,8 @@ public sealed record DigitalMenuItemSummaryDto(
     decimal? Price,
     string? ImageRef,
     int SortOrder,
-    bool IsActive);
+    bool IsActive,
+    IReadOnlyCollection<PublicProductVariationDto>? Variations = null);
 
 public sealed record DigitalMenuConfigDto(
     bool Enabled,

@@ -23,6 +23,13 @@ public sealed class DigitalMenuController(
     public async Task<ActionResult<DigitalMenuConfigDto>> GetConfig(CancellationToken cancellationToken)
         => this.FromResult(await digitalMenu.GetConfigAsync(TenantId, cancellationToken));
 
+    [HttpGet("print/categories/{categoryId:guid}/images")]
+    public async Task<ActionResult<PublicDigitalMenuCategoryImagesDto>> GetPrintCategoryImages(
+        Guid categoryId,
+        CancellationToken cancellationToken)
+        => this.FromResult(await digitalMenu.GetPrintCategoryImagesAsync(
+            TenantId, categoryId, cancellationToken));
+
     [HttpPut("parameters")]
     [RequirePermission(PermissionCodes.DigitalMenuEnable)]
     public async Task<ActionResult> UpdateParameters(
