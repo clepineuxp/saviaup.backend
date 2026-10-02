@@ -348,6 +348,10 @@ public interface IDigitalMenuRepository
         string slug,
         Guid categoryId,
         CancellationToken cancellationToken);
+    Task<PublicDigitalMenuCategoryImagesDto?> GetMenuCategoryImagesForTenantAsync(
+        Guid tenantId,
+        Guid categoryId,
+        CancellationToken cancellationToken);
 }
 
 public interface IPrintingRepository

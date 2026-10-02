@@ -11,6 +11,69 @@ namespace SaviaUp.Backend.IntegrationTests;
 public sealed class DigitalMenuRepositoryTests
 {
     [Fact]
+    public async Task PrintImages_WorkForDisabledMenuAndRemainTenantScoped()
+    {
+        var tenantId = Guid.NewGuid();
+        var otherTenantId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var imageId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+
+        await using var platform = new PlatformDbContext(
+            new DbContextOptionsBuilder<PlatformDbContext>()
+                .UseInMemoryDatabase($"print-menu-platform-{Guid.NewGuid():N}").Options);
+        await using var application = new ApplicationDbContext(
+            new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase($"print-menu-app-{Guid.NewGuid():N}").Options,
+            new TenantScope(tenantId));
+
+        application.Categories.Add(new Category
+        {
+            Id = categoryId,
+            TenantId = tenantId,
+            Name = "Bebidas",
+            NormalizedName = "BEBIDAS",
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        application.Products.Add(new Product
+        {
+            Id = productId,
+            TenantId = tenantId,
+            CategoryId = categoryId,
+            Name = "Limonada",
+            NormalizedName = "LIMONADA",
+            ImageRef = imageId,
+            SalePrice = 5000,
+            IsActive = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        application.StoredImages.Add(new StoredImage
+        {
+            Id = imageId,
+            TenantId = tenantId,
+            Module = "products",
+            EntityId = productId.ToString(),
+            ContentType = "image/png",
+            Base64Content = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==",
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        await application.SaveChangesAsync();
+
+        var repository = new DigitalMenuRepository(platform, application);
+        var images = await repository.GetMenuCategoryImagesForTenantAsync(tenantId, categoryId, CancellationToken.None);
+
+        Assert.NotNull(images);
+        Assert.StartsWith("data:image/", Assert.Single(images.Products).Image);
+        Assert.Null(await repository.GetMenuCategoryImagesForTenantAsync(otherTenantId, categoryId, CancellationToken.None));
+        Assert.Null(await repository.GetPublicMenuCategoryImagesAsync("unpublished", categoryId, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task PublicMenu_IncludesOrderedComboGroupsOptionsAndPriceAdjustments()
     {
         var tenantId = Guid.NewGuid();
