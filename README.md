@@ -201,6 +201,7 @@ GET    /api/billing/orders?page=1&pageSize=25&search=&fromDate=&toDate=
 GET    /api/billing/receipts/{id}
 
 GET  /api/digital-menu/config
+GET  /api/digital-menu/print/categories/{categoryId}/images
 PUT  /api/digital-menu/parameters
 PUT  /api/digital-menu/style
 PUT  /api/digital-menu/items

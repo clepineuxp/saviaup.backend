@@ -92,7 +92,37 @@ public sealed class DigitalMenuUseCaseTests
         var prodId = Guid.NewGuid();
 
         var category = new Category { Id = catId, TenantId = tenantId, Name = "Bebidas", IsActive = true };
-        var product = new Product { Id = prodId, TenantId = tenantId, CategoryId = catId, Name = "Limonada", SalePrice = 5000, IsActive = true };
+        var product = new Product { Id = prodId, TenantId = tenantId, CategoryId = catId, Name = "Limonada", SalePrice = null, IsActive = true };
+        product.Variations.Add(new ProductVariation
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            ProductId = prodId,
+            Name = "Jarra",
+            SalePrice = 18000,
+            Order = 2,
+            IsActive = true
+        });
+        product.Variations.Add(new ProductVariation
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            ProductId = prodId,
+            Name = "Vaso",
+            SalePrice = 7000,
+            Order = 1,
+            IsActive = true
+        });
+        product.Variations.Add(new ProductVariation
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId,
+            ProductId = prodId,
+            Name = "Anterior",
+            SalePrice = 4000,
+            Order = 0,
+            IsActive = false
+        });
 
         var settingsRepo = new Mock<ISettingsRepository>();
         settingsRepo.Setup(r => r.GetTenantForUpdateAsync(tenantId, It.IsAny<CancellationToken>())).ReturnsAsync(tenant);
@@ -129,6 +159,9 @@ public sealed class DigitalMenuUseCaseTests
         Assert.Single(result.Value.Products);
         Assert.Equal("Bebidas", result.Value.Categories.First().Name);
         Assert.Equal("Limonada", result.Value.Products.First().Name);
+        Assert.Null(result.Value.Products.First().Price);
+        Assert.Equal(["Vaso", "Jarra"], result.Value.Products.First().Variations!.Select(item => item.Name));
+        Assert.Equal([7000m, 18000m], result.Value.Products.First().Variations!.Select(item => item.SalePrice));
     }
 
     [Fact]
