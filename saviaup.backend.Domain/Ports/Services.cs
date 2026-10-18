@@ -80,6 +80,19 @@ public interface IPromotionPricingService
         Guid? variationId,
         decimal originalUnitPrice,
         int quantity);
+
+    IReadOnlyCollection<Promotion> GetMatchingForItem(
+        IReadOnlyCollection<Promotion> promotions,
+        Guid productId,
+        Guid categoryId,
+        Guid? variationId);
+
+    PromotionCalculation? FindBestForMenuItem(
+        IReadOnlyCollection<Promotion> promotions,
+        Guid productId,
+        Guid categoryId,
+        Guid? variationId,
+        decimal originalUnitPrice);
 }
 
 public interface ICurrentUserContext

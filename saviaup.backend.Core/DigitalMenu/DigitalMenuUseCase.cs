@@ -14,7 +14,8 @@ public sealed class DigitalMenuUseCase(
     ICategoryRepository categoryRepository,
     IProductRepository productRepository,
     IDateTimeProvider clock,
-    IUnitOfWork unitOfWork) : IDigitalMenuUseCase
+    IUnitOfWork unitOfWork,
+    IPromotionPricingService? promotionPricingService = null) : IDigitalMenuUseCase
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -317,7 +318,17 @@ public sealed class DigitalMenuUseCase(
             return Result<PublicDigitalMenuDto>.Failure(Errors.DigitalMenuNotFound);
         }
 
-        return Result<PublicDigitalMenuDto>.Success(menu);
+        if (promotionPricingService is null)
+        {
+            return Result<PublicDigitalMenuDto>.Success(menu);
+        }
+
+        var promotions = await promotionPricingService.GetApplicableAsync(
+            menu.TenantId,
+            clock.UtcNow,
+            cancellationToken);
+
+        return Result<PublicDigitalMenuDto>.Success(ApplyPublicPromotions(menu, promotions));
     }
 
     public async Task<Result<PublicDigitalMenuCategoryImagesDto>> GetPublicMenuCategoryImagesAsync(
@@ -332,6 +343,113 @@ public sealed class DigitalMenuUseCase(
         return images is null
             ? Result<PublicDigitalMenuCategoryImagesDto>.Failure(Errors.DigitalMenuNotFound)
             : Result<PublicDigitalMenuCategoryImagesDto>.Success(images);
+    }
+
+    private PublicDigitalMenuDto ApplyPublicPromotions(
+        PublicDigitalMenuDto menu,
+        IReadOnlyCollection<Promotion> promotions)
+        => menu with
+        {
+            Categories = menu.Categories
+                .Select(category => category with
+                {
+                    Products = category.Products
+                        .Select(product => ApplyProductPromotions(product, category.Id, promotions))
+                        .ToArray()
+                })
+                .ToArray()
+        };
+
+    private PublicProductDto ApplyProductPromotions(
+        PublicProductDto product,
+        Guid categoryId,
+        IReadOnlyCollection<Promotion> promotions)
+    {
+        var productPromotions = BuildPublicPromotions(
+            promotions,
+            product.Id,
+            categoryId,
+            variationId: null,
+            product.SalePrice);
+
+        var variations = product.Variations
+            .Select(variation => variation with
+            {
+                Promotions = BuildPublicPromotions(
+                    promotions,
+                    product.Id,
+                    categoryId,
+                    variation.Id,
+                    variation.SalePrice)
+            })
+            .ToArray();
+
+        return product with
+        {
+            Promotions = productPromotions,
+            Variations = variations
+        };
+    }
+
+    private IReadOnlyCollection<PublicMenuPromotionDto> BuildPublicPromotions(
+        IReadOnlyCollection<Promotion> promotions,
+        Guid productId,
+        Guid categoryId,
+        Guid? variationId,
+        decimal? originalPrice)
+    {
+        var matching = promotionPricingService!.GetMatchingForItem(
+            promotions,
+            productId,
+            categoryId,
+            variationId);
+
+        var publicPromotions = matching
+            .Where(promotion => promotion.Type == PromotionType.Quantity)
+            .Select(promotion => ToPublicPromotion(promotion, calculation: null))
+            .ToList();
+
+        if (originalPrice is > 0)
+        {
+            var calculation = promotionPricingService.FindBestForMenuItem(
+                promotions,
+                productId,
+                categoryId,
+                variationId,
+                originalPrice.Value);
+            if (calculation is { DiscountAmount: > 0 })
+            {
+                publicPromotions.Add(ToPublicPromotion(calculation.Promotion, calculation));
+            }
+        }
+
+        return publicPromotions
+            .OrderBy(promotion => promotion.Type)
+            .ThenBy(promotion => promotion.Name)
+            .ToArray();
+    }
+
+    private static PublicMenuPromotionDto ToPublicPromotion(
+        Promotion promotion,
+        PromotionCalculation? calculation)
+    {
+        decimal? discountPercentage = calculation is { OriginalUnitPrice: > 0 }
+            ? Math.Round(calculation.DiscountAmount / calculation.OriginalUnitPrice * 100m, 2, MidpointRounding.AwayFromZero)
+            : promotion.ValueType == PromotionValueType.Percentage ? promotion.Value : null;
+
+        return new PublicMenuPromotionDto(
+            promotion.Id,
+            promotion.Name,
+            promotion.Description,
+            promotion.Type.ToString().ToUpperInvariant(),
+            promotion.ValueType.ToString().ToUpperInvariant(),
+            promotion.Value,
+            promotion.RequiredQuantity,
+            promotion.DiscountedQuantity,
+            calculation?.OriginalUnitPrice,
+            calculation?.FinalUnitPrice,
+            calculation?.DiscountAmount,
+            discountPercentage);
     }
 
     private static DigitalMenuStyleDto ParseStyle(string? json)
