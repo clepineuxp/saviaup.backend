@@ -146,6 +146,13 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Platform
                             Code = "printing",
                             IsActive = true,
                             Name = "Printing"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000015"),
+                            Code = "promotions",
+                            IsActive = true,
+                            Name = "Promotions"
                         });
                 });
 
@@ -604,6 +611,20 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Platform
                             Code = "settings.expense-financial-fields.manage",
                             Description = "settings.expense-financial-fields.manage",
                             ModuleId = new Guid("10000000-0000-0000-0000-000000000008")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000057"),
+                            Code = "promotions.read",
+                            Description = "promotions.read",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000015")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000058"),
+                            Code = "promotions.manage",
+                            Description = "promotions.manage",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000015")
                         });
                 });
 

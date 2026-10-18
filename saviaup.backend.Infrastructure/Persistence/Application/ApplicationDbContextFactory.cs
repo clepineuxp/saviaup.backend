@@ -30,7 +30,7 @@ public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Ap
             ?? throw new InvalidOperationException("Connection string for ApplicationDatabase is required.");
 
         var builder = new DbContextOptionsBuilder<ApplicationDbContext>();
-        builder.UseNpgsql(connectionString);
+        builder.UseNpgsql(connectionString, npgsql => npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery));
         return new ApplicationDbContext(builder.Options, new DesignTimeTenantContext());
     }
 }

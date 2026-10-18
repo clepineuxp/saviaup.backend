@@ -28,7 +28,8 @@ public sealed class NavigationAndUserInfoTests
                 new AvailableModuleReference(Guid.NewGuid(), "products"),
                 new AvailableModuleReference(Guid.NewGuid(), "orders"),
                 new AvailableModuleReference(Guid.NewGuid(), "inventory"),
-                new AvailableModuleReference(Guid.NewGuid(), "expenses")
+                new AvailableModuleReference(Guid.NewGuid(), "expenses"),
+                new AvailableModuleReference(Guid.NewGuid(), "promotions")
             ]);
         var (useCase, membership, _) = AvailableModulesUseCase(repository);
 
@@ -54,7 +55,7 @@ public sealed class NavigationAndUserInfoTests
                 Assert.Equal(("operation", "Operación", 2, true),
                     (section.Code, section.Name, section.Order, section.IsGrouped));
                 Assert.Equal(
-                    [("orders", 2), ("statistics", 3), ("billing", 4)],
+                    [("orders", 2), ("statistics", 3), ("billing", 4), ("promotions", 5)],
                     section.Modules.Select(module => (module.Code, module.Order)));
             },
             section =>

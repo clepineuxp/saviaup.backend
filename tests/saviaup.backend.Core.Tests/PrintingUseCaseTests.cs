@@ -481,6 +481,12 @@ public sealed class PrintingUseCaseTests
         Assert.Equal("TEST", created.SourceType);
         Assert.Equal("TEST_PRINT", created.DocumentType);
         Assert.Null(created.PrintingZoneId);
+        Assert.Null(created.Location);
+        Assert.Null(created.PrintAgent);
+        Assert.Null(created.Printer);
+        Assert.Equal("Principal", result.Value!.LocationName);
+        Assert.Equal("PC Caja", result.Value.AgentName);
+        Assert.Equal("Cocina Epson", result.Value.PrinterName);
         using var payload = JsonDocument.Parse(created.PayloadJson);
         Assert.Equal("Cocina Epson", payload.RootElement.GetProperty("printerName").GetString());
         Assert.Equal("Restaurante Savia", payload.RootElement.GetProperty("organizationName").GetString());

@@ -295,6 +295,31 @@ public interface IDeleteProductUseCase
     Task<Result> ExecuteAsync(Guid tenantId, Guid productId, CancellationToken cancellationToken);
 }
 
+public interface IListPromotionsUseCase
+{
+    Task<Result<IReadOnlyCollection<PromotionDto>>> ExecuteAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);
+}
+
+public interface ICreatePromotionUseCase
+{
+    Task<Result<PromotionDto>> ExecuteAsync(Guid tenantId, CreatePromotionRequest request, CancellationToken cancellationToken);
+}
+
+public interface IUpdatePromotionUseCase
+{
+    Task<Result<PromotionDto>> ExecuteAsync(Guid tenantId, Guid promotionId, UpdatePromotionRequest request, CancellationToken cancellationToken);
+}
+
+public interface ISetPromotionStatusUseCase
+{
+    Task<Result<PromotionDto>> ExecuteAsync(Guid tenantId, Guid promotionId, SetPromotionStatusRequest request, CancellationToken cancellationToken);
+}
+
+public interface IDeletePromotionUseCase
+{
+    Task<Result> ExecuteAsync(Guid tenantId, Guid promotionId, CancellationToken cancellationToken);
+}
+
 public interface IListDiningAreasUseCase
 {
     Task<Result<IReadOnlyCollection<DiningAreaDto>>> ExecuteAsync(Guid tenantId, CancellationToken cancellationToken);
