@@ -61,13 +61,29 @@ public sealed record PublicProductDto(
     string? Image,
     int SortOrder,
     IReadOnlyCollection<PublicProductVariationDto> Variations,
-    IReadOnlyCollection<ProductComboGroupDto> ComboGroups);
+    IReadOnlyCollection<ProductComboGroupDto> ComboGroups,
+    IReadOnlyCollection<PublicMenuPromotionDto>? Promotions = null);
 
 public sealed record PublicProductVariationDto(
     Guid Id,
     string Name,
     decimal SalePrice,
-    int SortOrder);
+    int SortOrder,
+    IReadOnlyCollection<PublicMenuPromotionDto>? Promotions = null);
+
+public sealed record PublicMenuPromotionDto(
+    Guid Id,
+    string Name,
+    string? Description,
+    string Type,
+    string ValueType,
+    decimal Value,
+    int? RequiredQuantity,
+    int? DiscountedQuantity,
+    decimal? OriginalPrice,
+    decimal? FinalPrice,
+    decimal? DiscountAmount,
+    decimal? DiscountPercentage);
 
 public sealed record PublicCategoryDto(
     Guid Id,
