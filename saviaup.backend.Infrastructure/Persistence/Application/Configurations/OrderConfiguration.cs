@@ -13,6 +13,8 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 
         builder.Property(o => o.Status).HasMaxLength(30).IsRequired();
         builder.Property(o => o.SubtotalAmount).HasPrecision(18, 2);
+        builder.Property(o => o.OriginalSubtotalAmount).HasPrecision(18, 2);
+        builder.Property(o => o.DiscountAmount).HasPrecision(18, 2);
         builder.Property(o => o.TaxAmount).HasPrecision(18, 2);
         builder.Property(o => o.TipAmount).HasPrecision(18, 2);
         builder.Property(o => o.TotalAmount).HasPrecision(18, 2);

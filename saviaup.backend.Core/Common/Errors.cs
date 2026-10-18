@@ -72,4 +72,6 @@ internal static class Errors
     public static readonly Error DigitalMenuSlugImmutable = new(ErrorCodes.DigitalMenuSlugImmutable, LocalizationKeys.DigitalMenuSlugImmutable, ErrorType.Conflict);
     public static readonly Error DigitalMenuSlugRequired = new(ErrorCodes.DigitalMenuSlugRequired, LocalizationKeys.DigitalMenuSlugRequired, ErrorType.Validation);
     public static readonly Error DigitalMenuNotFound = new(ErrorCodes.DigitalMenuNotFound, LocalizationKeys.DigitalMenuNotFound, ErrorType.NotFound);
+    public static readonly Error PromotionNotFound = new(ErrorCodes.PromotionNotFound, LocalizationKeys.PromotionNotFound, ErrorType.NotFound);
+    public static readonly Error PromotionNameAlreadyExists = new(ErrorCodes.PromotionNameAlreadyExists, LocalizationKeys.PromotionNameAlreadyExists, ErrorType.Conflict);
 }

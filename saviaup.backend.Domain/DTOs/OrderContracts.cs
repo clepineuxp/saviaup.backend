@@ -35,7 +35,11 @@ public sealed record OrderItemDto(
     string? LastModifiedByUserName,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    IReadOnlyCollection<OrderItemComboSelectionDto> ComboSelections);
+    IReadOnlyCollection<OrderItemComboSelectionDto> ComboSelections,
+    decimal OriginalUnitPrice = 0,
+    decimal DiscountAmount = 0,
+    Guid? PromotionId = null,
+    string? PromotionName = null);
 
 public sealed record OrderItemReportDto(
     Guid ItemId,
@@ -57,7 +61,11 @@ public sealed record OrderItemReportDto(
     Guid CreatedByUserId,
     string CreatedByUserName,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    decimal OriginalUnitPrice = 0,
+    decimal DiscountAmount = 0,
+    Guid? PromotionId = null,
+    string? PromotionName = null);
 
 public sealed record OrderDto(
     Guid Id,
@@ -82,7 +90,9 @@ public sealed record OrderDto(
     DateTimeOffset? PaidAt,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    IReadOnlyCollection<OrderItemDto> Items);
+    IReadOnlyCollection<OrderItemDto> Items,
+    decimal OriginalSubtotalAmount = 0,
+    decimal DiscountAmount = 0);
 
 public sealed record OrderQueryRequest(
     int Page = 1,
@@ -101,7 +111,8 @@ public sealed record CreateOrderItemRequest(
     [Range(1, 10000)] int Quantity,
     [MaxLength(500)] string? Notes,
     bool IsCustomSale,
-    IReadOnlyCollection<CreateOrderItemComboSelectionRequest>? ComboSelections = null);
+    IReadOnlyCollection<CreateOrderItemComboSelectionRequest>? ComboSelections = null,
+    Guid? ProductVariationId = null);
 
 public sealed record CreateOrderItemComboSelectionRequest(
     Guid ComboGroupId,
@@ -136,7 +147,10 @@ public sealed record OrderReceiptItemDto(
     string ProductName,
     int Quantity,
     decimal UnitPrice,
-    decimal Subtotal);
+    decimal Subtotal,
+    decimal OriginalUnitPrice = 0,
+    decimal DiscountAmount = 0,
+    string? PromotionName = null);
 
 public sealed record OrderReceiptDto(
     Guid Id,
@@ -157,4 +171,6 @@ public sealed record OrderReceiptDto(
     DateTimeOffset CreatedAt,
     int? OrderNumber = null,
     string? TableName = null,
-    string? PaidByUserName = null);
+    string? PaidByUserName = null,
+    decimal OriginalSubtotalAmount = 0,
+    decimal DiscountAmount = 0);

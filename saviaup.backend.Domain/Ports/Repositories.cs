@@ -154,6 +154,20 @@ public interface IProductRepository
     void Remove(Product product);
 }
 
+public interface IPromotionRepository
+{
+    Task<IReadOnlyCollection<Promotion>> GetForTenantAsync(
+        Guid tenantId,
+        bool includeInactive,
+        CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<Promotion>> GetActiveForEvaluationAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken);
+    Task<Promotion?> GetByIdAsync(Guid tenantId, Guid promotionId, CancellationToken cancellationToken);
+    Task AddAsync(Promotion promotion, CancellationToken cancellationToken);
+    void Remove(Promotion promotion);
+}
+
 public interface ISupplierRepository
 {
     Task<PageData<Supplier>> GetPageAsync(

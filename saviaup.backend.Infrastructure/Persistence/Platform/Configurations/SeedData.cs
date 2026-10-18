@@ -21,7 +21,8 @@ internal static class SeedData
         (Guid.Parse("10000000-0000-0000-0000-000000000011"), "expenses", "Expenses"),
         (Guid.Parse("10000000-0000-0000-0000-000000000012"), "suppliers", "Suppliers"),
         (Guid.Parse("10000000-0000-0000-0000-000000000013"), "digital_menu", "Digital Menu"),
-        (Guid.Parse("10000000-0000-0000-0000-000000000014"), "printing", "Printing")
+        (Guid.Parse("10000000-0000-0000-0000-000000000014"), "printing", "Printing"),
+        (Guid.Parse("10000000-0000-0000-0000-000000000015"), "promotions", "Promotions")
     ];
 
     public static readonly DomainModule[] Modules = ModuleDefinitions
@@ -85,7 +86,9 @@ internal static class SeedData
         Permission("20000000-0000-0000-0000-000000000053", 13, PermissionCodes.PrintingQueueRead),
         Permission("20000000-0000-0000-0000-000000000054", 13, PermissionCodes.PrintingQueueRetry),
         Permission("20000000-0000-0000-0000-000000000055", 13, PermissionCodes.PrintingQueueReprint),
-        Permission("20000000-0000-0000-0000-000000000056", 7, PermissionCodes.SettingsExpenseFinancialFieldsManage)
+        Permission("20000000-0000-0000-0000-000000000056", 7, PermissionCodes.SettingsExpenseFinancialFieldsManage),
+        Permission("20000000-0000-0000-0000-000000000057", 14, PermissionCodes.PromotionsRead),
+        Permission("20000000-0000-0000-0000-000000000058", 14, PermissionCodes.PromotionsManage)
     ];
 
     private static Permission Permission(string id, int moduleIndex, string code) => new()

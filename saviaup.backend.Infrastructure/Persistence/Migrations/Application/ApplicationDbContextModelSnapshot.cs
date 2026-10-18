@@ -666,6 +666,10 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<Guid?>("LastModifiedByUserId")
                         .HasColumnType("uuid");
 
@@ -679,6 +683,10 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 
                     b.Property<int>("OrderNumber")
                         .HasColumnType("integer");
+
+                    b.Property<decimal>("OriginalSubtotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<DateTimeOffset?>("PaidAt")
                         .HasColumnType("timestamp with time zone");
@@ -776,6 +784,10 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<bool>("IsCustomSale")
                         .HasColumnType("boolean");
 
@@ -793,6 +805,10 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("OriginalUnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<Guid?>("ProductId")
                         .HasColumnType("uuid");
 
@@ -800,6 +816,16 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .IsRequired()
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
+
+                    b.Property<Guid?>("ProductVariationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PromotionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PromotionName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
@@ -825,6 +851,10 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.HasIndex("OrderId");
 
                     b.HasIndex("ProductId");
+
+                    b.HasIndex("ProductVariationId");
+
+                    b.HasIndex("PromotionId");
 
                     b.ToTable("order_items", (string)null);
                 });
@@ -902,6 +932,10 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<Guid>("IssuedByUserId")
                         .HasColumnType("uuid");
 
@@ -916,6 +950,10 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
 
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal>("OriginalSubtotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<string>("PaymentDetailsJson")
                         .HasColumnType("text");
@@ -1896,6 +1934,133 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         });
                 });
 
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Promotion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int?>("DiscountedQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<TimeOnly?>("EndTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int?>("MonthOfYear")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int?>("RequiredQuantity")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("SpecificDate")
+                        .HasColumnType("date");
+
+                    b.Property<TimeOnly?>("StartTime")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("ValueType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("WeekDaysMask")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "IsActive");
+
+                    b.HasIndex("TenantId", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("promotions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_promotions_Value_Positive", "\"Value\" > 0");
+
+                            t.HasCheckConstraint("CK_promotions_WeekDaysMask_Valid", "\"WeekDaysMask\" >= 0 AND \"WeekDaysMask\" <= 127");
+                        });
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PromotionTarget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ProductVariationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PromotionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("TargetType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("ProductVariationId");
+
+                    b.HasIndex("PromotionId");
+
+                    b.HasIndex("TenantId", "CategoryId");
+
+                    b.HasIndex("TenantId", "ProductId");
+
+                    b.HasIndex("TenantId", "ProductVariationId");
+
+                    b.HasIndex("TenantId", "PromotionId");
+
+                    b.ToTable("promotion_targets", (string)null);
+                });
+
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.RestaurantTable", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2273,9 +2438,23 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.ProductVariation", "ProductVariation")
+                        .WithMany()
+                        .HasForeignKey("ProductVariationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Promotion", "Promotion")
+                        .WithMany()
+                        .HasForeignKey("PromotionId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Order");
 
                     b.Navigation("Product");
+
+                    b.Navigation("ProductVariation");
+
+                    b.Navigation("Promotion");
                 });
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.OrderItemComboSelection", b =>
@@ -2566,6 +2745,38 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.PromotionTarget", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.ProductVariation", "ProductVariation")
+                        .WithMany()
+                        .HasForeignKey("ProductVariationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Promotion", "Promotion")
+                        .WithMany("Targets")
+                        .HasForeignKey("PromotionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("ProductVariation");
+
+                    b.Navigation("Promotion");
+                });
+
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.RestaurantTable", b =>
                 {
                     b.HasOne("SaviaUp.Backend.Domain.Entities.DiningArea", "DiningArea")
@@ -2664,6 +2875,11 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Application
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.ProductComboGroup", b =>
                 {
                     b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Promotion", b =>
+                {
+                    b.Navigation("Targets");
                 });
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Role", b =>

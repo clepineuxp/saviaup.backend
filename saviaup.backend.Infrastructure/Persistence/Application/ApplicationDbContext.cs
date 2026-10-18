@@ -37,6 +37,8 @@ public sealed class ApplicationDbContext(
     public DbSet<ProductComboGroup> ProductComboGroups => Set<ProductComboGroup>();
     public DbSet<ProductComboOption> ProductComboOptions => Set<ProductComboOption>();
     public DbSet<OrderItemComboSelection> OrderItemComboSelections => Set<OrderItemComboSelection>();
+    public DbSet<Promotion> Promotions => Set<Promotion>();
+    public DbSet<PromotionTarget> PromotionTargets => Set<PromotionTarget>();
     public DbSet<DigitalMenuItem> DigitalMenuItems => Set<DigitalMenuItem>();
     public DbSet<Location> Locations => Set<Location>();
     public DbSet<PrintAgent> PrintAgents => Set<PrintAgent>();
@@ -75,6 +77,8 @@ public sealed class ApplicationDbContext(
         modelBuilder.Entity<CashRegisterShift>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<Order>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<OrderItem>().HasQueryFilter(x => x.Order!.TenantId == TenantId);
+        modelBuilder.Entity<Promotion>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<PromotionTarget>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<OrderReceipt>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<OrganizationParameter>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<PaymentMethod>().HasQueryFilter(x => x.TenantId == TenantId);
@@ -158,7 +162,7 @@ public sealed class ApplicationDbContext(
     private static bool RequiresSalesCatalogInvalidation(EntityEntry entry)
         => entry.Entity switch
         {
-            Category or Product or ProductVariation or ProductComboGroup or ProductComboOption or DiningArea
+            Category or Product or ProductVariation or ProductComboGroup or ProductComboOption or DiningArea or Promotion or PromotionTarget
                 => entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted,
             RestaurantTable
                 => RequiresTableCatalogInvalidation(entry),

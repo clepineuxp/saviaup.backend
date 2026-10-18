@@ -118,7 +118,13 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
                     selection.ProductQuantity,
                     selection.SelectionQuantity,
                     selection.PriceAdjustment,
-                    selection.Order)).ToList())).ToList()
+                    selection.Order)).ToList(),
+                i.OriginalUnitPrice,
+                i.DiscountAmount,
+                i.PromotionId,
+                i.PromotionName)).ToList(),
+            o.OriginalSubtotalAmount,
+            o.DiscountAmount
         )).ToList();
 
         return new PageData<OrderDto>(dtos, totalCount);
@@ -196,7 +202,11 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
             i.CreatedByUserId,
             i.CreatedByUserName,
             i.CreatedAt,
-            i.UpdatedAt
+            i.UpdatedAt,
+            i.OriginalUnitPrice,
+            i.DiscountAmount,
+            i.PromotionId,
+            i.PromotionName
         )).ToList();
 
         return new PageData<OrderItemReportDto>(dtos, totalCount);
@@ -281,7 +291,9 @@ public sealed class OrderRepository(ApplicationDbContext dbContext) : IOrderRepo
             r.CreatedAt,
             r.Order?.OrderNumber,
             r.Order?.Table?.Name ?? "Sin Mesa",
-            r.Order?.PaidByUserName ?? r.IssuedByUserName)).ToList();
+            r.Order?.PaidByUserName ?? r.IssuedByUserName,
+            r.OriginalSubtotalAmount,
+            r.DiscountAmount)).ToList();
     }
 
     private static readonly System.Text.Json.JsonSerializerOptions ReceiptJsonOptions = new()

@@ -94,7 +94,7 @@ cash_register_shift_movements, expenses, suppliers, stored_images,
 organization_parameters, payment_methods, tenant_permissions, tenant_invitations
 locations, print_agents, print_agent_credentials, print_agent_pairing_codes,
 print_agent_discovered_printers, printers, printing_zones, printing_zone_printers, category_printing_routes,
-product_printing_routes, print_jobs
+product_printing_routes, print_jobs, promotions, promotion_targets
 ```
 
 Incluye índices únicos para email normalizado, membership `(UserId, TenantId)`, nombres normalizados de categoría/unidad por tenant, códigos de permisos, relación role/permission y hashes de tokens. Las relaciones sensibles usan eliminación `Restrict`. El seed contiene únicamente módulos y permisos globales. Las migraciones crean y actualizan la infraestructura multi-tenant completa, turnos de caja, salas y mesas, comandas, recetas de productos, facturación, estadísticas, gastos y proveedores.
@@ -141,6 +141,12 @@ POST   /api/products
 PUT    /api/products/{productId}
 PATCH  /api/products/{productId}/status
 DELETE /api/products/{productId}
+
+GET    /api/promotions?includeInactive=false
+POST   /api/promotions
+PUT    /api/promotions/{promotionId}
+PATCH  /api/promotions/{promotionId}/status
+DELETE /api/promotions/{promotionId}
 
 GET    /api/inventory?page=1&pageSize=20&search=&belowMinimum=
 GET    /api/inventory/ingredients?page=1&pageSize=20&search=&categoryId=&includeInactive=false
@@ -292,7 +298,8 @@ Configura `Printing:AgentDownloadUrl` con la URL del instalador publicado. `Prin
         { "id": "...", "code": "cash_registers", "name": "Cajas", "order": 1 },
         { "id": "...", "code": "orders", "name": "Comandas", "order": 2 },
         { "id": "...", "code": "statistics", "name": "Estadísticas", "order": 3 },
-        { "id": "...", "code": "billing", "name": "Facturación", "order": 4 }
+        { "id": "...", "code": "billing", "name": "Facturación", "order": 4 },
+        { "id": "...", "code": "promotions", "name": "Promociones", "order": 5 }
       ],
       "options": []
     },
@@ -345,13 +352,19 @@ Orden actual:
 
 ```text
 1 Ventas: Mesas
-2 Operación: Cajas, Comandas, Estadísticas, Facturación
+2 Operación: Cajas, Comandas, Estadísticas, Facturación, Promociones
 3 Inventario: Productos, Categorías, Inventario, Cocina
 4 Gastos: Gastos, Proveedores
 5 Configuración: Configuración, Menú digital (con opciones directas para administrar salas/mesas y cajas)
 ```
 
 La fuente de verdad es `Core/Navigation/NavigationCatalog.cs`. Cada módulo nuevo debe declarar sección/subcategoría y orden, además de seed, permisos, migración, copies y pruebas. El contrato incluye `options` para crecer con accesos administrativos respaldados por permisos `.manage`.
+
+### Promociones
+
+El módulo `promotions` requiere `promotions.read` para consultar la configuración y `promotions.manage` para crear, editar, activar, desactivar o eliminar promociones. Una promoción puede ser `GENERAL` o `QUANTITY`, usar descuento `PERCENTAGE` o precio final `FIXEDPRICE`, y apuntar a un producto, una variante, una categoría o toda la carta. La vigencia combina opcionalmente fecha, mes, máscara de días de la semana y rango horario en la zona horaria de la organización.
+
+Las promociones se evalúan en backend al sincronizar el catálogo de mesas y al agregar ítems a una comanda; el precio recibido del cliente no se considera fuente de verdad. Se elige la promoción con mayor descuento, sin acumulación. Las órdenes y recibos guardan el precio original, precio final, descuento y nombre de la promoción aplicada, por lo que el ticket y el resumen de cuenta pueden mostrar el descuento de forma auditable. En una promoción por cantidad, por ejemplo `2x1`, se configura `RequiredQuantity = 2`, `DiscountedQuantity = 1`, `ValueType = PERCENTAGE` y `Value = 100`.
 
 ### Menú digital y permisos
 

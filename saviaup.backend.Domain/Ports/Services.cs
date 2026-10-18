@@ -61,6 +61,27 @@ public interface IDateTimeProvider
     DateTimeOffset UtcNow { get; }
 }
 
+public sealed record PromotionCalculation(
+    Promotion Promotion,
+    decimal OriginalUnitPrice,
+    decimal FinalUnitPrice,
+    decimal DiscountAmount);
+
+public interface IPromotionPricingService
+{
+    Task<IReadOnlyCollection<Promotion>> GetApplicableAsync(
+        Guid tenantId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
+
+    PromotionCalculation? FindBest(
+        IReadOnlyCollection<Promotion> promotions,
+        Product product,
+        Guid? variationId,
+        decimal originalUnitPrice,
+        int quantity);
+}
+
 public interface ICurrentUserContext
 {
     bool IsAuthenticated { get; }

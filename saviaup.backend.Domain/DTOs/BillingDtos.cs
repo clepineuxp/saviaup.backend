@@ -26,7 +26,9 @@ public sealed record BillingReceiptItemDto(
     decimal TipAmount,
     decimal TotalAmount,
     DateTimeOffset CreatedAt,
-    int ItemsCount);
+    int ItemsCount,
+    decimal OriginalSubtotalAmount = 0,
+    decimal DiscountAmount = 0);
 
 public sealed record BillingOrderDto(
     Guid OrderId,
@@ -44,4 +46,6 @@ public sealed record BillingOrderDto(
     DateTimeOffset? PaidAt,
     DateTimeOffset CreatedAt,
     int ReceiptsCount,
-    IReadOnlyCollection<OrderReceiptDto> Receipts);
+    IReadOnlyCollection<OrderReceiptDto> Receipts,
+    decimal OriginalSubtotalAmount = 0,
+    decimal DiscountAmount = 0);
