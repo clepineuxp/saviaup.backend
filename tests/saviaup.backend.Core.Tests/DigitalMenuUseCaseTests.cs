@@ -215,6 +215,109 @@ public sealed class DigitalMenuUseCaseTests
     }
 
     [Fact]
+    public async Task DigitalMenu_PublicMenuIncludesApplicableGeneralPromotionPrices()
+    {
+        var tenantId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+        var productId = Guid.NewGuid();
+        var promotionId = Guid.NewGuid();
+        var promotion = new Promotion
+        {
+            Id = promotionId,
+            TenantId = tenantId,
+            Name = "Hora feliz",
+            Type = PromotionType.General,
+            ValueType = PromotionValueType.Percentage,
+            Value = 20,
+            Targets =
+            [
+                new PromotionTarget
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantId,
+                    PromotionId = promotionId,
+                    TargetType = PromotionTargetType.Product,
+                    ProductId = productId
+                }
+            ]
+        };
+        var menu = new PublicDigitalMenuDto(
+            tenantId,
+            "Restaurante",
+            false,
+            null,
+            1,
+            null,
+            null,
+            null,
+            new DigitalMenuStyleDto(),
+            [
+                new PublicCategoryDto(
+                    categoryId,
+                    "Bebidas",
+                    null,
+                    null,
+                    null,
+                    1,
+                    [
+                        new PublicProductDto(
+                            productId,
+                            "Limonada",
+                            null,
+                            10000,
+                            null,
+                            null,
+                            1,
+                            [],
+                            [])
+                    ])
+            ]);
+
+        var digitalMenuRepository = new Mock<IDigitalMenuRepository>();
+        digitalMenuRepository
+            .Setup(repository => repository.GetPublicMenuAsync("demo", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(menu);
+
+        var pricing = new Mock<IPromotionPricingService>();
+        pricing
+            .Setup(service => service.GetApplicableAsync(tenantId, TestSupport.Now, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([promotion]);
+        pricing
+            .Setup(service => service.GetMatchingForItem(
+                It.IsAny<IReadOnlyCollection<Promotion>>(),
+                productId,
+                categoryId,
+                null))
+            .Returns([promotion]);
+        pricing
+            .Setup(service => service.FindBestForMenuItem(
+                It.IsAny<IReadOnlyCollection<Promotion>>(),
+                productId,
+                categoryId,
+                null,
+                10000))
+            .Returns(new PromotionCalculation(promotion, 10000, 8000, 2000));
+
+        var useCase = new DigitalMenuUseCase(
+            Mock.Of<ISettingsRepository>(),
+            digitalMenuRepository.Object,
+            Mock.Of<ICategoryRepository>(),
+            Mock.Of<IProductRepository>(),
+            new FixedClock(TestSupport.Now),
+            Mock.Of<IUnitOfWork>(),
+            pricing.Object);
+
+        var result = await useCase.GetPublicMenuAsync("demo", default);
+
+        var product = Assert.Single(Assert.Single(result.Value!.Categories).Products);
+        var applied = Assert.Single(product.Promotions!);
+        Assert.Equal("Hora feliz", applied.Name);
+        Assert.Equal(10000m, applied.OriginalPrice);
+        Assert.Equal(8000m, applied.FinalPrice);
+        Assert.Equal(20m, applied.DiscountPercentage);
+    }
+
+    [Fact]
     public async Task DigitalMenu_UpdateParametersPersistsSlugAndEnabledState()
     {
         var tenantId = Guid.NewGuid();

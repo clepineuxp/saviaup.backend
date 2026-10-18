@@ -288,13 +288,45 @@ public sealed class PromotionPricingService(
     }
 
     public PromotionCalculation? FindBest(IReadOnlyCollection<Promotion> promotions, Product product, Guid? variationId, decimal originalUnitPrice, int quantity)
+        => FindBestForItem(promotions, product.Id, product.CategoryId, variationId, originalUnitPrice, quantity, null);
+
+    public IReadOnlyCollection<Promotion> GetMatchingForItem(
+        IReadOnlyCollection<Promotion> promotions,
+        Guid productId,
+        Guid categoryId,
+        Guid? variationId)
+        => promotions
+            .Where(promotion => MatchesTarget(promotion, productId, categoryId, variationId))
+            .ToArray();
+
+    public PromotionCalculation? FindBestForMenuItem(
+        IReadOnlyCollection<Promotion> promotions,
+        Guid productId,
+        Guid categoryId,
+        Guid? variationId,
+        decimal originalUnitPrice)
+        => FindBestForItem(
+            promotions,
+            productId,
+            categoryId,
+            variationId,
+            originalUnitPrice,
+            quantity: 1,
+            PromotionType.General);
+
+    private static PromotionCalculation? FindBestForItem(
+        IReadOnlyCollection<Promotion> promotions,
+        Guid productId,
+        Guid categoryId,
+        Guid? variationId,
+        decimal originalUnitPrice,
+        int quantity,
+        PromotionType? onlyType)
     {
         if (originalUnitPrice <= 0 || quantity <= 0) return null;
         return promotions
-            .Where(x => x.Targets.Any(target => target.TargetType == PromotionTargetType.Menu
-                || target.TargetType == PromotionTargetType.Product && target.ProductId == product.Id
-                || target.TargetType == PromotionTargetType.Category && target.CategoryId == product.CategoryId
-                || target.TargetType == PromotionTargetType.Variation && target.ProductId == product.Id && target.ProductVariationId == variationId))
+            .Where(x => (!onlyType.HasValue || x.Type == onlyType.Value)
+                && MatchesTarget(x, productId, categoryId, variationId))
             .Select(x => Calculate(x, originalUnitPrice, quantity))
             .Where(x => x is not null)
             .Cast<PromotionCalculation>()
@@ -302,6 +334,14 @@ public sealed class PromotionPricingService(
             .ThenBy(x => x.FinalUnitPrice)
             .FirstOrDefault();
     }
+
+    private static bool MatchesTarget(Promotion promotion, Guid productId, Guid categoryId, Guid? variationId)
+        => promotion.Targets.Any(target => target.TargetType == PromotionTargetType.Menu
+            || target.TargetType == PromotionTargetType.Product && target.ProductId == productId
+            || target.TargetType == PromotionTargetType.Category && target.CategoryId == categoryId
+            || target.TargetType == PromotionTargetType.Variation
+                && target.ProductId == productId
+                && target.ProductVariationId == variationId);
 
     private static PromotionCalculation? Calculate(Promotion promotion, decimal originalUnitPrice, int quantity)
     {
