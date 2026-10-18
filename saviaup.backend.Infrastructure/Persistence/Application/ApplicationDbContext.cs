@@ -74,6 +74,7 @@ public sealed class ApplicationDbContext(
         modelBuilder.Entity<CashRegister>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<CashRegisterShift>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<Order>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<OrderItem>().HasQueryFilter(x => x.Order!.TenantId == TenantId);
         modelBuilder.Entity<OrderReceipt>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<OrganizationParameter>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<PaymentMethod>().HasQueryFilter(x => x.TenantId == TenantId);

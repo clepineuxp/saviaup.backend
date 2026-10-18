@@ -158,6 +158,51 @@ public sealed class PrintingApiTests(SaviaUpApiFactory factory) : IClassFixture<
         Assert.False(await database.Printers.IgnoreQueryFilters().AnyAsync(x => x.PrintAgentId == tenant.AgentId));
     }
 
+    [Fact]
+    public async Task TestPrint_CreatesJob_WhenAgentAndPrinterAreLoadedWithDifferentTrackingModes()
+    {
+        var tenant = await CreateTenantAndPairAgentAsync("Test print tracking");
+        var printerId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            database.Printers.Add(new Printer
+            {
+                Id = printerId,
+                TenantId = tenant.TenantId,
+                LocationId = tenant.LocationId,
+                PrintAgentId = tenant.AgentId,
+                Name = "Epson Caja",
+                ConnectionType = PrinterConnectionTypes.WindowsSpooler,
+                LocalPrinterName = "EPSON TM-T20",
+                PaperWidth = 80,
+                Enabled = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            await database.SaveChangesAsync();
+        }
+
+        using var administrator = factory.CreateClient();
+        administrator.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tenant.AccessToken);
+        var response = await administrator.PostAsync(
+            $"/api/printing/agents/{tenant.AgentId}/test-print?printerId={printerId}",
+            content: null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var job = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(printerId, job.GetProperty("printerId").GetGuid());
+        Assert.Equal("Epson Caja", job.GetProperty("printerName").GetString());
+        Assert.Equal("Prueba directa", job.GetProperty("zoneName").GetString());
+
+        using var verificationScope = factory.Services.CreateScope();
+        var verificationDatabase = verificationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        Assert.True(await verificationDatabase.PrintJobs.IgnoreQueryFilters().AnyAsync(x =>
+            x.TenantId == tenant.TenantId && x.PrinterId == printerId && x.SourceType == "TEST"));
+    }
+
     private async Task<PairedTenant> CreateTenantAndPairAgentAsync(string tenantName)
     {
         using var client = factory.CreateClient();

@@ -69,19 +69,31 @@ public static class PrintingRules
         zone.CreatedAt,
         zone.UpdatedAt);
 
-    public static PrintJobDto ToDto(PrintJob job) => new(
+    public static PrintJobDto ToDto(PrintJob job) => ToDto(
+        job,
+        job.Location?.Name ?? string.Empty,
+        job.PrintAgent?.Name ?? string.Empty,
+        job.Printer);
+
+    public static PrintJobDto ToDto(PrintJob job, PrintAgent agent, Printer printer) => ToDto(
+        job,
+        agent.Location?.Name ?? string.Empty,
+        agent.Name,
+        printer);
+
+    private static PrintJobDto ToDto(PrintJob job, string locationName, string agentName, Printer? printer) => new(
         job.Id,
         job.LocationId,
-        job.Location?.Name ?? string.Empty,
+        locationName,
         job.PrintAgentId,
-        job.PrintAgent?.Name ?? string.Empty,
+        agentName,
         job.PrinterId,
-        job.Printer?.Name ?? string.Empty,
-        job.Printer?.ConnectionType ?? string.Empty,
-        job.Printer?.LocalPrinterName,
-        job.Printer?.IpAddress,
-        job.Printer?.Port,
-        job.Printer?.PaperWidth ?? 80,
+        printer?.Name ?? string.Empty,
+        printer?.ConnectionType ?? string.Empty,
+        printer?.LocalPrinterName,
+        printer?.IpAddress,
+        printer?.Port,
+        printer?.PaperWidth ?? 80,
         job.PrintingZoneId,
         job.PrintingZone?.Name ?? (job.SourceType == "TEST" ? "Prueba directa" : "Impresora predeterminada"),
         job.SourceType,
@@ -688,15 +700,12 @@ public sealed class PrintingAdministrationUseCase(
             Status = PrintJobStatuses.Pending,
             CreatedAt = now,
             QueuedAt = now,
-            CreatedByUserId = userId,
-            Location = agent.Location,
-            PrintAgent = agent,
-            Printer = printer
+            CreatedByUserId = userId
         };
         await repository.AddJobsAsync([job], cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await realtime.JobAvailableAsync(agentId, job.Id, cancellationToken);
-        return Result<PrintJobDto>.Success(PrintingRules.ToDto(job));
+        return Result<PrintJobDto>.Success(PrintingRules.ToDto(job, agent, printer));
     }
 
     private async Task<Result<PrintAgent>> ValidatePrinterAsync(Guid tenantId, SavePrinterRequest request, CancellationToken cancellationToken)

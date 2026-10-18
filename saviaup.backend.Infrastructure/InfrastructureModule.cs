@@ -26,7 +26,9 @@ public static class InfrastructureModule
             ?? throw new InvalidOperationException("Connection string for ApplicationDatabase is required.");
 
         services.AddDbContext<PlatformDbContext>(options => options.UseNpgsql(platformConnection));
-        services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(appConnection));
+        services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(
+            appConnection,
+            npgsql => npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
 
         services.AddScoped<ITenantContext, TenantContext>();
         services.AddSingleton<ITimeZoneService, IanaTimeZoneService>();
