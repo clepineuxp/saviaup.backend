@@ -66,6 +66,8 @@ public static class LocalizationKeys
     public const string DigitalMenuSlugImmutable = "settings.digitalMenu.slugImmutable";
     public const string DigitalMenuSlugRequired = "settings.digitalMenu.slugRequired";
     public const string DigitalMenuNotFound = "digitalMenu.notFound";
+    public const string PromotionNotFound = "promotions.notFound";
+    public const string PromotionNameAlreadyExists = "promotions.nameAlreadyExists";
     public const string Validation = "common.validation";
     public const string InternalError = "common.internalError";
 

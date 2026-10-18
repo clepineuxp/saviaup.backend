@@ -9,6 +9,8 @@ public class OrderReceipt
     public string ReceiptType { get; set; } = "PRE_BILLING"; // PRE_BILLING | PAYMENT
     public string Title { get; set; } = "RESUMEN DE CUENTA";
     public decimal SubtotalAmount { get; set; }
+    public decimal OriginalSubtotalAmount { get; set; }
+    public decimal DiscountAmount { get; set; }
     public decimal TaxAmount { get; set; }
     public decimal TipAmount { get; set; }
     public decimal TotalAmount { get; set; }

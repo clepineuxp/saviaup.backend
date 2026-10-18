@@ -32,6 +32,12 @@ public sealed class OrderReceiptConfiguration : IEntityTypeConfiguration<OrderRe
         builder.Property(r => r.SubtotalAmount)
             .HasPrecision(18, 2);
 
+        builder.Property(r => r.OriginalSubtotalAmount)
+            .HasPrecision(18, 2);
+
+        builder.Property(r => r.DiscountAmount)
+            .HasPrecision(18, 2);
+
         builder.Property(r => r.TaxAmount)
             .HasPrecision(18, 2);
 

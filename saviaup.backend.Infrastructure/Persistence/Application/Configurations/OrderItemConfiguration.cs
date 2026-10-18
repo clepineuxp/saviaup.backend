@@ -14,6 +14,9 @@ public sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.Property(i => i.ProductName).HasMaxLength(160).IsRequired();
         builder.Property(i => i.UnitPrice).HasPrecision(18, 2);
         builder.Property(i => i.Subtotal).HasPrecision(18, 2);
+        builder.Property(i => i.OriginalUnitPrice).HasPrecision(18, 2);
+        builder.Property(i => i.DiscountAmount).HasPrecision(18, 2);
+        builder.Property(i => i.PromotionName).HasMaxLength(120);
         builder.Property(i => i.Status).HasMaxLength(30).IsRequired();
         builder.Property(i => i.Notes).HasMaxLength(2000);
         builder.Property(i => i.CancellationReason).HasMaxLength(300);
@@ -31,6 +34,16 @@ public sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
         builder.HasOne(i => i.Product)
             .WithMany()
             .HasForeignKey(i => i.ProductId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(i => i.ProductVariation)
+            .WithMany()
+            .HasForeignKey(i => i.ProductVariationId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne(i => i.Promotion)
+            .WithMany()
+            .HasForeignKey(i => i.PromotionId)
             .OnDelete(DeleteBehavior.SetNull);
     }
 }

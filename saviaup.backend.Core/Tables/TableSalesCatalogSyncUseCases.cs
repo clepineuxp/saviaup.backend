@@ -2,6 +2,7 @@ using System.Globalization;
 using SaviaUp.Backend.Core.Categories;
 using SaviaUp.Backend.Core.Products;
 using SaviaUp.Backend.Domain.DTOs;
+using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Domain.Results;
 using SaviaUp.Backend.Shared.Constants;
@@ -45,7 +46,9 @@ public sealed class SynchronizeTableSalesCatalogUseCase(
     ISettingsRepository settings,
     ICategoryRepository categories,
     IProductRepository products,
-    IRestaurantTableRepository tables) : ISynchronizeTableSalesCatalogUseCase
+    IRestaurantTableRepository tables,
+    IPromotionPricingService? promotionPricing = null,
+    IDateTimeProvider? clock = null) : ISynchronizeTableSalesCatalogUseCase
 {
     private const int MaximumConsistencyAttempts = 3;
 
@@ -65,6 +68,9 @@ public sealed class SynchronizeTableSalesCatalogUseCase(
                 cancellationToken,
                 onlyWithProducts: true);
             var productEntities = await products.GetSalesCatalogAsync(tenantId, cancellationToken);
+            IReadOnlyCollection<Promotion> activePromotions = promotionPricing is null || clock is null
+                ? Array.Empty<Promotion>()
+                : await promotionPricing.GetApplicableAsync(tenantId, clock.UtcNow, cancellationToken);
             var areaEntities = await tables.GetOperationAreasAsync(tenantId, cancellationToken);
             var versionAfter = await GetTableSalesCatalogVersionUseCase.ReadVersionAsync(
                 settings,
@@ -84,7 +90,11 @@ public sealed class SynchronizeTableSalesCatalogUseCase(
                 version.Version,
                 version.LastModifiedAt,
                 categoryEntities.Select(category => CategoryRules.ToDto(category)).ToArray(),
-                productEntities.Select(ProductRules.ToDto).ToArray(),
+                productEntities.Select(product => WithPromotions(
+                    product,
+                    ProductRules.ToDto(product),
+                    activePromotions,
+                    promotionPricing)).ToArray(),
                 areaEntities.Select(area => new DiningAreaTablesDto(
                     TableRules.ToDto(area),
                     area.Tables.OrderBy(table => table.NormalizedName).Select(TableRules.ToDto).ToArray()))
@@ -93,4 +103,49 @@ public sealed class SynchronizeTableSalesCatalogUseCase(
 
         throw new InvalidOperationException("The sales catalog synchronization could not be completed.");
     }
+
+    private static ProductDto WithPromotions(
+        Product product,
+        ProductDto dto,
+        IReadOnlyCollection<Promotion> promotions,
+        IPromotionPricingService? pricing)
+    {
+        if (pricing is null) return dto;
+        var productCalculation = product.SalePrice is { } basePrice
+            ? pricing.FindBest(promotions, product, null, basePrice, 1)
+            : null;
+        var productPromotion = productCalculation?.Promotion.Type == PromotionType.General
+            ? ToDto(productCalculation)
+            : null;
+        var variations = dto.Variations
+            .Select(variation =>
+            {
+                var calculation = pricing.FindBest(
+                    promotions,
+                    product,
+                    variation.Id,
+                    variation.SalePrice,
+                    1);
+                return variation with
+                {
+                    Promotion = calculation?.Promotion.Type == PromotionType.General
+                        ? ToDto(calculation)
+                        : null
+                };
+            }).ToArray();
+        return dto with { Promotion = productPromotion, Variations = variations };
+    }
+
+    private static ProductPromotionDto? ToDto(PromotionCalculation? calculation)
+        => calculation is null ? null : new(
+            calculation.Promotion.Id,
+            calculation.Promotion.Name,
+            calculation.Promotion.Type.ToString().ToUpperInvariant(),
+            calculation.Promotion.ValueType.ToString().ToUpperInvariant(),
+            calculation.Promotion.Value,
+            calculation.OriginalUnitPrice,
+            calculation.FinalUnitPrice,
+            calculation.DiscountAmount,
+            calculation.Promotion.RequiredQuantity,
+            calculation.Promotion.DiscountedQuantity);
 }

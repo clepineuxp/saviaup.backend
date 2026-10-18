@@ -36,7 +36,8 @@ public sealed record ProductVariationDto(
     string Name,
     decimal SalePrice,
     int Order,
-    bool IsActive);
+    bool IsActive,
+    ProductPromotionDto? Promotion = null);
 
 public sealed record ProductVariationRequest(
     Guid? Id,
@@ -98,7 +99,8 @@ public sealed record ProductDto(
     DateTimeOffset UpdatedAt,
     IReadOnlyCollection<ProductRecipeItemDto> Recipe,
     IReadOnlyCollection<ProductVariationDto> Variations,
-    IReadOnlyCollection<ProductComboGroupDto> ComboGroups);
+    IReadOnlyCollection<ProductComboGroupDto> ComboGroups,
+    ProductPromotionDto? Promotion = null);
 
 public sealed record CreateProductRequest(
     string? Type,

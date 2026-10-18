@@ -79,7 +79,9 @@ public sealed class BillingRepository(ApplicationDbContext dbContext) : IBilling
                 r.TipAmount,
                 r.TotalAmount,
                 r.CreatedAt,
-                items.Count);
+                items.Count,
+                r.OriginalSubtotalAmount,
+                r.DiscountAmount);
         }).ToList();
 
         return new PageData<BillingReceiptItemDto>(dtos, totalCount);
@@ -149,7 +151,9 @@ public sealed class BillingRepository(ApplicationDbContext dbContext) : IBilling
                 o.PaidAt,
                 o.CreatedAt,
                 o.Receipts.Count,
-                receiptDtos);
+                receiptDtos,
+                o.OriginalSubtotalAmount,
+                o.DiscountAmount);
         }).ToList();
 
         return new PageData<BillingOrderDto>(dtos, totalCount);
@@ -192,7 +196,9 @@ public sealed class BillingRepository(ApplicationDbContext dbContext) : IBilling
             r.CreatedAt,
             r.Order?.OrderNumber,
             r.Order?.Table?.Name ?? "Sin Mesa",
-            r.Order?.PaidByUserName ?? r.IssuedByUserName);
+            r.Order?.PaidByUserName ?? r.IssuedByUserName,
+            r.OriginalSubtotalAmount,
+            r.DiscountAmount);
     }
 
     private static IReadOnlyCollection<OrderReceiptItemDto> DeserializeItems(string json)

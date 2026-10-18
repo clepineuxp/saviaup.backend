@@ -58,6 +58,8 @@ public static class PermissionCodes
     public const string PrintingQueueRead = "printing.queue.read";
     public const string PrintingQueueRetry = "printing.queue.retry";
     public const string PrintingQueueReprint = "printing.queue.reprint";
+    public const string PromotionsRead = "promotions.read";
+    public const string PromotionsManage = "promotions.manage";
 
     public static readonly IReadOnlyCollection<string> All =
     [
@@ -80,6 +82,7 @@ public static class PermissionCodes
         DigitalMenuAccess, DigitalMenuEnable, DigitalMenuStyleManage, DigitalMenuItemsManage,
         PrintingAgentsRead, PrintingAgentsManage,
         PrintingZonesRead, PrintingZonesManage,
-        PrintingQueueRead, PrintingQueueRetry, PrintingQueueReprint
+        PrintingQueueRead, PrintingQueueRetry, PrintingQueueReprint,
+        PromotionsRead, PromotionsManage
     ];
 }

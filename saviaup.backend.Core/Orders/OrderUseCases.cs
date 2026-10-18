@@ -34,7 +34,9 @@ public static class OrderRules
         order.PaidAt,
         order.CreatedAt,
         order.UpdatedAt,
-        order.Items.OrderBy(item => item.CreatedAt).Select(ToDto).ToArray());
+        order.Items.OrderBy(item => item.CreatedAt).Select(ToDto).ToArray(),
+        order.OriginalSubtotalAmount,
+        order.DiscountAmount);
 
     public static OrderItemDto ToDto(OrderItem item) => new(
         item.Id,
@@ -60,7 +62,11 @@ public static class OrderRules
         item.ComboSelections
             .OrderBy(selection => selection.Order)
             .Select(ToComboSelectionDto)
-            .ToArray());
+            .ToArray(),
+        item.OriginalUnitPrice,
+        item.DiscountAmount,
+        item.PromotionId,
+        item.PromotionName);
 
     public static OrderItemComboSelectionDto ToComboSelectionDto(OrderItemComboSelection selection) => new(
         selection.Id,
@@ -78,6 +84,9 @@ public static class OrderRules
     {
         var activeItems = order.Items.Where(item => item.Status != "CANCELLED").ToList();
         order.SubtotalAmount = activeItems.Sum(item => item.Subtotal);
+        order.OriginalSubtotalAmount = activeItems.Sum(item =>
+            (item.OriginalUnitPrice > 0 ? item.OriginalUnitPrice : item.UnitPrice) * item.Quantity);
+        order.DiscountAmount = Math.Max(0m, order.OriginalSubtotalAmount - order.SubtotalAmount);
         order.TotalAmount = order.SubtotalAmount + order.TipAmount;
     }
 
@@ -148,7 +157,8 @@ public sealed class AddTableOrderItemsUseCase(
     IPrintingRealtimeNotifier printingRealtime,
     IDateTimeProvider clock,
     IUnitOfWork unitOfWork,
-    IProductRepository? productRepository = null) : IAddTableOrderItemsUseCase
+    IProductRepository? productRepository = null,
+    IPromotionPricingService? promotionPricingService = null) : IAddTableOrderItemsUseCase
 {
     public async Task<Result<OrderDto>> ExecuteAsync(
         Guid tenantId,
@@ -173,6 +183,10 @@ public sealed class AddTableOrderItemsUseCase(
         if (productRepository is not null
             && (products.Count != productIds.Length || products.Values.Any(product => !product.IsActive)))
             return Result<OrderDto>.Failure(Errors.Validation);
+
+        var activePromotions = promotionPricingService is null
+            ? Array.Empty<Promotion>()
+            : await promotionPricingService.GetApplicableAsync(tenantId, clock.UtcNow, cancellationToken);
 
         var gate = await CheckGateAsync(tenantId, tenantRepository, shiftRepository, cancellationToken);
         if (!gate.IsSuccess) return Result<OrderDto>.Failure(gate.Error!);
@@ -230,25 +244,63 @@ public sealed class AddTableOrderItemsUseCase(
 
             var itemId = Guid.NewGuid();
             var unitPrice = reqItem.UnitPrice;
+            var originalUnitPrice = unitPrice;
             var productName = reqItem.ProductName.Trim();
+            ProductVariation? variation = null;
             IReadOnlyCollection<OrderItemComboSelection> comboSelections = [];
+            if (catalogProduct is not null)
+            {
+                variation = reqItem.ProductVariationId is { } variationId
+                    ? catalogProduct.Variations.FirstOrDefault(x => x.Id == variationId && x.IsActive)
+                    : null;
+                if (reqItem.ProductVariationId.HasValue && variation is null)
+                    return Result<OrderDto>.Failure(Errors.Validation);
+                if (catalogProduct.Variations.Any(x => x.IsActive))
+                {
+                    if (variation is null) return Result<OrderDto>.Failure(Errors.Validation);
+                    unitPrice = variation.SalePrice;
+                    originalUnitPrice = unitPrice;
+                    productName = $"{catalogProduct.Name} - {variation.Name}";
+                }
+                else if (catalogProduct.SalePrice is { } salePrice)
+                {
+                    unitPrice = salePrice;
+                    originalUnitPrice = salePrice;
+                    productName = catalogProduct.Name;
+                }
+                else if (!catalogProduct.SalePrice.HasValue)
+                {
+                    return Result<OrderDto>.Failure(Errors.Validation);
+                }
+            }
             if (catalogProduct?.Type == ProductType.Combo)
             {
                 if (!TryBuildComboSelections(
                     tenantId, itemId, catalogProduct, reqItem.ComboSelections, now, out unitPrice, out comboSelections))
                     return Result<OrderDto>.Failure(Errors.Validation);
                 productName = catalogProduct.Name;
+                originalUnitPrice = unitPrice;
             }
+
+            var calculation = catalogProduct is null || promotionPricingService is null
+                ? null
+                : promotionPricingService.FindBest(activePromotions, catalogProduct, variation?.Id, originalUnitPrice, reqItem.Quantity);
+            if (calculation is not null) unitPrice = calculation.FinalUnitPrice;
 
             var item = new OrderItem
             {
                 Id = itemId,
                 OrderId = order.Id,
                 ProductId = reqItem.ProductId,
+                ProductVariationId = variation?.Id,
                 ProductName = productName,
                 UnitPrice = unitPrice,
                 Quantity = reqItem.Quantity,
                 Subtotal = unitPrice * reqItem.Quantity,
+                OriginalUnitPrice = originalUnitPrice,
+                DiscountAmount = calculation?.DiscountAmount ?? 0m,
+                PromotionId = calculation?.Promotion.Id,
+                PromotionName = calculation?.Promotion.Name,
                 Status = "PENDING",
                 Notes = BuildOrderItemNotes(reqItem.Notes, comboSelections),
                 IsCustomSale = reqItem.IsCustomSale,
@@ -718,14 +770,19 @@ public sealed class PayAndCloseTableOrderUseCase(
                     existingItem.LastModifiedByUserName = userName;
                     existingItem.UpdatedAt = now;
 
-                    transactionPaidItems.Add(new OrderReceiptItemDto(existingItem.ProductName, existingItem.Quantity, existingItem.UnitPrice, existingItem.Subtotal));
+                    transactionPaidItems.Add(new OrderReceiptItemDto(existingItem.ProductName, existingItem.Quantity, existingItem.UnitPrice, existingItem.Subtotal, existingItem.OriginalUnitPrice, existingItem.DiscountAmount, existingItem.PromotionName));
 
                     AddPaidProductQuantities(existingItem, existingItem.Quantity, paidProductQuantities);
                 }
                 else
                 {
+                    var originalQuantity = existingItem.Quantity;
+                    var paidDiscount = originalQuantity > 0
+                        ? Math.Round(existingItem.DiscountAmount * qtyToPay / originalQuantity, 2, MidpointRounding.AwayFromZero)
+                        : 0m;
                     existingItem.Quantity -= qtyToPay;
                     existingItem.Subtotal = existingItem.UnitPrice * existingItem.Quantity;
+                    existingItem.DiscountAmount = Math.Max(0m, existingItem.DiscountAmount - paidDiscount);
                     existingItem.LastModifiedByUserId = userId;
                     existingItem.LastModifiedByUserName = userName;
                     existingItem.UpdatedAt = now;
@@ -736,10 +793,15 @@ public sealed class PayAndCloseTableOrderUseCase(
                         Id = Guid.NewGuid(),
                         OrderId = order.Id,
                         ProductId = existingItem.ProductId,
+                        ProductVariationId = existingItem.ProductVariationId,
                         ProductName = existingItem.ProductName,
                         UnitPrice = existingItem.UnitPrice,
                         Quantity = qtyToPay,
                         Subtotal = paidSubtotal,
+                        OriginalUnitPrice = existingItem.OriginalUnitPrice,
+                        DiscountAmount = paidDiscount,
+                        PromotionId = existingItem.PromotionId,
+                        PromotionName = existingItem.PromotionName,
                         Status = "PAID",
                         Notes = existingItem.Notes,
                         IsCustomSale = existingItem.IsCustomSale,
@@ -770,7 +832,7 @@ public sealed class PayAndCloseTableOrderUseCase(
                         });
                     }
                     newPaidItems.Add(paidSplitItem);
-                    transactionPaidItems.Add(new OrderReceiptItemDto(paidSplitItem.ProductName, paidSplitItem.Quantity, paidSplitItem.UnitPrice, paidSplitItem.Subtotal));
+                    transactionPaidItems.Add(new OrderReceiptItemDto(paidSplitItem.ProductName, paidSplitItem.Quantity, paidSplitItem.UnitPrice, paidSplitItem.Subtotal, paidSplitItem.OriginalUnitPrice, paidSplitItem.DiscountAmount, paidSplitItem.PromotionName));
 
                     AddPaidProductQuantities(existingItem, qtyToPay, paidProductQuantities);
                 }
@@ -793,7 +855,7 @@ public sealed class PayAndCloseTableOrderUseCase(
                     item.LastModifiedByUserName = userName;
                     item.UpdatedAt = now;
 
-                    transactionPaidItems.Add(new OrderReceiptItemDto(item.ProductName, item.Quantity, item.UnitPrice, item.Subtotal));
+                    transactionPaidItems.Add(new OrderReceiptItemDto(item.ProductName, item.Quantity, item.UnitPrice, item.Subtotal, item.OriginalUnitPrice, item.DiscountAmount, item.PromotionName));
 
                     AddPaidProductQuantities(item, item.Quantity, paidProductQuantities);
                 }
@@ -896,6 +958,8 @@ public sealed class PayAndCloseTableOrderUseCase(
             ReceiptType = "PAYMENT",
             Title = "COMPROBANTE DE PAGO",
             SubtotalAmount = expectedSubtotal,
+            OriginalSubtotalAmount = transactionPaidItems.Sum(item => (item.OriginalUnitPrice > 0 ? item.OriginalUnitPrice : item.UnitPrice) * item.Quantity),
+            DiscountAmount = transactionPaidItems.Sum(item => item.DiscountAmount),
             TaxAmount = 0m,
             TipAmount = checkoutTip,
             TotalAmount = expectedTotal,
@@ -961,7 +1025,9 @@ public sealed class GenerateSummaryReceiptUseCase(
         var subtotal = itemsToSummarize.Sum(i => i.Subtotal);
         var total = subtotal + order.TipAmount;
 
-        var itemsDto = itemsToSummarize.Select(i => new OrderReceiptItemDto(i.ProductName, i.Quantity, i.UnitPrice, i.Subtotal)).ToList();
+        var itemsDto = itemsToSummarize.Select(i => new OrderReceiptItemDto(i.ProductName, i.Quantity, i.UnitPrice, i.Subtotal, i.OriginalUnitPrice, i.DiscountAmount, i.PromotionName)).ToList();
+        var originalSubtotal = itemsDto.Sum(i => (i.OriginalUnitPrice > 0 ? i.OriginalUnitPrice : i.UnitPrice) * i.Quantity);
+        var discountAmount = itemsDto.Sum(i => i.DiscountAmount);
 
         var now = clock.UtcNow;
         var receiptNumber = await orderRepository.GetNextReceiptNumberAsync(tenantId, cancellationToken);
@@ -975,6 +1041,8 @@ public sealed class GenerateSummaryReceiptUseCase(
             ReceiptType = "PRE_BILLING",
             Title = "RESUMEN DE CUENTA (PRE-FACTURA)",
             SubtotalAmount = subtotal,
+            OriginalSubtotalAmount = originalSubtotal,
+            DiscountAmount = discountAmount,
             TaxAmount = 0m,
             TipAmount = order.TipAmount,
             TotalAmount = total,
@@ -1012,7 +1080,9 @@ public sealed class GenerateSummaryReceiptUseCase(
             receipt.CreatedAt,
             order.OrderNumber,
             order.Table?.Name ?? "Sin Mesa",
-            order.PaidByUserName));
+            order.PaidByUserName,
+            receipt.OriginalSubtotalAmount,
+            receipt.DiscountAmount));
     }
 }
 
