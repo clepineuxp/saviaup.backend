@@ -1,13 +1,11 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Webp;
-using SixLabors.ImageSharp.Processing;
 using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Infrastructure.Persistence.Application;
 using SaviaUp.Backend.Infrastructure.Persistence.Platform;
+using SaviaUp.Backend.Infrastructure.Storage;
 using SaviaUp.Backend.Shared.Constants;
 
 namespace SaviaUp.Backend.Infrastructure.Persistence.Repositories;
@@ -511,31 +509,33 @@ public sealed class DigitalMenuRepository(
     {
         try
         {
-            using var image = Image.Load(source);
-            image.Mutate(operation => operation.AutoOrient());
-            ResizeToFit(image, PublicImageMaxSize);
-
-            var encoded = EncodeWebp(image, quality: 58);
+            var encoded = ImageProcessor.ConvertToWebp(
+                source,
+                PublicImageMaxSize,
+                PublicImageMaxSize,
+                quality: 58);
 
             if (encoded.Length > PublicImageTargetBytes)
             {
-                ResizeToFit(image, PublicImageCompactSize);
-                encoded = EncodeWebp(image, quality: 45);
+                encoded = ImageProcessor.ConvertToWebp(
+                    source,
+                    PublicImageCompactSize,
+                    PublicImageCompactSize,
+                    quality: 45);
             }
 
             if (encoded.Length > PublicImageTargetBytes)
             {
-                ResizeToFit(image, PublicImageThumbnailSize);
-                encoded = EncodeWebp(image, quality: 38);
+                encoded = ImageProcessor.ConvertToWebp(
+                    source,
+                    PublicImageThumbnailSize,
+                    PublicImageThumbnailSize,
+                    quality: 38);
             }
 
             return new OptimizedPublicImage(encoded, "image/webp");
         }
-        catch (UnknownImageFormatException)
-        {
-            return OriginalPublicImage(source, sourceContentType);
-        }
-        catch (InvalidImageContentException)
+        catch (InvalidDataException)
         {
             return OriginalPublicImage(source, sourceContentType);
         }
@@ -547,31 +547,6 @@ public sealed class DigitalMenuRepository(
         => new(
             source,
             string.IsNullOrWhiteSpace(sourceContentType) ? "application/octet-stream" : sourceContentType);
-
-    private static void ResizeToFit(Image image, int maximumSize)
-    {
-        if (image.Width <= maximumSize && image.Height <= maximumSize) return;
-
-        image.Mutate(operation => operation.Resize(new ResizeOptions
-        {
-            Mode = ResizeMode.Max,
-            Size = new Size(maximumSize, maximumSize)
-        }));
-    }
-
-    private static byte[] EncodeWebp(Image image, int quality)
-    {
-        using var output = new MemoryStream();
-        image.Save(output, new WebpEncoder
-        {
-            FileFormat = WebpFileFormatType.Lossy,
-            Quality = quality,
-            Method = WebpEncodingMethod.Level4,
-            SkipMetadata = true,
-            UseAlphaCompression = true
-        });
-        return output.ToArray();
-    }
 
     private sealed record OptimizedPublicImage(byte[] Content, string ContentType);
 }
