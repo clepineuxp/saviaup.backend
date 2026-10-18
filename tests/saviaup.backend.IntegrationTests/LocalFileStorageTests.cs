@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Options;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using SkiaSharp;
 using SaviaUp.Backend.Domain.Options;
 using SaviaUp.Backend.Infrastructure.Storage;
 
@@ -42,7 +41,8 @@ public sealed class LocalFileStorageTests
             var retrieved = await storage.GetAsync(tenantId, stored.Reference, CancellationToken.None);
             Assert.NotNull(retrieved);
             Assert.Equal("image/webp", retrieved.ContentType);
-            using var decoded = Image.Load(retrieved.Content);
+            using var decoded = SKBitmap.Decode(retrieved.Content);
+            Assert.NotNull(decoded);
             Assert.Equal((24, 16), (decoded.Width, decoded.Height));
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => storage.GetAsync(
@@ -61,9 +61,11 @@ public sealed class LocalFileStorageTests
 
     private static byte[] CreatePng()
     {
-        using var image = new Image<Rgba32>(24, 16, Color.ForestGreen);
-        using var stream = new MemoryStream();
-        image.SaveAsPng(stream);
-        return stream.ToArray();
+        using var bitmap = new SKBitmap(new SKImageInfo(24, 16, SKColorType.Rgba8888, SKAlphaType.Premul));
+        using var canvas = new SKCanvas(bitmap);
+        canvas.Clear(SKColors.ForestGreen);
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        return data.ToArray();
     }
 }

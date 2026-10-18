@@ -1,7 +1,4 @@
 using Microsoft.Extensions.Options;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Webp;
-using SixLabors.ImageSharp.Processing;
 using SaviaUp.Backend.Domain.Options;
 using SaviaUp.Backend.Domain.Ports;
 
@@ -33,38 +30,12 @@ public sealed class LocalFileStorage(IOptions<FileStorageOptions> configuredOpti
         Directory.CreateDirectory(directory);
 
         byte[] encoded;
-        try
-        {
-            using var image = Image.Load(content);
-            image.Mutate(operation => operation.AutoOrient());
-            if (image.Width > options.MaximumWidth || image.Height > options.MaximumHeight)
-            {
-                image.Mutate(operation => operation.Resize(new ResizeOptions
-                {
-                    Mode = ResizeMode.Max,
-                    Size = new Size(options.MaximumWidth, options.MaximumHeight)
-                }));
-            }
-
-            await using var output = new MemoryStream();
-            await image.SaveAsync(output, new WebpEncoder
-            {
-                FileFormat = WebpFileFormatType.Lossy,
-                Quality = options.WebpQuality,
-                Method = WebpEncodingMethod.Level4,
-                SkipMetadata = true,
-                UseAlphaCompression = true
-            }, cancellationToken);
-            encoded = output.ToArray();
-        }
-        catch (UnknownImageFormatException exception)
-        {
-            throw new InvalidDataException("The supplied content is not a supported image.", exception);
-        }
-        catch (InvalidImageContentException exception)
-        {
-            throw new InvalidDataException("The supplied image is invalid.", exception);
-        }
+        cancellationToken.ThrowIfCancellationRequested();
+        encoded = ImageProcessor.ConvertToWebp(
+            content,
+            options.MaximumWidth,
+            options.MaximumHeight,
+            options.WebpQuality);
 
         var temporaryPath = $"{fullPath}.{Guid.NewGuid():N}.tmp";
         await File.WriteAllBytesAsync(temporaryPath, encoded, cancellationToken);
