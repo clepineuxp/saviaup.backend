@@ -129,27 +129,27 @@ public sealed class SettingsController(
     [HttpGet("access/permissions")]
     [RequirePermission(PermissionCodes.SettingsRolesRead)]
     public async Task<ActionResult<IReadOnlyCollection<EnabledModulePermissionsDto>>> GetPermissions(CancellationToken cancellationToken)
-        => this.FromResult(await access.GetPermissionsAsync(TenantId, cancellationToken));
+        => this.FromResult(await access.GetPermissionsAsync(TenantId, cancellationToken, Request.Headers.AcceptLanguage.ToString()));
 
     [HttpGet("access/roles")]
     [RequirePermission(PermissionCodes.SettingsRolesRead)]
     public async Task<ActionResult<IReadOnlyCollection<SettingsRoleDto>>> ListRoles([FromQuery] bool includeInactive = true, CancellationToken cancellationToken = default)
-        => this.FromResult(await access.ListRolesAsync(TenantId, includeInactive, cancellationToken));
+        => this.FromResult(await access.ListRolesAsync(TenantId, includeInactive, cancellationToken, Request.Headers.AcceptLanguage.ToString()));
 
     [HttpPost("access/roles")]
     [RequirePermission(PermissionCodes.SettingsRolesManage)]
     public async Task<ActionResult<SettingsRoleDto>> CreateRole(SaveSettingsRoleRequest request, CancellationToken cancellationToken)
-        => this.FromResult(await access.CreateRoleAsync(TenantId, request, cancellationToken));
+        => this.FromResult(await access.CreateRoleAsync(TenantId, request, cancellationToken, Request.Headers.AcceptLanguage.ToString()));
 
     [HttpPut("access/roles/{roleId:guid}")]
     [RequirePermission(PermissionCodes.SettingsRolesManage)]
     public async Task<ActionResult<SettingsRoleDto>> UpdateRole(Guid roleId, SaveSettingsRoleRequest request, CancellationToken cancellationToken)
-        => this.FromResult(await access.UpdateRoleAsync(TenantId, roleId, request, cancellationToken));
+        => this.FromResult(await access.UpdateRoleAsync(TenantId, roleId, request, cancellationToken, Request.Headers.AcceptLanguage.ToString()));
 
     [HttpPatch("access/roles/{roleId:guid}/status")]
     [RequirePermission(PermissionCodes.SettingsRolesManage)]
     public async Task<ActionResult<SettingsRoleDto>> SetRoleStatus(Guid roleId, SetSettingsRoleStatusRequest request, CancellationToken cancellationToken)
-        => this.FromResult(await access.SetRoleStatusAsync(TenantId, roleId, request, cancellationToken));
+        => this.FromResult(await access.SetRoleStatusAsync(TenantId, roleId, request, cancellationToken, Request.Headers.AcceptLanguage.ToString()));
 
     [HttpDelete("access/roles/{roleId:guid}")]
     [RequirePermission(PermissionCodes.SettingsRolesManage)]

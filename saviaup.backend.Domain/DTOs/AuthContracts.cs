@@ -31,7 +31,7 @@ public sealed record UserDto(
     IReadOnlyCollection<string>? Permissions = null);
 
 public sealed record ActiveTenantDto(Guid Id, string Name, string TimeZoneId = "America/Bogota");
-public sealed record RoleDto(Guid Id, string Code, string Name);
+public sealed record RoleDto(Guid Id, string Code, string Name, string? Description = null);
 
 public sealed record AuthSessionDto(
     string AccessToken,
