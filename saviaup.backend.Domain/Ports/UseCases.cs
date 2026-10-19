@@ -603,6 +603,15 @@ public interface IAccessSettingsUseCase
     Task<Result> DeleteUserAsync(Guid tenantId, Guid currentUserId, Guid entryId, CancellationToken cancellationToken);
 }
 
+public interface IOrganizationAccessLinkUseCase
+{
+    Task<Result<CreateJoinRequestResponse>> CreateJoinRequestAsync(Guid userId, CancellationToken cancellationToken);
+    Task<Result<CreatedOrganizationAccessLinkDto>> CreateInvitationAsync(Guid tenantId, Guid userId, CreateOrganizationInvitationLinkRequest request, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<OrganizationAccessLinkSummaryDto>>> ListInvitationsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<OrganizationAccessLinkDto>> PreviewAsync(string code, Guid? userId, CancellationToken cancellationToken);
+    Task<Result<AcceptOrganizationAccessLinkResponse>> AcceptAsync(Guid userId, string code, AcceptOrganizationAccessLinkRequest request, CancellationToken cancellationToken);
+}
+
 public interface IGetStatisticsUseCase
 {
     Task<Result<StatisticsDashboardDto>> ExecuteAsync(
