@@ -84,7 +84,7 @@ public sealed class SettingsRepository(
 
         return rows.GroupBy(item => new { item.ModuleId, item.ModuleCode, item.ModuleName })
             .Select(group => new EnabledModulePermissionsDto(group.Key.ModuleId, group.Key.ModuleCode, group.Key.ModuleName,
-                group.Select(item => new EnabledPermissionDto(item.PermissionId, item.PermissionCode, item.PermissionName)).ToArray()))
+                group.Select(item => new EnabledPermissionDto(item.PermissionId, item.PermissionCode, item.PermissionName, item.PermissionName)).ToArray()))
             .ToArray();
     }
 

@@ -75,7 +75,7 @@ public sealed record SavePaymentMethodRequest(
 
 public sealed record SetPaymentMethodStatusRequest(bool IsActive);
 
-public sealed record EnabledPermissionDto(Guid Id, string Code, string Name);
+public sealed record EnabledPermissionDto(Guid Id, string Code, string Name, string Description);
 public sealed record EnabledModulePermissionsDto(Guid Id, string Code, string Name, IReadOnlyCollection<EnabledPermissionDto> Permissions);
 
 public sealed record SettingsRoleDto(

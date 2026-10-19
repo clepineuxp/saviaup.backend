@@ -8,6 +8,7 @@ using SaviaUp.Backend.Domain.Options;
 using SaviaUp.Backend.Domain.Ports;
 using SaviaUp.Backend.Domain.Results;
 using SaviaUp.Backend.Shared.Constants;
+using SaviaUp.Backend.Shared.Localization;
 
 namespace SaviaUp.Backend.Core.Settings;
 
@@ -22,22 +23,34 @@ public sealed class AccessSettingsUseCase(
     IDateTimeProvider clock,
     IUnitOfWork unitOfWork, ITimeZoneService timeZones) : IAccessSettingsUseCase
 {
-    public async Task<Result<IReadOnlyCollection<EnabledModulePermissionsDto>>> GetPermissionsAsync(Guid tenantId, CancellationToken cancellationToken)
-        => Result<IReadOnlyCollection<EnabledModulePermissionsDto>>.Success(await repository.GetEnabledPermissionCatalogAsync(tenantId, cancellationToken));
+    public async Task<Result<IReadOnlyCollection<EnabledModulePermissionsDto>>> GetPermissionsAsync(Guid tenantId, CancellationToken cancellationToken, string? language = null)
+    {
+        var catalog = await repository.GetEnabledPermissionCatalogAsync(tenantId, cancellationToken);
+        var localized = catalog.Select(module => new EnabledModulePermissionsDto(
+            module.Id,
+            module.Code,
+            TranslationCatalog.TranslateModuleName(module.Code, module.Name, language),
+            module.Permissions.Select(permission => new EnabledPermissionDto(
+                permission.Id,
+                permission.Code,
+                TranslationCatalog.TranslatePermissionName(permission.Code, language),
+                TranslationCatalog.TranslatePermissionDescription(permission.Code, language))).ToArray())).ToArray();
+        return Result<IReadOnlyCollection<EnabledModulePermissionsDto>>.Success(localized);
+    }
 
-    public async Task<Result<IReadOnlyCollection<SettingsRoleDto>>> ListRolesAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyCollection<SettingsRoleDto>>> ListRolesAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken, string? language = null)
     {
         var roleEntities = await repository.GetRolesAsync(tenantId, includeInactive, cancellationToken);
         var dtos = new List<SettingsRoleDto>();
         foreach (var role in roleEntities)
         {
             var permCodes = await permissionRepository.GetForRoleAsync(tenantId, role.Id, cancellationToken);
-            dtos.Add(new SettingsRoleDto(role.Id, role.Code, role.Name, role.Description, role.IsSystem, role.IsActive, permCodes.ToArray()));
+            dtos.Add(MapRole(role, permCodes, language));
         }
         return Result<IReadOnlyCollection<SettingsRoleDto>>.Success(dtos);
     }
 
-    public async Task<Result<SettingsRoleDto>> CreateRoleAsync(Guid tenantId, SaveSettingsRoleRequest request, CancellationToken cancellationToken)
+    public async Task<Result<SettingsRoleDto>> CreateRoleAsync(Guid tenantId, SaveSettingsRoleRequest request, CancellationToken cancellationToken, string? language = null)
     {
         var validation = await ValidateRoleRequest(tenantId, request, null, cancellationToken);
         if (validation.Error is not null) return Result<SettingsRoleDto>.Failure(validation.Error);
@@ -56,10 +69,10 @@ public sealed class AccessSettingsUseCase(
         await repository.AddRoleAsync(role, cancellationToken);
         await repository.ReplaceRolePermissionsAsync(role.Id, validation.Permissions, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Result<SettingsRoleDto>.Success(new SettingsRoleDto(role.Id, role.Code, role.Name, role.Description, role.IsSystem, role.IsActive, validation.Permissions.OrderBy(c => c).ToArray()));
+        return Result<SettingsRoleDto>.Success(MapRole(role, validation.Permissions, language));
     }
 
-    public async Task<Result<SettingsRoleDto>> UpdateRoleAsync(Guid tenantId, Guid roleId, SaveSettingsRoleRequest request, CancellationToken cancellationToken)
+    public async Task<Result<SettingsRoleDto>> UpdateRoleAsync(Guid tenantId, Guid roleId, SaveSettingsRoleRequest request, CancellationToken cancellationToken, string? language = null)
     {
         var role = await repository.GetRoleForUpdateAsync(tenantId, roleId, cancellationToken);
         if (role is null) return Result<SettingsRoleDto>.Failure(Errors.SettingsRoleNotFound);
@@ -69,17 +82,17 @@ public sealed class AccessSettingsUseCase(
         role.Name = SettingsDefaults.Normalize(request.Name); role.Description = Clean(request.Description);
         await repository.ReplaceRolePermissionsAsync(role.Id, validation.Permissions, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
-        return Result<SettingsRoleDto>.Success(new SettingsRoleDto(role.Id, role.Code, role.Name, role.Description, role.IsSystem, role.IsActive, validation.Permissions.OrderBy(c => c).ToArray()));
+        return Result<SettingsRoleDto>.Success(MapRole(role, validation.Permissions, language));
     }
 
-    public async Task<Result<SettingsRoleDto>> SetRoleStatusAsync(Guid tenantId, Guid roleId, SetSettingsRoleStatusRequest request, CancellationToken cancellationToken)
+    public async Task<Result<SettingsRoleDto>> SetRoleStatusAsync(Guid tenantId, Guid roleId, SetSettingsRoleStatusRequest request, CancellationToken cancellationToken, string? language = null)
     {
         var role = await repository.GetRoleForUpdateAsync(tenantId, roleId, cancellationToken);
         if (role is null) return Result<SettingsRoleDto>.Failure(Errors.SettingsRoleNotFound);
         if (role.IsSystem) return Result<SettingsRoleDto>.Failure(Errors.SettingsRoleProtected);
         role.IsActive = request.IsActive; await unitOfWork.SaveChangesAsync(cancellationToken);
         var permCodes = await permissionRepository.GetForRoleAsync(tenantId, role.Id, cancellationToken);
-        return Result<SettingsRoleDto>.Success(new SettingsRoleDto(role.Id, role.Code, role.Name, role.Description, role.IsSystem, role.IsActive, permCodes.ToArray()));
+        return Result<SettingsRoleDto>.Success(MapRole(role, permCodes, language));
     }
 
     public async Task<Result> DeleteRoleAsync(Guid tenantId, Guid roleId, CancellationToken cancellationToken)
@@ -207,6 +220,11 @@ public sealed class AccessSettingsUseCase(
         return emailSender.SendOrganizationInvitationAsync(email.Trim(), "es", organizationName, link, cancellationToken);
     }
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static SettingsRoleDto MapRole(Role role, IReadOnlyCollection<string> permissions, string? language)
+        => new(role.Id, role.Code,
+            TranslationCatalog.TranslateRoleName(role.Code, role.Name, language),
+            TranslationCatalog.TranslateRoleDescription(role.Code, role.Description, language),
+            role.IsSystem, role.IsActive, permissions.OrderBy(c => c).ToArray());
     private OrganizationUserDto MapMembership(TenantMembership item, string roleName) => new(item.Id, item.Id, null, item.User.Email, item.User.FirstName, item.User.LastName,
         item.RoleId, roleName, item.IsEnabledAt(clock.UtcNow) ? "ACTIVE" : "DISABLED", item.DisabledUntil, item.CreatedAt);
     private static OrganizationUserDto MapInvitation(TenantInvitation item, string roleName) => new(item.Id, null, item.Id, item.Email, null, null,
