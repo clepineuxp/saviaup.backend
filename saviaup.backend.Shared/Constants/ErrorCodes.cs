@@ -52,6 +52,9 @@ public static class ErrorCodes
     public const string OrganizationUserNotFound = "ORGANIZATION_USER_NOT_FOUND";
     public const string OrganizationOwnerRequired = "ORGANIZATION_OWNER_REQUIRED";
     public const string OrganizationInvitationExists = "ORGANIZATION_INVITATION_EXISTS";
+    public const string OrganizationAccessLinkInvalid = "ORGANIZATION_ACCESS_LINK_INVALID";
+    public const string OrganizationAccessLinkExpired = "ORGANIZATION_ACCESS_LINK_EXPIRED";
+    public const string OrganizationAccessLinkAccepted = "ORGANIZATION_ACCESS_LINK_ACCEPTED";
     public const string CashRegisterNotFound = "CASH_REGISTER_NOT_FOUND";
     public const string CashRegisterNameAlreadyExists = "CASH_REGISTER_NAME_ALREADY_EXISTS";
     public const string CashRegisterSingleActiveExceeded = "CASH_REGISTER_SINGLE_ACTIVE_EXCEEDED";

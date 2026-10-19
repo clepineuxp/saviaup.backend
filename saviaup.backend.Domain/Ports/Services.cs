@@ -22,6 +22,12 @@ public interface ITokenGenerator
     string Hash(string token);
 }
 
+public interface IOrganizationAccessLinkCodeProtector
+{
+    string Protect(string code);
+    string Unprotect(string protectedCode);
+}
+
 public interface IEmailSender
 {
     Task SendPasswordResetAsync(string email, string language, string resetLink, CancellationToken cancellationToken);

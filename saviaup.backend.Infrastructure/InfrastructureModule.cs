@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SaviaUp.Backend.Domain.Options;
@@ -19,6 +20,7 @@ public static class InfrastructureModule
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddDataProtection().SetApplicationName("SaviaUp");
         var platformConnection = configuration.GetConnectionString("PlatformDatabase")
             ?? throw new InvalidOperationException("Connection string for PlatformDatabase is required.");
 
@@ -67,6 +69,7 @@ public static class InfrastructureModule
         services.AddScoped<ICashRegisterRepository, CashRegisterRepository>();
         services.AddScoped<ICashRegisterShiftRepository, CashRegisterShiftRepository>();
         services.AddScoped<ISettingsRepository, SettingsRepository>();
+        services.AddScoped<IOrganizationAccessLinkRepository, OrganizationAccessLinkRepository>();
         services.AddScoped<IDigitalMenuRepository, DigitalMenuRepository>();
         services.AddScoped<IStatisticsRepository, StatisticsRepository>();
         services.AddScoped<IBillingRepository, BillingRepository>();
@@ -80,6 +83,7 @@ public static class InfrastructureModule
 
         services.AddSingleton<IPasswordHasher, PasswordHasherAdapter>();
         services.AddSingleton<ITokenGenerator, TokenGenerator>();
+        services.AddSingleton<IOrganizationAccessLinkCodeProtector, OrganizationAccessLinkCodeProtector>();
         services.AddSingleton<INetworkFingerprintService, NetworkFingerprintService>();
         services.AddSingleton<IFileStorage, LocalFileStorage>();
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();

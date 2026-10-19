@@ -54,6 +54,9 @@ internal static class Errors
     public static readonly Error OrganizationUserNotFound = new(ErrorCodes.OrganizationUserNotFound, LocalizationKeys.OrganizationUserNotFound, ErrorType.NotFound);
     public static readonly Error OrganizationOwnerRequired = new(ErrorCodes.OrganizationOwnerRequired, LocalizationKeys.OrganizationOwnerRequired, ErrorType.Conflict);
     public static readonly Error OrganizationInvitationExists = new(ErrorCodes.OrganizationInvitationExists, LocalizationKeys.OrganizationInvitationExists, ErrorType.Conflict);
+    public static readonly Error OrganizationAccessLinkInvalid = new(ErrorCodes.OrganizationAccessLinkInvalid, LocalizationKeys.OrganizationAccessLinkInvalid, ErrorType.NotFound);
+    public static readonly Error OrganizationAccessLinkExpired = new(ErrorCodes.OrganizationAccessLinkExpired, LocalizationKeys.OrganizationAccessLinkExpired, ErrorType.Conflict);
+    public static readonly Error OrganizationAccessLinkAccepted = new(ErrorCodes.OrganizationAccessLinkAccepted, LocalizationKeys.OrganizationAccessLinkAccepted, ErrorType.Conflict);
     public static readonly Error PermissionNotEnabled = new(ErrorCodes.PermissionNotEnabled, LocalizationKeys.PermissionNotEnabled, ErrorType.Validation);
     public static readonly Error CashRegisterNotFound = new(ErrorCodes.CashRegisterNotFound, LocalizationKeys.CashRegisterNotFound, ErrorType.NotFound);
     public static readonly Error CashRegisterNameAlreadyExists = new(ErrorCodes.CashRegisterNameAlreadyExists, LocalizationKeys.CashRegisterNameAlreadyExists, ErrorType.Conflict);
