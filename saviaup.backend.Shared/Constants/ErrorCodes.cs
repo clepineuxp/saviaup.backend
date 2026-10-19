@@ -52,6 +52,7 @@ public static class ErrorCodes
     public const string OrganizationUserNotFound = "ORGANIZATION_USER_NOT_FOUND";
     public const string OrganizationOwnerRequired = "ORGANIZATION_OWNER_REQUIRED";
     public const string OrganizationInvitationExists = "ORGANIZATION_INVITATION_EXISTS";
+    public const string OrganizationAlreadyMember = "ORGANIZATION_ALREADY_MEMBER";
     public const string OrganizationAccessLinkInvalid = "ORGANIZATION_ACCESS_LINK_INVALID";
     public const string OrganizationAccessLinkExpired = "ORGANIZATION_ACCESS_LINK_EXPIRED";
     public const string OrganizationAccessLinkAccepted = "ORGANIZATION_ACCESS_LINK_ACCEPTED";

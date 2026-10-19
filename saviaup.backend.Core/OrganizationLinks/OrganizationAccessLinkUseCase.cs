@@ -143,6 +143,8 @@ public sealed class OrganizationAccessLinkUseCase(
                 return Result<AcceptOrganizationAccessLinkResponse>.Failure(Errors.TenantAccessDenied);
             var requesterId = link.RequestedByUserId!.Value;
             var requesterMembership = await tenants.GetMembershipAsync(requesterId, tenantId.Value, cancellationToken);
+            if (requesterMembership is not null && requesterMembership.IsEnabledAt(clock.UtcNow))
+                return Result<AcceptOrganizationAccessLinkResponse>.Failure(Errors.OrganizationAlreadyMember);
             if (requesterMembership is null)
                 await tenants.AddMembershipAsync(new TenantMembership { Id = Guid.NewGuid(), UserId = requesterId, TenantId = tenantId.Value, RoleId = roleId.Value, CreatedAt = clock.UtcNow }, cancellationToken);
             else

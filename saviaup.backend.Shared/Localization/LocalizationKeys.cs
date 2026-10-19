@@ -57,6 +57,7 @@ public static class LocalizationKeys
     public const string OrganizationUserNotFound = "settings.users.notFound";
     public const string OrganizationOwnerRequired = "settings.users.ownerRequired";
     public const string OrganizationInvitationExists = "settings.users.invitationExists";
+    public const string OrganizationAlreadyMember = "settings.users.alreadyMember";
     public const string OrganizationAccessLinkInvalid = "errors.organizationAccessLinkInvalid";
     public const string OrganizationAccessLinkExpired = "errors.organizationAccessLinkExpired";
     public const string OrganizationAccessLinkAccepted = "errors.organizationAccessLinkAccepted";
