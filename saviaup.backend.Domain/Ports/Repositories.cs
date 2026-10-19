@@ -315,6 +315,13 @@ public interface ISettingsRepository
     void RemoveInvitation(TenantInvitation invitation);
 }
 
+public interface IOrganizationAccessLinkRepository
+{
+    Task AddAsync(OrganizationAccessLink link, CancellationToken cancellationToken);
+    Task<OrganizationAccessLink?> GetByCodeHashAsync(string codeHash, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<OrganizationAccessLink>> GetOpenInvitationsAsync(Guid tenantId, DateTimeOffset now, CancellationToken cancellationToken);
+}
+
 public interface IStatisticsRepository
 {
     Task<StatisticsDashboardDto> GetDashboardStatisticsAsync(

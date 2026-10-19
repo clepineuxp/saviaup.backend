@@ -8,6 +8,7 @@ using SaviaUp.Backend.Core.Expenses;
 using SaviaUp.Backend.Core.Images;
 using SaviaUp.Backend.Core.Inventory;
 using SaviaUp.Backend.Core.Navigation;
+using SaviaUp.Backend.Core.OrganizationLinks;
 using SaviaUp.Backend.Core.Orders;
 using SaviaUp.Backend.Core.Products;
 using SaviaUp.Backend.Core.Promotions;
@@ -106,6 +107,7 @@ public static class CoreModule
         services.AddScoped<IPrintingTemplateSettingsUseCase, PrintingTemplateSettingsUseCase>();
         services.AddScoped<IPaymentMethodsSettingsUseCase, PaymentMethodsSettingsUseCase>();
         services.AddScoped<IAccessSettingsUseCase, AccessSettingsUseCase>();
+        services.AddScoped<IOrganizationAccessLinkUseCase, OrganizationAccessLinkUseCase>();
         services.AddScoped<IGetStatisticsUseCase, GetStatisticsUseCase>();
         services.AddScoped<IGetBillingReceiptsUseCase, GetBillingReceiptsUseCase>();
         services.AddScoped<IGetBillingOrdersUseCase, GetBillingOrdersUseCase>();

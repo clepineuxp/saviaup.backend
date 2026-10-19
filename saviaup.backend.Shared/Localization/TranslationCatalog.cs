@@ -85,7 +85,13 @@ public static class TranslationCatalog
                     [LocalizationKeys.OrganizationUserNotFound] = "No encontramos el usuario o la invitación solicitada.",
                     [LocalizationKeys.OrganizationOwnerRequired] = "La organización debe conservar al menos un propietario activo.",
                     [LocalizationKeys.OrganizationInvitationExists] = "El usuario ya pertenece a la organización o tiene una invitación pendiente.",
+                    [LocalizationKeys.OrganizationAlreadyMember] = "Ya perteneces a esta organización.",
+                    [LocalizationKeys.OrganizationAccessLinkInvalid] = "El enlace de invitación no es válido.",
+                    [LocalizationKeys.OrganizationAccessLinkExpired] = "Este enlace de invitación ya expiró.",
+                    [LocalizationKeys.OrganizationAccessLinkAccepted] = "Este enlace de invitación ya fue utilizado.",
                     [LocalizationKeys.PermissionNotEnabled] = "Uno o más permisos no están habilitados para esta organización.",
+                    [LocalizationKeys.RoleOwnerName] = "Propietario",
+                    [LocalizationKeys.RoleOwnerDescription] = "Propietario de la organización con todos los permisos habilitados.",
                     [LocalizationKeys.CashRegisterNotFound] = "No encontramos la caja solicitada.",
                     [LocalizationKeys.CashRegisterNameAlreadyExists] = "Ya existe una caja con ese nombre en la organización.",
                     [LocalizationKeys.CashRegisterSingleActiveExceeded] = "Ya existe una caja activa en esta organización. Desactívela antes de activar otra.",
@@ -179,7 +185,13 @@ public static class TranslationCatalog
                     [LocalizationKeys.OrganizationUserNotFound] = "The requested user or invitation was not found.",
                     [LocalizationKeys.OrganizationOwnerRequired] = "The organization must keep at least one active owner.",
                     [LocalizationKeys.OrganizationInvitationExists] = "The user already belongs to the organization or has a pending invitation.",
+                    [LocalizationKeys.OrganizationAlreadyMember] = "You already belong to this organization.",
+                    [LocalizationKeys.OrganizationAccessLinkInvalid] = "This invitation link is not valid.",
+                    [LocalizationKeys.OrganizationAccessLinkExpired] = "This invitation link has expired.",
+                    [LocalizationKeys.OrganizationAccessLinkAccepted] = "This invitation link has already been used.",
                     [LocalizationKeys.PermissionNotEnabled] = "One or more permissions are not enabled for this organization.",
+                    [LocalizationKeys.RoleOwnerName] = "Owner",
+                    [LocalizationKeys.RoleOwnerDescription] = "Organization owner with all enabled permissions.",
                     [LocalizationKeys.CashRegisterNotFound] = "The requested cash register was not found.",
                     [LocalizationKeys.CashRegisterNameAlreadyExists] = "A cash register with that name already exists in the organization.",
                     [LocalizationKeys.CashRegisterSingleActiveExceeded] = "An active cash register already exists in this organization. Disable it before activating another one.",
@@ -203,6 +215,94 @@ public static class TranslationCatalog
 
     public static string Translate(string key, string? language)
         => Get(language).TryGetValue(key, out var value) ? value : key;
+
+    public static string TranslateRoleName(string code, string fallback, string? language)
+        => code.Equals("TENANT_OWNER", StringComparison.OrdinalIgnoreCase)
+            ? Translate(LocalizationKeys.RoleOwnerName, language)
+            : fallback;
+
+    public static string? TranslateRoleDescription(string code, string? fallback, string? language)
+        => code.Equals("TENANT_OWNER", StringComparison.OrdinalIgnoreCase)
+            ? Translate(LocalizationKeys.RoleOwnerDescription, language)
+            : fallback;
+
+    public static string TranslateModuleName(string code, string fallback, string? language)
+        => Translate(LocalizationKeys.ModuleName(code), language) is var translated && translated != LocalizationKeys.ModuleName(code)
+            ? translated
+            : fallback;
+
+    public static string TranslatePermissionName(string code, string? language)
+        => BuildPermissionCopy(code, language, false);
+
+    public static string TranslatePermissionDescription(string code, string? language)
+        => BuildPermissionCopy(code, language, true);
+
+    private static string BuildPermissionCopy(string code, string? language, bool description)
+    {
+        var parts = code.Split('.', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return code;
+
+        var normalizedLanguage = Normalize(language);
+        var verb = PermissionVerb(parts[^1], normalizedLanguage);
+        var resourceParts = parts.Take(parts.Length - 1).ToArray();
+        var resource = string.Join(" ", resourceParts.Select(part => PermissionResource(part, normalizedLanguage)));
+        if (string.IsNullOrWhiteSpace(resource)) resource = code;
+        return description
+            ? normalizedLanguage == "en" ? $"Allows users to {verb.ToLowerInvariant()} {resource.ToLowerInvariant()}." : $"Permite {verb.ToLowerInvariant()} {resource.ToLowerInvariant()}."
+            : $"{verb} {resource}";
+    }
+
+    private static string PermissionVerb(string action, string language)
+    {
+        if (language == "en")
+        {
+            return action switch
+            {
+                "read" => "View", "manage" => "Manage", "create" => "Create", "edit" => "Edit",
+                "cancel" => "Cancel", "operate" => "Operate", "annul" => "Void", "access" => "Access",
+                "enable" => "Enable", "retry" => "Retry", "reprint" => "Reprint", _ => Humanize(action)
+            };
+        }
+        return action switch
+        {
+            "read" => "Consultar", "manage" => "Administrar", "create" => "Crear", "edit" => "Editar",
+            "cancel" => "Cancelar", "operate" => "Operar", "annul" => "Anular", "access" => "Acceder",
+            "enable" => "Activar", "retry" => "Reintentar", "reprint" => "Reimprimir", _ => Humanize(action)
+        };
+    }
+
+    private static string PermissionResource(string value, string language)
+    {
+        var key = value.Replace('-', '_');
+        if (language == "en")
+        {
+            return key switch
+            {
+                "orders" => "orders", "tables" => "tables", "inventory" => "inventory", "products" => "products",
+                "kitchen" => "kitchen", "billing" => "billing", "categories" => "categories", "cash_registers" => "cash registers",
+                "expenses" => "expenses", "suppliers" => "suppliers", "digital_menu" => "digital menu", "printing" => "printing",
+                "promotions" => "promotions", "settings" => "settings", "ingredients" => "ingredients", "movements" => "inventory movements",
+                "complements" => "complements", "organization" => "organization settings", "business" => "business settings",
+                "payment_methods" => "payment methods", "roles" => "roles", "users" => "users", "agents" => "print agents",
+                "zones" => "printing zones", "queue" => "print queue", "expense_financial_fields" => "expense financial fields",
+                "style" => "digital menu style", "items" => "digital menu items", _ => Humanize(key)
+            };
+        }
+        return key switch
+        {
+            "orders" => "pedidos", "tables" => "mesas", "inventory" => "inventario", "products" => "productos",
+            "kitchen" => "cocina", "billing" => "facturación", "categories" => "categorías", "cash_registers" => "cajas",
+            "expenses" => "gastos", "suppliers" => "proveedores", "digital_menu" => "menú digital", "printing" => "impresión",
+            "promotions" => "promociones", "settings" => "configuración", "ingredients" => "ingredientes", "movements" => "movimientos de inventario",
+            "complements" => "complementos", "organization" => "configuración de organización", "business" => "configuración del negocio",
+            "payment_methods" => "medios de pago", "roles" => "roles", "users" => "usuarios", "agents" => "agentes de impresión",
+            "zones" => "zonas de impresión", "queue" => "cola de impresión", "expense_financial_fields" => "campos financieros de gastos",
+            "style" => "estilo del menú digital", "items" => "ítems del menú digital", _ => Humanize(key)
+        };
+    }
+
+    private static string Humanize(string value)
+        => string.Join(' ', value.Split('_', StringSplitOptions.RemoveEmptyEntries).Select(part => part.Length == 0 ? part : char.ToUpperInvariant(part[0]) + part[1..].ToLowerInvariant()));
 
     public static string Normalize(string? language)
     {

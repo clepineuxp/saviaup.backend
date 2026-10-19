@@ -591,16 +591,25 @@ public interface IPaymentMethodsSettingsUseCase
 
 public interface IAccessSettingsUseCase
 {
-    Task<Result<IReadOnlyCollection<EnabledModulePermissionsDto>>> GetPermissionsAsync(Guid tenantId, CancellationToken cancellationToken);
-    Task<Result<IReadOnlyCollection<SettingsRoleDto>>> ListRolesAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken);
-    Task<Result<SettingsRoleDto>> CreateRoleAsync(Guid tenantId, SaveSettingsRoleRequest request, CancellationToken cancellationToken);
-    Task<Result<SettingsRoleDto>> UpdateRoleAsync(Guid tenantId, Guid roleId, SaveSettingsRoleRequest request, CancellationToken cancellationToken);
-    Task<Result<SettingsRoleDto>> SetRoleStatusAsync(Guid tenantId, Guid roleId, SetSettingsRoleStatusRequest request, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<EnabledModulePermissionsDto>>> GetPermissionsAsync(Guid tenantId, CancellationToken cancellationToken, string? language = null);
+    Task<Result<IReadOnlyCollection<SettingsRoleDto>>> ListRolesAsync(Guid tenantId, bool includeInactive, CancellationToken cancellationToken, string? language = null);
+    Task<Result<SettingsRoleDto>> CreateRoleAsync(Guid tenantId, SaveSettingsRoleRequest request, CancellationToken cancellationToken, string? language = null);
+    Task<Result<SettingsRoleDto>> UpdateRoleAsync(Guid tenantId, Guid roleId, SaveSettingsRoleRequest request, CancellationToken cancellationToken, string? language = null);
+    Task<Result<SettingsRoleDto>> SetRoleStatusAsync(Guid tenantId, Guid roleId, SetSettingsRoleStatusRequest request, CancellationToken cancellationToken, string? language = null);
     Task<Result> DeleteRoleAsync(Guid tenantId, Guid roleId, CancellationToken cancellationToken);
     Task<Result<IReadOnlyCollection<OrganizationUserDto>>> ListUsersAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<Result<OrganizationUserDto>> InviteUserAsync(Guid tenantId, Guid invitedByUserId, InviteOrganizationUserRequest request, CancellationToken cancellationToken);
     Task<Result<OrganizationUserDto>> UpdateUserAsync(Guid tenantId, Guid membershipId, UpdateOrganizationUserRequest request, CancellationToken cancellationToken);
     Task<Result> DeleteUserAsync(Guid tenantId, Guid currentUserId, Guid entryId, CancellationToken cancellationToken);
+}
+
+public interface IOrganizationAccessLinkUseCase
+{
+    Task<Result<CreateJoinRequestResponse>> CreateJoinRequestAsync(Guid userId, CancellationToken cancellationToken);
+    Task<Result<CreatedOrganizationAccessLinkDto>> CreateInvitationAsync(Guid tenantId, Guid userId, CreateOrganizationInvitationLinkRequest request, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyCollection<OrganizationAccessLinkSummaryDto>>> ListInvitationsAsync(Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<OrganizationAccessLinkDto>> PreviewAsync(string code, Guid? userId, CancellationToken cancellationToken);
+    Task<Result<AcceptOrganizationAccessLinkResponse>> AcceptAsync(Guid userId, string code, AcceptOrganizationAccessLinkRequest request, CancellationToken cancellationToken);
 }
 
 public interface IGetStatisticsUseCase

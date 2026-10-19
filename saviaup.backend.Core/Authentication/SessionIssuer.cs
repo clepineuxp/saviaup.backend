@@ -50,7 +50,7 @@ public sealed class SessionIssuer(
             var roleEntity = await roleRepository.GetByIdAsync(membership.RoleId, cancellationToken);
             if (roleEntity is not null)
             {
-                role = new RoleDto(membership.RoleId, roleEntity.Code, roleEntity.Name);
+                role = new RoleDto(membership.RoleId, roleEntity.Code, roleEntity.Name, roleEntity.Description);
             }
             tenant = new ActiveTenantDto(membership.TenantId, membership.Tenant.Name, membership.Tenant.TimeZoneId);
         }
