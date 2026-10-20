@@ -24,6 +24,6 @@ public sealed class TenantsController(
         => this.FromResult(await createTenantUseCase.ExecuteAsync(currentUser.UserId!.Value, currentUser.SessionId!.Value, request, cancellationToken));
 
     [HttpPost("{tenantId:guid}/select")]
-    public async Task<ActionResult<TenantSessionResponse>> Select(Guid tenantId, CancellationToken cancellationToken)
-        => this.FromResult(await selectTenantUseCase.ExecuteAsync(currentUser.UserId!.Value, currentUser.SessionId!.Value, tenantId, cancellationToken));
+    public async Task<ActionResult<TenantSessionResponse>> Select(Guid tenantId, SelectTenantRequest? request, CancellationToken cancellationToken)
+        => this.FromResult(await selectTenantUseCase.ExecuteAsync(currentUser.UserId!.Value, currentUser.SessionId!.Value, tenantId, cancellationToken, request?.SupportTicket));
 }

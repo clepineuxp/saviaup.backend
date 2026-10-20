@@ -738,6 +738,39 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Platform
                     b.ToTable("refresh_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.SupportAccessAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AccessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SupportUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Ticket")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccessedAt");
+
+                    b.HasIndex("SupportUserId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("support_access_audits", (string)null);
+                });
+
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.Tenant", b =>
                 {
                     b.Property<Guid>("Id")
@@ -957,6 +990,11 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Platform
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsSupportUser")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1056,6 +1094,25 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Platform
                     b.Navigation("ReplacedByToken");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.SupportAccessAudit", b =>
+                {
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.User", "SupportUser")
+                        .WithMany()
+                        .HasForeignKey("SupportUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("SaviaUp.Backend.Domain.Entities.Tenant", "Tenant")
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SupportUser");
+
+                    b.Navigation("Tenant");
                 });
 
             modelBuilder.Entity("SaviaUp.Backend.Domain.Entities.TenantInvitation", b =>

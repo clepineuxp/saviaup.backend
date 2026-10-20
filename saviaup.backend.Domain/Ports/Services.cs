@@ -107,6 +107,7 @@ public interface ICurrentUserContext
     Guid? UserId { get; }
     string? UserEmail { get; }
     string? UserDisplayName { get; }
+    bool IsSupportUser { get; }
     Guid? SessionId { get; }
     Guid? TenantId { get; }
     Guid? RoleId { get; }

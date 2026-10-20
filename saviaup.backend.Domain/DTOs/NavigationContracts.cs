@@ -26,4 +26,5 @@ public sealed record UserInfoDto(
     string FirstName,
     string LastName,
     ActiveTenantDto Organization,
-    RoleDto Role);
+    RoleDto Role,
+    bool IsSupportUser = false);

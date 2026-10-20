@@ -31,6 +31,8 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options, IDateTimeProvi
         };
         if (!string.IsNullOrWhiteSpace(displayName))
             claims.Add(new Claim(ClaimNames.DisplayName, displayName));
+        if (user.IsSupportUser)
+            claims.Add(new Claim(ClaimNames.SupportUser, "true"));
         if (tenantId.HasValue) claims.Add(new Claim(ClaimNames.TenantId, tenantId.Value.ToString()));
         if (roleId.HasValue) claims.Add(new Claim(ClaimNames.RoleId, roleId.Value.ToString()));
         var credentials = new SigningCredentials(

@@ -22,5 +22,6 @@ public sealed class ModulesController(
             currentUser.TenantId!.Value,
             currentUser.RoleId!.Value,
             Request.Headers.AcceptLanguage.ToString(),
-            cancellationToken));
+            cancellationToken,
+            currentUser.IsSupportUser));
 }

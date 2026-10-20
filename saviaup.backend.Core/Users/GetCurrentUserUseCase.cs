@@ -26,6 +26,18 @@ public sealed class GetCurrentUserUseCase(
         IReadOnlyCollection<string> permissions = [];
         if (tenantId.HasValue && roleId.HasValue)
         {
+            if (user.IsSupportUser)
+            {
+                var supportTenant = await tenantRepository.GetByIdAsync(tenantId.Value, cancellationToken);
+                if (supportTenant is not null && supportTenant.IsActive)
+                {
+                    activeTenant = new ActiveTenantDto(supportTenant.Id, supportTenant.Name, supportTenant.TimeZoneId);
+                    role = new RoleDto(roleId.Value, "SUPPORT_USER", "Usuario de soporte");
+                    permissions = await permissionRepository.GetForRoleAsync(tenantId.Value, roleId.Value, cancellationToken);
+                }
+            }
+            else
+            {
             var membership = await tenantRepository.GetMembershipAsync(userId, tenantId.Value, cancellationToken);
             var roleEntity = membership is not null ? await roleRepository.GetByIdAsync(membership.RoleId, cancellationToken) : null;
 
@@ -34,6 +46,7 @@ public sealed class GetCurrentUserUseCase(
                 activeTenant = new ActiveTenantDto(membership.TenantId, membership.Tenant.Name, membership.Tenant.TimeZoneId);
                 role = new RoleDto(membership.RoleId, roleEntity.Code, roleEntity.Name, roleEntity.Description);
                 permissions = await permissionRepository.GetForRoleAsync(membership.TenantId, membership.RoleId, cancellationToken);
+            }
             }
         }
 
@@ -45,6 +58,7 @@ public sealed class GetCurrentUserUseCase(
             user.PreferredLanguage,
             activeTenant,
             role,
-            permissions));
+            permissions,
+            user.IsSupportUser));
     }
 }

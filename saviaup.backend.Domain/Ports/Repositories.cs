@@ -16,14 +16,17 @@ public interface ITenantRepository
     Task<Tenant?> GetByIdAsync(Guid tenantId, CancellationToken cancellationToken);
     Task<TenantMembership?> GetMembershipAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<TenantDto>> GetForUserAsync(Guid userId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<TenantDto>> GetForSupportAsync(CancellationToken cancellationToken);
     Task AddAsync(Tenant tenant, CancellationToken cancellationToken);
     Task AddMembershipAsync(TenantMembership membership, CancellationToken cancellationToken);
+    Task AddSupportAccessAuditAsync(SupportAccessAudit audit, CancellationToken cancellationToken);
 }
 
 public interface IRoleRepository
 {
     Task AddAsync(Role role, CancellationToken cancellationToken);
     Task<Role?> GetByIdAsync(Guid roleId, CancellationToken cancellationToken);
+    Task<Role?> GetOwnerForTenantAsync(Guid tenantId, CancellationToken cancellationToken);
     Task AssignAllPermissionsAsync(Guid roleId, CancellationToken cancellationToken);
     Task AssignPermissionsAsync(Guid roleId, IReadOnlyCollection<string> permissionCodes, CancellationToken cancellationToken);
 }
@@ -32,6 +35,7 @@ public interface IPermissionRepository
 {
     Task<bool> RoleHasPermissionAsync(Guid tenantId, Guid roleId, string permissionCode, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<string>> GetForRoleAsync(Guid tenantId, Guid roleId, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<string>> GetAllActiveCodesAsync(CancellationToken cancellationToken);
 }
 
 public interface IModuleRepository
@@ -40,6 +44,7 @@ public interface IModuleRepository
         Guid tenantId,
         Guid roleId,
         CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<AvailableModuleReference>> GetAllActiveAsync(CancellationToken cancellationToken);
 }
 
 public interface ICategoryRepository
