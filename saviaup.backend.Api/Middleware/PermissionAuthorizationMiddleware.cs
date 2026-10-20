@@ -49,6 +49,12 @@ public sealed class PermissionAuthorizationMiddleware(RequestDelegate next)
             await WriteAsync(context, StatusCodes.Status401Unauthorized, ErrorCodes.Unauthenticated, LocalizationKeys.Unauthenticated);
             return;
         }
+
+        if (currentUser.IsSupportUser && !IsAllowedSupportRequest(context))
+        {
+            await WriteAsync(context, StatusCodes.Status403Forbidden, ErrorCodes.Forbidden, LocalizationKeys.Forbidden);
+            return;
+        }
         if (requiresTenant && (!currentUser.TenantId.HasValue || !currentUser.RoleId.HasValue))
         {
             await WriteAsync(context, StatusCodes.Status403Forbidden, ErrorCodes.TenantRequired, LocalizationKeys.TenantRequired);
@@ -56,6 +62,11 @@ public sealed class PermissionAuthorizationMiddleware(RequestDelegate next)
         }
         if (requiresTenant)
         {
+            if (currentUser.IsSupportUser)
+            {
+                await next(context);
+                return;
+            }
             var membership = await tenantRepository.GetMembershipAsync(
                 currentUser.UserId.Value,
                 currentUser.TenantId!.Value,
@@ -101,6 +112,19 @@ public sealed class PermissionAuthorizationMiddleware(RequestDelegate next)
             }
         }
         await next(context);
+    }
+
+    private static bool IsAllowedSupportRequest(HttpContext context)
+    {
+        if (HttpMethods.IsGet(context.Request.Method)
+            || HttpMethods.IsHead(context.Request.Method)
+            || HttpMethods.IsOptions(context.Request.Method)) return true;
+        if (!HttpMethods.IsPost(context.Request.Method)) return false;
+        var path = context.Request.Path.Value ?? string.Empty;
+        return path.Equals("/api/auth/refresh", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/api/auth/logout", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/api/tenants/", StringComparison.OrdinalIgnoreCase)
+                && path.EndsWith("/select", StringComparison.OrdinalIgnoreCase);
     }
 
     private static Task WriteAsync(HttpContext context, int status, string code, string key)

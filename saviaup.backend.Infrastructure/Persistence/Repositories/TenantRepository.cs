@@ -48,9 +48,29 @@ public sealed class TenantRepository(
         return result.OrderBy(t => t.Name).ToArray();
     }
 
+    public async Task<IReadOnlyCollection<TenantDto>> GetForSupportAsync(CancellationToken cancellationToken)
+    {
+        var tenants = await platformContext.Tenants.AsNoTracking()
+            .Where(tenant => tenant.IsActive)
+            .Select(tenant => new { tenant.Id, tenant.Name, tenant.TimeZoneId })
+            .OrderBy(tenant => tenant.Name)
+            .ToListAsync(cancellationToken);
+        var result = new List<TenantDto>();
+        foreach (var tenant in tenants)
+        {
+            var owner = await appContext.Roles.AsNoTracking().IgnoreQueryFilters()
+                .SingleOrDefaultAsync(role => role.TenantId == tenant.Id && role.Code == "TENANT_OWNER" && role.IsActive, cancellationToken);
+            if (owner is not null) result.Add(new TenantDto(tenant.Id, tenant.Name, owner.Id, "Usuario de soporte", tenant.TimeZoneId));
+        }
+        return result;
+    }
+
     public async Task AddAsync(Tenant tenant, CancellationToken cancellationToken)
         => await platformContext.Tenants.AddAsync(tenant, cancellationToken);
 
     public async Task AddMembershipAsync(TenantMembership membership, CancellationToken cancellationToken)
         => await platformContext.TenantMemberships.AddAsync(membership, cancellationToken);
+
+    public async Task AddSupportAccessAuditAsync(SupportAccessAudit audit, CancellationToken cancellationToken)
+        => await platformContext.SupportAccessAudits.AddAsync(audit, cancellationToken);
 }

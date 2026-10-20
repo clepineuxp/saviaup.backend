@@ -16,6 +16,7 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     public DbSet<DomainModuleEntity> Modules => Set<DomainModuleEntity>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<TenantPermission> TenantPermissions => Set<TenantPermission>();
+    public DbSet<SupportAccessAudit> SupportAccessAudits => Set<SupportAccessAudit>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

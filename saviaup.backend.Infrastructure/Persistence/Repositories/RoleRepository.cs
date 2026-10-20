@@ -16,6 +16,10 @@ public sealed class RoleRepository(
     public async Task<Role?> GetByIdAsync(Guid roleId, CancellationToken cancellationToken)
         => await appContext.Roles.AsNoTracking().IgnoreQueryFilters().SingleOrDefaultAsync(role => role.Id == roleId, cancellationToken);
 
+    public Task<Role?> GetOwnerForTenantAsync(Guid tenantId, CancellationToken cancellationToken)
+        => appContext.Roles.AsNoTracking().IgnoreQueryFilters()
+            .SingleOrDefaultAsync(role => role.TenantId == tenantId && role.Code == "TENANT_OWNER" && role.IsActive, cancellationToken);
+
     public async Task AssignAllPermissionsAsync(Guid roleId, CancellationToken cancellationToken)
     {
         var permissionIds = await platformContext.Permissions.AsNoTracking().Select(permission => permission.Id).ToArrayAsync(cancellationToken);

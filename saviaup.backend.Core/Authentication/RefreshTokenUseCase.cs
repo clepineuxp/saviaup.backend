@@ -31,7 +31,14 @@ public sealed class RefreshTokenUseCase(
         {
             membership = await tenantRepository.GetMembershipAsync(user.Id, existing.TenantId.Value, cancellationToken);
             var role = membership is not null ? await roleRepository.GetByIdAsync(membership.RoleId, cancellationToken) : null;
-            if (membership is null || !membership.IsEnabledAt(now) || !membership.Tenant.IsActive || role is null || !role.IsActive || membership.RoleId != existing.RoleId)
+            if (user.IsSupportUser)
+            {
+                var tenant = await tenantRepository.GetByIdAsync(existing.TenantId.Value, cancellationToken);
+                var owner = await roleRepository.GetOwnerForTenantAsync(existing.TenantId.Value, cancellationToken);
+                if (tenant is null || !tenant.IsActive || owner is null) return Result<TokenResponse>.Failure(Errors.RefreshInvalid);
+                membership = new TenantMembership { TenantId = tenant.Id, RoleId = owner.Id, Tenant = tenant };
+            }
+            else if (membership is null || !membership.IsEnabledAt(now) || !membership.Tenant.IsActive || role is null || !role.IsActive || membership.RoleId != existing.RoleId)
                 return Result<TokenResponse>.Failure(Errors.RefreshInvalid);
         }
 

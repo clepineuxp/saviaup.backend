@@ -11,6 +11,7 @@ public sealed class User
     public string PreferredLanguage { get; set; } = "es";
     public Guid? LastTenantId { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsSupportUser { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public ICollection<TenantMembership> Memberships { get; set; } = [];
