@@ -8,4 +8,5 @@ public static class ClaimNames
     public const string DisplayName = "display_name";
     public const string PrintAgentId = "print_agent_id";
     public const string LocationId = "location_id";
+    public const string SupportUser = "support_user";
 }

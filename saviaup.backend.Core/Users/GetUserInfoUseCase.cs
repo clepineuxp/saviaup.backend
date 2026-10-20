@@ -20,6 +20,18 @@ public sealed class GetUserInfoUseCase(
         var user = await userRepository.GetByIdAsync(userId, cancellationToken);
         if (user is null || !user.IsActive) return Result<UserInfoDto>.Failure(Errors.AccountDisabled);
 
+        if (user.IsSupportUser)
+        {
+            var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+            if (tenant is null || !tenant.IsActive) return Result<UserInfoDto>.Failure(Errors.TenantAccessDenied);
+            return Result<UserInfoDto>.Success(new UserInfoDto(
+                user.FirstName,
+                user.LastName,
+                new ActiveTenantDto(tenant.Id, tenant.Name, tenant.TimeZoneId),
+                new RoleDto(roleId, "SUPPORT_USER", "Usuario de soporte"),
+                true));
+        }
+
         var membership = await tenantRepository.GetMembershipAsync(userId, tenantId, cancellationToken);
         var role = membership is not null ? await roleRepository.GetByIdAsync(membership.RoleId, cancellationToken) : null;
 

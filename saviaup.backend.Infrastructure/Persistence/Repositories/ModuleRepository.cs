@@ -40,4 +40,11 @@ public sealed class ModuleRepository(
             .Select(module => new AvailableModuleReference(module.Id, module.Code))
             .ToArrayAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyCollection<AvailableModuleReference>> GetAllActiveAsync(CancellationToken cancellationToken)
+        => await platformContext.Modules.AsNoTracking()
+            .Where(module => module.IsActive)
+            .OrderBy(module => module.Code)
+            .Select(module => new AvailableModuleReference(module.Id, module.Code))
+            .ToArrayAsync(cancellationToken);
 }

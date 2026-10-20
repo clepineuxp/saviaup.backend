@@ -63,7 +63,8 @@ public sealed class SessionIssuer(
             user.PreferredLanguage,
             tenant,
             role,
-            permissions);
+            permissions,
+            user.IsSupportUser);
         var session = new AuthSessionDto(
             accessToken.Value,
             rawRefreshToken,

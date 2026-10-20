@@ -18,22 +18,36 @@ public sealed class GetAvailableModulesUseCase(
         Guid tenantId,
         Guid roleId,
         string? language,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool isSupportUser = false)
     {
         var membership = await tenantRepository.GetMembershipAsync(userId, tenantId, cancellationToken);
         var role = membership is not null ? await roleRepository.GetByIdAsync(membership.RoleId, cancellationToken) : null;
 
-        if (membership is null
-            || !membership.IsEnabledAt(clock.UtcNow)
-            || !membership.Tenant.IsActive
+        if (isSupportUser)
+        {
+            var tokenRole = await roleRepository.GetByIdAsync(roleId, cancellationToken);
+            if (tokenRole?.Code == "TENANT_OWNER" && membership is null)
+            {
+                var tenant = await tenantRepository.GetByIdAsync(tenantId, cancellationToken);
+                if (tenant is not null && tenant.IsActive) role = tokenRole;
+            }
+        }
+
+        var supportContext = isSupportUser && membership is null && role?.Code == "TENANT_OWNER";
+        if ((!supportContext && membership is null)
+            || (!supportContext && !membership!.IsEnabledAt(clock.UtcNow))
+            || (!supportContext && !membership!.Tenant.IsActive)
             || role is null
             || !role.IsActive
-            || membership.RoleId != roleId)
+            || (!supportContext && membership!.RoleId != roleId))
         {
             return Result<AvailableModulesResponse>.Failure(Errors.TenantAccessDenied);
         }
 
-        var availableModules = await moduleRepository.GetAvailableForRoleAsync(tenantId, roleId, cancellationToken);
+        var availableModules = isSupportUser
+            ? await moduleRepository.GetAllActiveAsync(cancellationToken)
+            : await moduleRepository.GetAvailableForRoleAsync(tenantId, roleId, cancellationToken);
         var modulesByCode = availableModules.ToDictionary(
             module => string.Equals(module.Code, "reports", StringComparison.OrdinalIgnoreCase) ? "statistics" : module.Code,
             module => module,
@@ -45,7 +59,9 @@ public sealed class GetAvailableModulesUseCase(
                 $"Module '{unconfiguredModule}' must define its navigation section and order in NavigationCatalog.");
         }
 
-        var permissions = await permissionRepository.GetForRoleAsync(tenantId, roleId, cancellationToken);
+        var permissions = isSupportUser
+            ? await permissionRepository.GetAllActiveCodesAsync(cancellationToken)
+            : await permissionRepository.GetForRoleAsync(tenantId, roleId, cancellationToken);
         var permissionSet = permissions.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var sections = NavigationCatalog.Sections
             .OrderBy(section => section.Order)

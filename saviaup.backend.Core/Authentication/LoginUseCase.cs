@@ -21,7 +21,7 @@ public sealed class LoginUseCase(
             return Result<AuthSessionDto>.Failure(Errors.InvalidCredentials);
         if (!user.IsActive) return Result<AuthSessionDto>.Failure(Errors.AccountDisabled);
 
-        var membership = user.LastTenantId.HasValue
+        var membership = !user.IsSupportUser && user.LastTenantId.HasValue
             ? await tenantRepository.GetMembershipAsync(user.Id, user.LastTenantId.Value, cancellationToken)
             : null;
         var role = membership is not null ? await roleRepository.GetByIdAsync(membership.RoleId, cancellationToken) : null;

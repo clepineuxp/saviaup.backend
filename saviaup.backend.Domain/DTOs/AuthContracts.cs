@@ -28,7 +28,8 @@ public sealed record UserDto(
     string PreferredLanguage,
     ActiveTenantDto? ActiveTenant = null,
     RoleDto? Role = null,
-    IReadOnlyCollection<string>? Permissions = null);
+    IReadOnlyCollection<string>? Permissions = null,
+    bool IsSupportUser = false);
 
 public sealed record ActiveTenantDto(Guid Id, string Name, string TimeZoneId = "America/Bogota");
 public sealed record RoleDto(Guid Id, string Code, string Name, string? Description = null);

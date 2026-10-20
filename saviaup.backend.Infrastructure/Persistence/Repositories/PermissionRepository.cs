@@ -42,4 +42,10 @@ public sealed class PermissionRepository(
             .Select(p => p.Code)
             .ToArrayAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyCollection<string>> GetAllActiveCodesAsync(CancellationToken cancellationToken)
+        => await platformContext.Permissions.AsNoTracking()
+            .OrderBy(permission => permission.Code)
+            .Select(permission => permission.Code)
+            .ToArrayAsync(cancellationToken);
 }

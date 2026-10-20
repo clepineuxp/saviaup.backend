@@ -24,6 +24,7 @@ public sealed class CurrentUserContext(IHttpContextAccessor accessor) : ICurrent
     public Guid? SessionId => ReadGuid(ClaimNames.SessionId);
     public Guid? TenantId => ReadGuid(ClaimNames.TenantId);
     public Guid? RoleId => ReadGuid(ClaimNames.RoleId);
+    public bool IsSupportUser => string.Equals(User?.FindFirst(ClaimNames.SupportUser)?.Value, "true", StringComparison.OrdinalIgnoreCase);
 
     private Guid? ReadGuid(string name)
         => Guid.TryParse(User?.FindFirst(name)?.Value, out var value) ? value : null;

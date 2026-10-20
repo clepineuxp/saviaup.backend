@@ -46,7 +46,7 @@ public interface ICreateTenantUseCase
 
 public interface ISelectTenantUseCase
 {
-    Task<Result<TenantSessionResponse>> ExecuteAsync(Guid userId, Guid currentSessionId, Guid tenantId, CancellationToken cancellationToken);
+    Task<Result<TenantSessionResponse>> ExecuteAsync(Guid userId, Guid currentSessionId, Guid tenantId, CancellationToken cancellationToken, string? supportTicket = null);
 }
 
 public interface IGetCurrentUserUseCase
@@ -66,7 +66,8 @@ public interface IGetAvailableModulesUseCase
         Guid tenantId,
         Guid roleId,
         string? language,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        bool isSupportUser = false);
 }
 
 public interface IListCategoriesUseCase
