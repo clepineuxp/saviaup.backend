@@ -22,7 +22,8 @@ internal static class SeedData
         (Guid.Parse("10000000-0000-0000-0000-000000000012"), "suppliers", "Suppliers"),
         (Guid.Parse("10000000-0000-0000-0000-000000000013"), "digital_menu", "Digital Menu"),
         (Guid.Parse("10000000-0000-0000-0000-000000000014"), "printing", "Printing"),
-        (Guid.Parse("10000000-0000-0000-0000-000000000015"), "promotions", "Promotions")
+        (Guid.Parse("10000000-0000-0000-0000-000000000015"), "promotions", "Promotions"),
+        (Guid.Parse("10000000-0000-0000-0000-000000000016"), "reports", "Reports")
     ];
 
     public static readonly DomainModule[] Modules = ModuleDefinitions
@@ -41,7 +42,7 @@ internal static class SeedData
         Permission("20000000-0000-0000-0000-000000000008", 3, PermissionCodes.ProductsRead),
         Permission("20000000-0000-0000-0000-000000000009", 3, PermissionCodes.ProductsManage),
         Permission("20000000-0000-0000-0000-000000000010", 4, PermissionCodes.KitchenRead),
-        Permission("20000000-0000-0000-0000-000000000011", 5, PermissionCodes.ReportsRead),
+        Permission("20000000-0000-0000-0000-000000000011", 5, PermissionCodes.StatisticsRead),
         Permission("20000000-0000-0000-0000-000000000012", 6, PermissionCodes.BillingManage),
         Permission("20000000-0000-0000-0000-000000000013", 7, PermissionCodes.SettingsManage),
         Permission("20000000-0000-0000-0000-000000000014", 8, PermissionCodes.CategoriesRead),
@@ -88,7 +89,9 @@ internal static class SeedData
         Permission("20000000-0000-0000-0000-000000000055", 13, PermissionCodes.PrintingQueueReprint),
         Permission("20000000-0000-0000-0000-000000000056", 7, PermissionCodes.SettingsExpenseFinancialFieldsManage),
         Permission("20000000-0000-0000-0000-000000000057", 14, PermissionCodes.PromotionsRead),
-        Permission("20000000-0000-0000-0000-000000000058", 14, PermissionCodes.PromotionsManage)
+        Permission("20000000-0000-0000-0000-000000000058", 14, PermissionCodes.PromotionsManage),
+        Permission("20000000-0000-0000-0000-000000000059", 15, PermissionCodes.ReportsRead),
+        Permission("20000000-0000-0000-0000-000000000060", 15, PermissionCodes.ReportsManage)
     ];
 
     private static Permission Permission(string id, int moduleIndex, string code) => new()

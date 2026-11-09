@@ -84,11 +84,11 @@ public sealed record UpdateRestaurantTableRequest(
 public sealed record SetTableOperationRequest(
     [Required, MaxLength(20)] string Status,
     Guid? ActiveOrderId = null,
-    [Range(typeof(decimal), "0", "9999999999999999.99")] decimal ActiveOrderTotal = 0);
+    [Range(0.0, 9999999999999999.0)] decimal ActiveOrderTotal = 0);
 
 public sealed record UpdateTableOrderRequest(
     Guid ActiveOrderId,
-    [Range(typeof(decimal), "0", "9999999999999999.99")] decimal Total);
+    [Range(0.0, 9999999999999999.0)] decimal Total);
 
 public sealed record TableStatusChangedEvent(RestaurantTableDto Table, bool IsDeleted = false);
 public sealed record TableOrderUpdatedEvent(Guid TableId, Guid ActiveOrderId, decimal Total, DateTimeOffset UpdatedAt);

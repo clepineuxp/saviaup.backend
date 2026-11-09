@@ -52,6 +52,7 @@ public sealed class ApplicationDbContext(
     public DbSet<CategoryPrintingRoute> CategoryPrintingRoutes => Set<CategoryPrintingRoute>();
     public DbSet<ProductPrintingRoute> ProductPrintingRoutes => Set<ProductPrintingRoute>();
     public DbSet<PrintJob> PrintJobs => Set<PrintJob>();
+    public DbSet<GeneratedReport> GeneratedReports => Set<GeneratedReport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -98,6 +99,7 @@ public sealed class ApplicationDbContext(
         modelBuilder.Entity<CategoryPrintingRoute>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<ProductPrintingRoute>().HasQueryFilter(x => x.TenantId == TenantId);
         modelBuilder.Entity<PrintJob>().HasQueryFilter(x => x.TenantId == TenantId);
+        modelBuilder.Entity<GeneratedReport>().HasQueryFilter(x => x.TenantId == TenantId);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

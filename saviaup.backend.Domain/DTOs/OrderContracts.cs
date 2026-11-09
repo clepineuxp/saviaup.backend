@@ -107,7 +107,7 @@ public sealed record OrderQueryRequest(
 public sealed record CreateOrderItemRequest(
     Guid? ProductId,
     [Required, MaxLength(160)] string ProductName,
-    [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal UnitPrice,
+    [Range(0.01, 9999999999999999.0)] decimal UnitPrice,
     [Range(1, 10000)] int Quantity,
     [MaxLength(500)] string? Notes,
     bool IsCustomSale,
@@ -131,7 +131,7 @@ public sealed record MoveTableOrderRequest(
 
 public sealed record PaymentSplitDto(
     [Required, MaxLength(120)] string Method,
-    [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal Amount);
+    [Range(0.01, 9999999999999999.0)] decimal Amount);
 
 public sealed record PartialItemPayDto(
     [Required] Guid ItemId,
@@ -140,7 +140,7 @@ public sealed record PartialItemPayDto(
 public sealed record CheckoutOrderRequest(
     [Required, MaxLength(120)] string PaymentMethod,
     IReadOnlyCollection<PaymentSplitDto>? Splits = null,
-    [Range(typeof(decimal), "0", "9999999999999999.99")] decimal TipAmount = 0,
+    [Range(0.0, 9999999999999999.0)] decimal TipAmount = 0,
     IReadOnlyCollection<PartialItemPayDto>? ItemsToPay = null);
 
 public sealed record OrderReceiptItemDto(

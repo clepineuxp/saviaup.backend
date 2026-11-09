@@ -61,6 +61,68 @@ public sealed class LocalFileStorage(IOptions<FileStorageOptions> configuredOpti
             File.GetLastWriteTimeUtc(fullPath));
     }
 
+    public async Task<StoredFileReference> SaveReportAsync(
+        Guid tenantId,
+        string fileName,
+        byte[] content,
+        CancellationToken cancellationToken)
+    {
+        if (tenantId == Guid.Empty) throw new ArgumentException("A tenant is required.", nameof(tenantId));
+        if (content.Length == 0) throw new InvalidDataException("The report content is empty.");
+
+        var safeFileName = Path.GetFileName(fileName);
+        if (string.IsNullOrWhiteSpace(safeFileName))
+        {
+            safeFileName = $"Reporte_{Guid.NewGuid():N}.xlsx";
+        }
+        else if (!safeFileName.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            safeFileName += ".xlsx";
+        }
+
+        var uniqueName = $"{Guid.NewGuid():N}_{safeFileName}";
+        var storageKey = $"{tenantId:D}/informes/{uniqueName}";
+        var reference = $"/pvc/{storageKey}";
+        var fullPath = ResolvePath(storageKey);
+        var directory = Path.GetDirectoryName(fullPath)!;
+        Directory.CreateDirectory(directory);
+
+        var temporaryPath = $"{fullPath}.{Guid.NewGuid():N}.tmp";
+        await File.WriteAllBytesAsync(temporaryPath, content, cancellationToken);
+        File.Move(temporaryPath, fullPath);
+
+        const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        return new StoredFileReference(reference, contentType, safeFileName, content.LongLength);
+    }
+
+    public async Task<StoredFileContent?> GetReportAsync(
+        Guid tenantId,
+        string referenceOrFileName,
+        CancellationToken cancellationToken)
+    {
+        var normalized = NormalizeReference(referenceOrFileName);
+        string reference;
+        if (normalized.Contains('/'))
+        {
+            reference = normalized;
+        }
+        else
+        {
+            reference = $"{tenantId:D}/informes/{normalized}";
+        }
+
+        var fullPath = ResolveTenantPath(tenantId, reference);
+        if (!File.Exists(fullPath)) return null;
+
+        var content = await File.ReadAllBytesAsync(fullPath, cancellationToken);
+        const string contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        return new StoredFileContent(
+            content,
+            contentType,
+            Path.GetFileName(fullPath),
+            File.GetLastWriteTimeUtc(fullPath));
+    }
+
     public Task DeleteAsync(Guid tenantId, string? reference, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

@@ -60,6 +60,17 @@ public interface IFileStorage
     Task<StoredFileContent?> GetAsync(Guid tenantId, string reference, CancellationToken cancellationToken);
     Task DeleteAsync(Guid tenantId, string? reference, CancellationToken cancellationToken);
     string? GetPublicUrl(string? reference);
+
+    Task<StoredFileReference> SaveReportAsync(
+        Guid tenantId,
+        string fileName,
+        byte[] content,
+        CancellationToken cancellationToken);
+
+    Task<StoredFileContent?> GetReportAsync(
+        Guid tenantId,
+        string referenceOrFileName,
+        CancellationToken cancellationToken);
 }
 
 public interface IDateTimeProvider
