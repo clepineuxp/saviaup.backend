@@ -58,19 +58,22 @@ public sealed class CriticalEndpointsTests(SaviaUpApiFactory factory) : IClassFi
         var modulesJson = await modules.Content.ReadFromJsonAsync<JsonElement>();
         var sections = modulesJson.GetProperty("sections").EnumerateArray().ToArray();
         Assert.Equal(5, sections.Length);
-        Assert.Equal(15, sections.Sum(section => section.GetProperty("modules").GetArrayLength()));
+        Assert.Equal(16, sections.Sum(section => section.GetProperty("modules").GetArrayLength()));
         Assert.Contains(
             sections[1].GetProperty("modules").EnumerateArray(),
             module => module.GetProperty("code").GetString() == "promotions");
+        Assert.Contains(
+            sections[1].GetProperty("modules").EnumerateArray(),
+            module => module.GetProperty("code").GetString() == "reports");
         var options = sections.SelectMany(section => section.GetProperty("options").EnumerateArray()).ToArray();
         Assert.Equal(2, options.Length);
         Assert.Contains(options, option => option.GetProperty("code").GetString() == "tables.manage");
         Assert.Contains(options, option => option.GetProperty("code").GetString() == "cash-registers.manage");
         Assert.Equal([1, 2, 3, 4, 5], sections.Select(section => section.GetProperty("order").GetInt32()));
-        Assert.True(sections[0].GetProperty("isGrouped").GetBoolean());
+        Assert.False(sections[0].GetProperty("isGrouped").GetBoolean());
         Assert.True(sections[1].GetProperty("isGrouped").GetBoolean());
         Assert.Equal(
-            ["cash_registers", "orders", "statistics", "billing", "promotions"],
+            ["cash_registers", "orders", "statistics", "billing", "promotions", "reports"],
             sections[1].GetProperty("modules").EnumerateArray().Select(module => module.GetProperty("code").GetString()));
         var inventorySection = Assert.Single(
             sections,

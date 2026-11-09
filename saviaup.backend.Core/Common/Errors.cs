@@ -78,4 +78,7 @@ internal static class Errors
     public static readonly Error DigitalMenuNotFound = new(ErrorCodes.DigitalMenuNotFound, LocalizationKeys.DigitalMenuNotFound, ErrorType.NotFound);
     public static readonly Error PromotionNotFound = new(ErrorCodes.PromotionNotFound, LocalizationKeys.PromotionNotFound, ErrorType.NotFound);
     public static readonly Error PromotionNameAlreadyExists = new(ErrorCodes.PromotionNameAlreadyExists, LocalizationKeys.PromotionNameAlreadyExists, ErrorType.Conflict);
+    public static readonly Error ReportNotFound = new(ErrorCodes.ReportNotFound, LocalizationKeys.ReportNotFound, ErrorType.NotFound);
+    public static readonly Error ReportNotReady = new(ErrorCodes.ReportNotReady, LocalizationKeys.ReportNotReady, ErrorType.Business);
+    public static readonly Error ReportGenerationFailed = new(ErrorCodes.ReportGenerationFailed, LocalizationKeys.ReportGenerationFailed, ErrorType.Business);
 }

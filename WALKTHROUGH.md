@@ -27,3 +27,30 @@ La política se consulta en `GET /api/settings/business/expense-editing-policy` 
 ## Total de turnos de caja
 
 `CashRegisterShiftDto` y `CashRegisterShiftSummaryDto` exponen `InitialOpeningAmount` y `TotalInCashAmount`. El primero suma los saldos registrados durante la apertura; el segundo aplica `TotalCollectedAmount + InitialOpeningAmount - TotalExpensesAmount`, de modo que el historial y el detalle usan la misma cifra.
+
+## Reportes y exportación asíncrona a Excel
+
+La feature de reportes permite configurar, generar y descargar informes analíticos en formato Excel (`.xlsx`) sin bloquear peticiones HTTP:
+
+- **Entidad `GeneratedReport`**: modela cada solicitud de informe con aislamiento multi-tenant (`TenantId`), estado (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`), parámetros en JSON, ruta de archivo, tamaño y auditoría de usuario.
+- **Migraciones EF Core**:
+  - `20261109034921_AddGeneratedReports` (`ApplicationDbContext`): crea la tabla `generated_reports` con índices por `TenantId + CreatedAt`, `TenantId + ReportType` y `TenantId + Status`.
+  - `20261109035039_AddReportsModuleToSeed` (`PlatformDbContext`): registra el módulo 16 `reports` y los permisos `reports.read` y `reports.manage`.
+- **Motor Excel ClosedXML (`ClosedXmlReportGenerator`)**:
+  - *Estadísticas*: KPIs consolidados y tablas personalizables por productos top, mesas, meseros y categorías.
+  - *Gastos*: detalle de egresos con filtro de salida de caja (`ALL`, `ONLY_CASH_OUT`, `NO_CASH_OUT`).
+  - *Ventas / Pedidos*: agrupado por *comandas* (mesa, orden, cantidad de ítems y total) o por *productos* (productos individuales vendidos).
+  - *Ventas y Gastos*: ingresos vs egresos indicando fecha, hora y usuario responsable.
+  - *Cajas*: turnos con apertura, ventas, gastos, balance y recaudación por cada medio de pago.
+- **Procesamiento asíncrono**: `ReportJobQueue` encola el trabajo en memoria mediante canales (`System.Threading.Channels`) y `ReportGenerationBackgroundService` procesa la generación en segundo plano.
+- **Almacenamiento persistente**: los archivos generados se guardan en el volumen PVC bajo `{tenantId}/informes/{guid}_{fileName}` mediante `LocalFileStorage`.
+- **Endpoints en `ReportsController`**:
+  - `POST /api/reports`: acepta la solicitud y responde `202 Accepted` con el DTO del reporte en estado `PENDING`.
+  - `GET /api/reports`: lista los informes recientes del tenant.
+  - `GET /api/reports/{id}`: consulta el estado del reporte.
+  - `GET /api/reports/{id}/download`: descarga el archivo Excel.
+- **Agrupación por períodos (`PeriodGrouping`)**:
+  - Soporta `NONE`, `WEEKLY` (semanas lunes a domingo) y `MONTHLY` (mes calendario).
+  - Incluye hojas dedicadas de evolución periódica y columna `Período` en los reportes de ventas, gastos, consolidado y turnos de caja.
+  - Normalización de tipos de reporte para compatibilidad completa con identificadores del frontend (`SALES`, `ORDERS`, `SALES_AND_EXPENSES`, `SALES_EXPENSES`, `STATISTICS`, `EXPENSES`, `CASH_REGISTERS`).
+

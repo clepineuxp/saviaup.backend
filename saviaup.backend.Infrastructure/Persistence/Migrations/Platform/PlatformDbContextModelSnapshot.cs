@@ -153,6 +153,13 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Platform
                             Code = "promotions",
                             IsActive = true,
                             Name = "Promotions"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000016"),
+                            Code = "reports",
+                            IsActive = true,
+                            Name = "Reports"
                         });
                 });
 
@@ -348,8 +355,8 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Platform
                         new
                         {
                             Id = new Guid("20000000-0000-0000-0000-000000000011"),
-                            Code = "reports.read",
-                            Description = "reports.read",
+                            Code = "statistics.read",
+                            Description = "statistics.read",
                             ModuleId = new Guid("10000000-0000-0000-0000-000000000006")
                         },
                         new
@@ -680,6 +687,20 @@ namespace SaviaUp.Backend.Infrastructure.Persistence.Migrations.Platform
                             Code = "promotions.manage",
                             Description = "promotions.manage",
                             ModuleId = new Guid("10000000-0000-0000-0000-000000000015")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000059"),
+                            Code = "reports.read",
+                            Description = "reports.read",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000016")
+                        },
+                        new
+                        {
+                            Id = new Guid("20000000-0000-0000-0000-000000000060"),
+                            Code = "reports.manage",
+                            Description = "reports.manage",
+                            ModuleId = new Guid("10000000-0000-0000-0000-000000000016")
                         });
                 });
 

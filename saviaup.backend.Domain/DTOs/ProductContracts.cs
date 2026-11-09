@@ -27,7 +27,7 @@ public sealed record ProductRecipeItemDto(
 public sealed record ProductRecipeItemRequest(
     Guid? IngredientId,
     [MaxLength(160)] string? CustomIngredientName,
-    [Range(typeof(decimal), "0.0001", "9999999999999999.9999")] decimal Quantity,
+    [Range(0.0001, 9999999999999999.0)] decimal Quantity,
     [MaxLength(500)] string? Notes,
     int Order = 0);
 
@@ -42,7 +42,7 @@ public sealed record ProductVariationDto(
 public sealed record ProductVariationRequest(
     Guid? Id,
     [Required, MaxLength(120)] string Name,
-    [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal SalePrice,
+    [Range(0.01, 9999999999999999.0)] decimal SalePrice,
     int Order = 0,
     bool IsActive = true);
 
@@ -69,7 +69,7 @@ public sealed record ProductComboGroupDto(
 public sealed record ProductComboOptionRequest(
     Guid ProductId,
     [Range(1, 1000)] int ProductQuantity,
-    [Range(typeof(decimal), "-9999999999999999.99", "9999999999999999.99")] decimal PriceAdjustment = 0,
+    [Range(-9999999999999999.0, 9999999999999999.0)] decimal PriceAdjustment = 0,
     int Order = 0,
     Guid? ProductVariationId = null);
 
@@ -106,7 +106,7 @@ public sealed record CreateProductRequest(
     string? Type,
     [Required, MaxLength(120)] string Name,
     Guid CategoryId,
-    [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal? SalePrice,
+    [Range(0.01, 9999999999999999.0)] decimal? SalePrice,
     [MaxLength(1000)] string? Description,
     string? Image,
     [Range(0, int.MaxValue)] int? PreparationTimeMinutes,
@@ -119,7 +119,7 @@ public sealed record UpdateProductRequest(
     string? Type,
     [Required, MaxLength(120)] string Name,
     Guid CategoryId,
-    [Range(typeof(decimal), "0.01", "9999999999999999.99")] decimal? SalePrice,
+    [Range(0.01, 9999999999999999.0)] decimal? SalePrice,
     [MaxLength(1000)] string? Description,
     string? Image,
     [Range(0, int.MaxValue)] int? PreparationTimeMinutes,

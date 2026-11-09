@@ -76,6 +76,9 @@ public static class ErrorCodes
     public const string DigitalMenuNotFound = "DIGITAL_MENU_NOT_FOUND";
     public const string PromotionNotFound = "PROMOTION_NOT_FOUND";
     public const string PromotionNameAlreadyExists = "PROMOTION_NAME_ALREADY_EXISTS";
+    public const string ReportNotFound = "REPORT_NOT_FOUND";
+    public const string ReportNotReady = "REPORT_NOT_READY";
+    public const string ReportGenerationFailed = "REPORT_GENERATION_FAILED";
     public const string Validation = "VALIDATION_ERROR";
     public const string Internal = "INTERNAL_ERROR";
 }

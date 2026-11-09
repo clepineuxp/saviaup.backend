@@ -13,6 +13,7 @@ using SaviaUp.Backend.Core.Orders;
 using SaviaUp.Backend.Core.Products;
 using SaviaUp.Backend.Core.Promotions;
 using SaviaUp.Backend.Core.Printing;
+using SaviaUp.Backend.Core.Reports;
 using SaviaUp.Backend.Core.Security;
 using SaviaUp.Backend.Core.Settings;
 using SaviaUp.Backend.Core.Statistics;
@@ -112,6 +113,7 @@ public static class CoreModule
         services.AddScoped<IGetBillingReceiptsUseCase, GetBillingReceiptsUseCase>();
         services.AddScoped<IGetBillingOrdersUseCase, GetBillingOrdersUseCase>();
         services.AddScoped<IGetBillingReceiptByIdUseCase, GetBillingReceiptByIdUseCase>();
+        services.AddScoped<IReportsUseCase, ReportsUseCase>();
         services.AddScoped<IUploadImageUseCase, UploadImageUseCase>();
         services.AddScoped<IGetImageByIdUseCase, GetImageByIdUseCase>();
         services.AddScoped<IGetImagesByEntityUseCase, GetImagesByEntityUseCase>();
