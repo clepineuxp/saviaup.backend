@@ -739,6 +739,49 @@ public interface IPrintAgentUseCase
     Task<Result<PrintJobDto>> UpdateJobStatusAsync(Guid tenantId, Guid agentId, Guid jobId, PrintJobStatusRequest request, CancellationToken cancellationToken);
 }
 
+public interface IReportsUseCase
+{
+    Task<Result<GeneratedReportDto>> RequestReportAsync(
+        Guid tenantId,
+        Guid userId,
+        string userName,
+        CreateReportRequest request,
+        CancellationToken cancellationToken);
+
+    Task<Result<IReadOnlyCollection<GeneratedReportDto>>> ListReportsAsync(
+        Guid tenantId,
+        CancellationToken cancellationToken);
+
+    Task<Result<GeneratedReportDto>> GetReportStatusAsync(
+        Guid tenantId,
+        Guid reportId,
+        CancellationToken cancellationToken);
+
+    Task<Result<ReportDownloadDto>> DownloadReportAsync(
+        Guid tenantId,
+        Guid reportId,
+        CancellationToken cancellationToken);
+
+    Task<Result> ProcessReportJobAsync(
+        Guid reportId,
+        CancellationToken cancellationToken);
+}
+
+public interface IReportJobQueue
+{
+    ValueTask EnqueueAsync(Guid reportId, CancellationToken cancellationToken);
+    ValueTask<Guid> DequeueAsync(CancellationToken cancellationToken);
+}
+
+public interface IReportGenerator
+{
+    Task<byte[]> GenerateExcelAsync(
+        Guid tenantId,
+        GeneratedReport report,
+        CreateReportRequest parameters,
+        CancellationToken cancellationToken);
+}
+
 public interface IPrintJobFactory
 {
     Task<IReadOnlyCollection<PrintJobNotification>> CreateForOrderItemsAsync(

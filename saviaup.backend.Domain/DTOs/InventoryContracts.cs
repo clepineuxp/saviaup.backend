@@ -95,15 +95,15 @@ public sealed record CreateIngredientRequest(
     Guid MeasurementUnitId,
     [Required, MaxLength(120)] string Name,
     [MaxLength(1000)] string? Description,
-    [Range(typeof(decimal), "0", "999999999999999.999")] decimal MinimumStock = 0,
-    [Range(typeof(decimal), "0", "999999999999999.999")] decimal InitialStock = 0);
+    [Range(0.0, 999999999999999.0)] decimal MinimumStock = 0,
+    [Range(0.0, 999999999999999.0)] decimal InitialStock = 0);
 
 public sealed record UpdateIngredientRequest(
     Guid CategoryId,
     Guid MeasurementUnitId,
     [Required, MaxLength(120)] string Name,
     [MaxLength(1000)] string? Description,
-    [Range(typeof(decimal), "0", "999999999999999.999")] decimal MinimumStock = 0);
+    [Range(0.0, 999999999999999.0)] decimal MinimumStock = 0);
 
 public sealed record SetIngredientStatusRequest(bool IsActive);
 
@@ -111,7 +111,7 @@ public sealed record CreateInventoryMovementRequest(
     Guid IngredientId,
     [Required, MaxLength(20)] string Direction,
     [Required, MaxLength(30)] string Reason,
-    [Range(typeof(decimal), "0.001", "999999999999999.999")] decimal Quantity,
+    [Range(0.001, 999999999999999.0)] decimal Quantity,
     [MaxLength(500)] string? Note);
 
 public sealed record CreateMeasurementUnitRequest(

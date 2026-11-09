@@ -74,6 +74,9 @@ public static class LocalizationKeys
     public const string DigitalMenuNotFound = "digitalMenu.notFound";
     public const string PromotionNotFound = "promotions.notFound";
     public const string PromotionNameAlreadyExists = "promotions.nameAlreadyExists";
+    public const string ReportNotFound = "reports.notFound";
+    public const string ReportNotReady = "reports.notReady";
+    public const string ReportGenerationFailed = "reports.generationFailed";
     public const string Validation = "common.validation";
     public const string InternalError = "common.internalError";
 

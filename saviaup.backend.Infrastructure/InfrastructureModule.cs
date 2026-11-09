@@ -10,6 +10,7 @@ using SaviaUp.Backend.Infrastructure.Persistence;
 using SaviaUp.Backend.Infrastructure.Persistence.Application;
 using SaviaUp.Backend.Infrastructure.Persistence.Platform;
 using SaviaUp.Backend.Infrastructure.Persistence.Repositories;
+using SaviaUp.Backend.Infrastructure.Reports;
 using SaviaUp.Backend.Infrastructure.Security;
 using SaviaUp.Backend.Infrastructure.Storage;
 using SaviaUp.Backend.Infrastructure.Time;
@@ -76,6 +77,10 @@ public static class InfrastructureModule
         services.AddScoped<IStoredImageRepository, StoredImageRepository>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
         services.AddScoped<IExpenseRepository, ExpenseRepository>();
+        services.AddScoped<IGeneratedReportRepository, GeneratedReportRepository>();
+        services.AddScoped<IReportGenerator, ClosedXmlReportGenerator>();
+        services.AddSingleton<IReportJobQueue, ReportJobQueue>();
+        services.AddHostedService<ReportGenerationBackgroundService>();
         services.AddScoped<IPrintingRepository, PrintingRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();

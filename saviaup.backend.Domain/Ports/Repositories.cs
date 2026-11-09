@@ -438,6 +438,15 @@ public interface IPrintingRepository
     Task CancelOpenJobsForAgentAsync(Guid tenantId, Guid agentId, DateTimeOffset now, CancellationToken cancellationToken);
 }
 
+public interface IGeneratedReportRepository
+{
+    Task<GeneratedReport?> GetByIdAsync(Guid tenantId, Guid reportId, CancellationToken cancellationToken);
+    Task<GeneratedReport?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<GeneratedReport>> GetRecentAsync(Guid tenantId, int limit, CancellationToken cancellationToken);
+    Task AddAsync(GeneratedReport report, CancellationToken cancellationToken);
+    void Remove(GeneratedReport report);
+}
+
 public interface IUnitOfWork
 {
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

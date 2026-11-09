@@ -27,7 +27,8 @@ internal static class NavigationCatalog
                 new("orders", 2),
                 new("statistics", 3),
                 new("billing", 4),
-                new("promotions", 5)
+                new("promotions", 5),
+                new("reports", 6)
             ],
             []),
         new("inventory", 4,

@@ -40,7 +40,7 @@ public static class TranslationCatalog
                     [LocalizationKeys.ModuleName("products")] = "Productos",
                     [LocalizationKeys.ModuleName("categories")] = "Categorías",
                     [LocalizationKeys.ModuleName("kitchen")] = "Cocina",
-                    [LocalizationKeys.ModuleName("reports")] = "Estadísticas",
+                    [LocalizationKeys.ModuleName("reports")] = "Reportes",
                     [LocalizationKeys.ModuleName("statistics")] = "Estadísticas",
                     [LocalizationKeys.ModuleName("billing")] = "Facturación",
                     [LocalizationKeys.ModuleName("expenses")] = "Gastos",
@@ -105,6 +105,9 @@ public static class TranslationCatalog
                     [LocalizationKeys.PrintingZoneAlreadyExists] = "Ya existe una zona de impresión con ese nombre en la sede.",
                     [LocalizationKeys.PrintJobNotFound] = "No encontramos el trabajo de impresión solicitado.",
                     [LocalizationKeys.PrintJobInvalidStatus] = "El trabajo de impresión no se encuentra en un estado válido para esta acción.",
+                    [LocalizationKeys.ReportNotFound] = "No encontramos el reporte solicitado.",
+                    [LocalizationKeys.ReportNotReady] = "El reporte aún se encuentra en procesamiento.",
+                    [LocalizationKeys.ReportGenerationFailed] = "No fue posible generar el reporte solicitado.",
                     [LocalizationKeys.Validation] = "Revisa los datos enviados.",
                     [LocalizationKeys.InternalError] = "Ocurrió un error inesperado."
                 }),
@@ -140,7 +143,7 @@ public static class TranslationCatalog
                     [LocalizationKeys.ModuleName("products")] = "Products",
                     [LocalizationKeys.ModuleName("categories")] = "Categories",
                     [LocalizationKeys.ModuleName("kitchen")] = "Kitchen",
-                    [LocalizationKeys.ModuleName("reports")] = "Statistics",
+                    [LocalizationKeys.ModuleName("reports")] = "Reports",
                     [LocalizationKeys.ModuleName("statistics")] = "Statistics",
                     [LocalizationKeys.ModuleName("billing")] = "Billing",
                     [LocalizationKeys.ModuleName("expenses")] = "Expenses",
@@ -205,6 +208,9 @@ public static class TranslationCatalog
                     [LocalizationKeys.PrintingZoneAlreadyExists] = "A printing zone with that name already exists at the location.",
                     [LocalizationKeys.PrintJobNotFound] = "The requested print job was not found.",
                     [LocalizationKeys.PrintJobInvalidStatus] = "The print job is not in a valid state for this action.",
+                    [LocalizationKeys.ReportNotFound] = "The requested report was not found.",
+                    [LocalizationKeys.ReportNotReady] = "The report is still being processed.",
+                    [LocalizationKeys.ReportGenerationFailed] = "The requested report could not be generated.",
                     [LocalizationKeys.Validation] = "Review the submitted data.",
                     [LocalizationKeys.InternalError] = "An unexpected error occurred."
                 })
