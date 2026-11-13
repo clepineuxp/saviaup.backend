@@ -13,7 +13,9 @@ public sealed class ReportsUseCase(
     IReportGenerator reportGenerator,
     IFileStorage fileStorage,
     IDateTimeProvider dateTimeProvider,
-    IUnitOfWork unitOfWork) : IReportsUseCase
+    IUnitOfWork unitOfWork,
+    IOrganizationTimeZone organizationTimeZone,
+    ITimeZoneService timeZones) : IReportsUseCase
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -35,7 +37,21 @@ public sealed class ReportsUseCase(
             return Result<GeneratedReportDto>.Failure(Errors.Validation);
         }
 
-        if (request.FromDate > request.ToDate)
+        var zone = await organizationTimeZone.GetAsync(tenantId, cancellationToken);
+        if (request.FromLocalDate.HasValue || request.ToLocalDate.HasValue)
+        {
+            if (request.FromLocalDate is not { } fromDay || request.ToLocalDate is not { } toDay ||
+                fromDay > toDay || toDay == DateOnly.MaxValue)
+                return Result<GeneratedReportDto>.Failure(Errors.Validation);
+
+            request = request with
+            {
+                FromDate = timeZones.StartOfDayUtc(fromDay, zone),
+                ToDate = timeZones.StartOfDayUtc(toDay.AddDays(1), zone).AddTicks(-1)
+            };
+        }
+
+        if (request.FromDate == default || request.ToDate == default || request.FromDate > request.ToDate)
         {
             return Result<GeneratedReportDto>.Failure(Errors.Validation);
         }
@@ -47,8 +63,8 @@ public sealed class ReportsUseCase(
             PeriodGrouping = normalizedPeriodGrouping
         };
 
-        var fromStr = request.FromDate.ToLocalTime().ToString("yyyyMMdd");
-        var toStr = request.ToDate.ToLocalTime().ToString("yyyyMMdd");
+        var fromStr = timeZones.ConvertFromUtc(request.FromDate, zone).ToString("yyyyMMdd");
+        var toStr = timeZones.ConvertFromUtc(request.ToDate, zone).ToString("yyyyMMdd");
         var groupSuffix = normalizedPeriodGrouping != "NONE" ? $"_{normalizedPeriodGrouping.ToLowerInvariant()}" : string.Empty;
         var fileName = $"Reporte_{normalizedType}{groupSuffix}_{fromStr}_{toStr}.xlsx";
 

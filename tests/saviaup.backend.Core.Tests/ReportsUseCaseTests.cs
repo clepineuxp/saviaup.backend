@@ -4,6 +4,7 @@ using SaviaUp.Backend.Domain.DTOs;
 using SaviaUp.Backend.Domain.Entities;
 using SaviaUp.Backend.Domain.Ports;
 using Xunit;
+using SaviaUp.Backend.Infrastructure.Time;
 
 namespace SaviaUp.Backend.Core.Tests;
 
@@ -16,18 +17,54 @@ public sealed class ReportsUseCaseTests
     private readonly Mock<IDateTimeProvider> _dateTimeProvider = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
 
+    private readonly Mock<IOrganizationTimeZone> _zone = new();
     private readonly ReportsUseCase _useCase;
 
     public ReportsUseCaseTests()
     {
         _dateTimeProvider.Setup(d => d.UtcNow).Returns(new DateTimeOffset(2026, 11, 8, 12, 0, 0, TimeSpan.Zero));
+        _zone.Setup(z => z.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync("America/Bogota");
         _useCase = new ReportsUseCase(
             _repository.Object,
             _jobQueue.Object,
             _generator.Object,
             _fileStorage.Object,
             _dateTimeProvider.Object,
-            _unitOfWork.Object);
+            _unitOfWork.Object,
+            _zone.Object,
+            new IanaTimeZoneService());
+    }
+
+    [Theory]
+    [InlineData("America/Bogota", "2026-11-01", "2026-11-01T05:00:00Z", "2026-11-02T05:00:00Z")]
+    [InlineData("America/New_York", "2026-03-08", "2026-03-08T05:00:00Z", "2026-03-09T04:00:00Z")]
+    [InlineData("America/New_York", "2026-11-01", "2026-11-01T04:00:00Z", "2026-11-02T05:00:00Z")]
+    public async Task RequestReportAsync_ResolvesCivilDatesAndFileNameInOrganizationZone(string zone, string date, string start, string end)
+    {
+        _zone.Setup(z => z.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(zone);
+        var request = new CreateReportRequest("statistics", FromLocalDate: DateOnly.Parse(date), ToLocalDate: DateOnly.Parse(date), IncludeTips: true);
+        GeneratedReport? captured = null;
+        _repository.Setup(r => r.AddAsync(It.IsAny<GeneratedReport>(), It.IsAny<CancellationToken>()))
+            .Callback<GeneratedReport, CancellationToken>((report, _) => captured = report)
+            .Returns(Task.CompletedTask);
+
+        var result = await _useCase.RequestReportAsync(Guid.NewGuid(), Guid.NewGuid(), "User", request, default);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(captured);
+        Assert.Equal(DateTimeOffset.Parse(start), captured.FromDate);
+        Assert.Equal(DateTimeOffset.Parse(end).AddTicks(-1), captured.ToDate);
+        Assert.Contains(date.Replace("-", ""), captured.FileName);
+        Assert.Contains("\"IncludeTips\":true", captured.ParametersJson);
+    }
+
+    [Fact]
+    public async Task RequestReportAsync_RejectsIncompleteLocalRange()
+    {
+        var result = await _useCase.RequestReportAsync(Guid.NewGuid(), Guid.NewGuid(), "User",
+            new CreateReportRequest("statistics", FromLocalDate: new DateOnly(2026, 11, 1)), default);
+        Assert.False(result.IsSuccess);
+        _jobQueue.Verify(q => q.EnqueueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
