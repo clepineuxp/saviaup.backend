@@ -1,4 +1,6 @@
 using System.Net;
+using ClosedXML.Excel;
+using SaviaUp.Backend.Infrastructure.Reports;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -49,7 +51,7 @@ public sealed class OrganizationTimeZoneTests(SaviaUpApiFactory factory) : IClas
         var instants = new[] { start.AddTicks(-1), start, end.AddTicks(-1), end };
         foreach (var instant in instants)
         {
-            var order = new Order { Id = Guid.NewGuid(), TenantId = id, CreatedAt = instant, UpdatedAt = instant, PaidAt = instant, Status = "PAID", SubtotalAmount = 10, TotalAmount = 10 };
+            var order = new Order { Id = Guid.NewGuid(), TenantId = id, CreatedAt = instant, UpdatedAt = instant, PaidAt = instant, Status = "PAID", SubtotalAmount = 10, TipAmount = 2, TotalAmount = 12 };
             app.Orders.Add(order);
             app.OrderReceipts.Add(new OrderReceipt { Id = Guid.NewGuid(), TenantId = id, OrderId = order.Id, Order = order, CreatedAt = instant, ReceiptType = "PAYMENT" });
         }
@@ -61,10 +63,38 @@ public sealed class OrganizationTimeZoneTests(SaviaUpApiFactory factory) : IClas
         var receipts = await new GetBillingReceiptsUseCase(new BillingRepository(app), new Clock(), organization, zones).ExecuteAsync(id, new BillingReceiptQueryRequest(FromLocalDate: day, ToLocalDate: day), default);
         Assert.Equal(2, receipts.Value!.TotalCount);
 
+        // Creation dates deliberately disagree with payment dates for statistics/export.
+        foreach (var order in app.Orders.Local.Where(o => o.TenantId == id))
+            order.CreatedAt = order.PaidAt == start ? start.AddDays(-3) : start;
+        await app.SaveChangesAsync();
+
         var stats = await new StatisticsRepository(app, organization, zones)
             .GetDashboardStatisticsAsync(id, "custom_range", day, day, false, start, default);
         Assert.Equal(2, stats.SalesTrend.Single(p => p.Date == date).OrdersCount);
         Assert.Equal(20m, stats.SalesTrend.Single(p => p.Date == date).Sales);
+
+        var generator = new ClosedXmlReportGenerator(app, organization, zones, new Clock());
+        foreach (var includeTips in new[] { false, true })
+        {
+            var dashboard = await new StatisticsRepository(app, organization, zones)
+                .GetDashboardStatisticsAsync(id, "custom_range", day, day, includeTips, start, default);
+            foreach (var grouping in new[] { "NONE", "WEEKLY", "MONTHLY" })
+            {
+                var request = new CreateReportRequest("statistics", start, end.AddTicks(-1), PeriodGrouping: grouping, IncludeTips: includeTips);
+                var content = await generator.GenerateExcelAsync(id, new GeneratedReport { ReportType = "statistics" }, request, default);
+                using var stream = new MemoryStream(content);
+                using var workbook = new XLWorkbook(stream);
+                var summary = workbook.Worksheet("Resumen General");
+                Assert.Equal(dashboard.Summary.TotalSales, summary.Cell(5, 2).GetValue<decimal>());
+                Assert.Equal(dashboard.Summary.TotalOrdersCount, summary.Cell(5, 4).GetValue<int>());
+                Assert.Equal(dashboard.Summary.AverageTicket, summary.Cell(5, 6).GetValue<decimal>());
+                Assert.Equal(dashboard.Summary.TotalTips, summary.Cell(5, 8).GetValue<decimal>());
+                Assert.Contains(date + " 00:00", summary.Cell(2, 1).GetString());
+                Assert.Contains(date + " 23:59", summary.Cell(2, 1).GetString());
+                if (grouping != "NONE")
+                    Assert.Equal(dashboard.Summary.TotalSales, summary.Cell(8, 3).GetValue<decimal>());
+            }
+        }
     }
 
     [Fact]
@@ -91,6 +121,19 @@ public sealed class OrganizationTimeZoneTests(SaviaUpApiFactory factory) : IClas
         Assert.Equal(HttpStatusCode.BadRequest, missingRangeEnd.StatusCode);
         var customRange = await client.GetAsync("/api/statistics?period=custom_range&fromDate=2026-09-18&toDate=2026-09-18");
         customRange.EnsureSuccessStatusCode();
+        var reportResponse = await client.PostAsJsonAsync("/api/reports", new
+        {
+            reportType = "statistics",
+            fromLocalDate = "2026-09-18",
+            toLocalDate = "2026-09-18",
+            includeTips = false
+        });
+        Assert.Equal(HttpStatusCode.Accepted, reportResponse.StatusCode);
+        var report = await reportResponse.Content.ReadFromJsonAsync<GeneratedReportDto>();
+        Assert.Equal(DateTimeOffset.Parse("2026-09-18T04:00:00Z"), report!.FromDate);
+        Assert.Equal(DateTimeOffset.Parse("2026-09-19T04:00:00Z").AddTicks(-1), report.ToDate);
+        var incompleteReport = await client.PostAsJsonAsync("/api/reports", new { reportType = "statistics", fromLocalDate = "2026-09-18" });
+        Assert.Equal(HttpStatusCode.BadRequest, incompleteReport.StatusCode);
     }
 
     [Fact]

@@ -8,7 +8,7 @@ using SaviaUp.Backend.Infrastructure.Persistence.Application;
 
 namespace SaviaUp.Backend.Infrastructure.Reports;
 
-public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IReportGenerator
+public sealed class ClosedXmlReportGenerator(ApplicationDbContext context, IOrganizationTimeZone organizationTimeZone, ITimeZoneService timeZones, IDateTimeProvider clock) : IReportGenerator
 {
     private static readonly XLColor PrimaryHeaderBg = XLColor.FromHtml("#163300");
     private static readonly XLColor SecondaryHeaderBg = XLColor.FromHtml("#2D4A1D");
@@ -22,32 +22,33 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         CreateReportRequest parameters,
         CancellationToken cancellationToken)
     {
+        var zone = await organizationTimeZone.GetAsync(tenantId, cancellationToken);
         using var workbook = new XLWorkbook();
 
         var normalizedType = (report.ReportType ?? string.Empty).Trim().ToLowerInvariant();
         switch (normalizedType)
         {
             case "statistics":
-                await BuildStatisticsReportAsync(workbook, tenantId, parameters, cancellationToken);
+                await BuildStatisticsReportAsync(workbook, tenantId, parameters, zone, cancellationToken);
                 break;
             case "expenses":
-                await BuildExpensesReportAsync(workbook, tenantId, parameters, cancellationToken);
+                await BuildExpensesReportAsync(workbook, tenantId, parameters, zone, cancellationToken);
                 break;
             case "orders":
             case "sales":
-                await BuildOrdersReportAsync(workbook, tenantId, parameters, cancellationToken);
+                await BuildOrdersReportAsync(workbook, tenantId, parameters, zone, cancellationToken);
                 break;
             case "sales_expenses":
             case "sales_and_expenses":
-                await BuildSalesAndExpensesReportAsync(workbook, tenantId, parameters, cancellationToken);
+                await BuildSalesAndExpensesReportAsync(workbook, tenantId, parameters, zone, cancellationToken);
                 break;
             case "cash_registers":
             case "cashregisters":
             case "cajas":
-                await BuildCashRegistersReportAsync(workbook, tenantId, parameters, cancellationToken);
+                await BuildCashRegistersReportAsync(workbook, tenantId, parameters, zone, cancellationToken);
                 break;
             default:
-                await BuildOrdersReportAsync(workbook, tenantId, parameters, cancellationToken);
+                await BuildOrdersReportAsync(workbook, tenantId, parameters, zone, cancellationToken);
                 break;
         }
 
@@ -60,30 +61,32 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         XLWorkbook wb,
         Guid tenantId,
         CreateReportRequest req,
+        string zone,
         CancellationToken ct)
     {
         var orders = await context.Orders
             .AsNoTracking()
             .IgnoreQueryFilters()
-            .Where(o => o.TenantId == tenantId && o.Status == "PAID" && o.CreatedAt >= req.FromDate && o.CreatedAt <= req.ToDate)
+            .Where(o => o.TenantId == tenantId && o.Status == "PAID" && o.PaidAt >= req.FromDate && o.PaidAt <= req.ToDate)
             .Include(o => o.Table)!.ThenInclude(t => t.DiningArea)
             .Include(o => o.Items)!.ThenInclude(i => i.Product)!.ThenInclude(p => p.Category)
             .ToListAsync(ct);
 
         var wsSummary = wb.Worksheets.Add("Resumen General");
-        SetupTitle(wsSummary, "REPORTE DE ESTADÍSTICAS", req.FromDate, req.ToDate);
+        SetupTitle(wsSummary, "REPORTE DE ESTADÍSTICAS", req.FromDate, req.ToDate, zone);
+        wsSummary.Cell(3, 1).Value = req.IncludeTips == true ? "Ventas con propinas" : "Ventas sin propinas";
 
-        var totalSales = orders.Sum(o => o.TotalAmount);
+        var totalSales = orders.Sum(o => (o.SubtotalAmount + (req.IncludeTips == true ? o.TipAmount : 0m)));
         var totalTips = orders.Sum(o => o.TipAmount);
         var totalOrders = orders.Count;
-        var avgTicket = totalOrders > 0 ? totalSales / totalOrders : 0m;
+        var avgTicket = totalOrders > 0 ? Math.Round(totalSales / totalOrders, 2) : 0m;
 
         AddKpiCard(wsSummary, 4, 2, "Total Ventas Facturadas", totalSales, true);
         AddKpiCard(wsSummary, 4, 4, "Total Comandas / Pedidos", totalOrders, false);
         AddKpiCard(wsSummary, 4, 6, "Ticket Promedio", avgTicket, true);
         AddKpiCard(wsSummary, 4, 8, "Total Propinas", totalTips, true);
 
-        var periods = GeneratePeriods(req.FromDate, req.ToDate, req.PeriodGrouping);
+        var periods = GeneratePeriods(req.FromDate, req.ToDate, req.PeriodGrouping, zone);
         if (periods.Count > 0)
         {
             var pRow = 7;
@@ -91,10 +94,10 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
             foreach (var p in periods)
             {
                 pRow++;
-                var pOrders = orders.Where(o => o.CreatedAt >= p.Start && o.CreatedAt <= p.End).ToList();
-                var pSales = pOrders.Sum(o => o.TotalAmount);
+                var pOrders = orders.Where(o => o.PaidAt >= p.Start && o.PaidAt <= p.End).ToList();
+                var pSales = pOrders.Sum(o => (o.SubtotalAmount + (req.IncludeTips == true ? o.TipAmount : 0m)));
                 var pTips = pOrders.Sum(o => o.TipAmount);
-                var pAvg = pOrders.Count > 0 ? pSales / pOrders.Count : 0m;
+                var pAvg = pOrders.Count > 0 ? Math.Round(pSales / pOrders.Count, 2) : 0m;
 
                 wsSummary.Cell(pRow, 1).Value = p.Label;
                 wsSummary.Cell(pRow, 2).Value = pOrders.Count;
@@ -131,7 +134,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         if (includeProducts)
         {
             var wsProducts = wb.Worksheets.Add("Por Productos");
-            SetupTitle(wsProducts, "ESTADÍSTICAS POR PRODUCTOS", req.FromDate, req.ToDate);
+            SetupTitle(wsProducts, "ESTADÍSTICAS POR PRODUCTOS", req.FromDate, req.ToDate, zone);
 
             var productGroups = orders
                 .SelectMany(o => o.Items.Where(i => i.Status != "CANCELLED"))
@@ -169,7 +172,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         if (includeTables)
         {
             var wsTables = wb.Worksheets.Add("Por Mesas");
-            SetupTitle(wsTables, "ESTADÍSTICAS POR MESAS", req.FromDate, req.ToDate);
+            SetupTitle(wsTables, "ESTADÍSTICAS POR MESAS", req.FromDate, req.ToDate, zone);
 
             var tableGroups = orders
                 .GroupBy(o => o.Table != null ? $"{o.Table.Name} ({o.Table.DiningArea?.Name ?? "Sin sala"})" : "Para Llevar / Caja")
@@ -177,7 +180,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
                 {
                     TableName = g.Key,
                     Count = g.Count(),
-                    Total = g.Sum(o => o.TotalAmount),
+                    Total = g.Sum(o => (o.SubtotalAmount + (req.IncludeTips == true ? o.TipAmount : 0m))),
                     Tips = g.Sum(o => o.TipAmount)
                 })
                 .OrderByDescending(t => t.Total)
@@ -205,7 +208,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         if (includeWaiters)
         {
             var wsWaiters = wb.Worksheets.Add("Por Meseros");
-            SetupTitle(wsWaiters, "ESTADÍSTICAS POR MESEROS / CAJEROS", req.FromDate, req.ToDate);
+            SetupTitle(wsWaiters, "ESTADÍSTICAS POR MESEROS / CAJEROS", req.FromDate, req.ToDate, zone);
 
             var waiterGroups = orders
                 .GroupBy(o => string.IsNullOrWhiteSpace(o.CreatedByUserName) ? "No especificado" : o.CreatedByUserName)
@@ -213,7 +216,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
                 {
                     Waiter = g.Key,
                     Count = g.Count(),
-                    Total = g.Sum(o => o.TotalAmount),
+                    Total = g.Sum(o => (o.SubtotalAmount + (req.IncludeTips == true ? o.TipAmount : 0m))),
                     Tips = g.Sum(o => o.TipAmount)
                 })
                 .OrderByDescending(w => w.Total)
@@ -238,7 +241,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         if (includeCategories)
         {
             var wsCats = wb.Worksheets.Add("Por Categorías");
-            SetupTitle(wsCats, "ESTADÍSTICAS POR CATEGORÍAS", req.FromDate, req.ToDate);
+            SetupTitle(wsCats, "ESTADÍSTICAS POR CATEGORÍAS", req.FromDate, req.ToDate, zone);
 
             var catGroups = orders
                 .SelectMany(o => o.Items.Where(i => i.Status != "CANCELLED"))
@@ -274,6 +277,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         XLWorkbook wb,
         Guid tenantId,
         CreateReportRequest req,
+        string zone,
         CancellationToken ct)
     {
         var query = context.Expenses
@@ -296,7 +300,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
             .ToListAsync(ct);
 
         var ws = wb.Worksheets.Add("Gastos");
-        SetupTitle(ws, "REPORTE DETALLADO DE GASTOS", req.FromDate, req.ToDate);
+        SetupTitle(ws, "REPORTE DETALLADO DE GASTOS", req.FromDate, req.ToDate, zone);
 
         var totalExpenses = expenses.Where(e => e.Status == "ACTIVE").Sum(e => e.Amount);
         var totalCashOut = expenses.Where(e => e.Status == "ACTIVE" && e.IsCashOut).Sum(e => e.Amount);
@@ -306,13 +310,13 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         AddKpiCard(ws, 4, 4, "Salidos de Caja (Efectivo)", totalCashOut, true);
         AddKpiCard(ws, 4, 7, "Gastos Fuera de Caja", totalNonCash, true);
 
-        var periods = GeneratePeriods(req.FromDate, req.ToDate, req.PeriodGrouping);
+        var periods = GeneratePeriods(req.FromDate, req.ToDate, req.PeriodGrouping, zone);
         var hasPeriods = periods.Count > 0;
 
         if (hasPeriods)
         {
             var wsPeriod = wb.Worksheets.Add("Gastos por Período");
-            SetupTitle(wsPeriod, "EVOLUCIÓN DE GASTOS POR PERÍODO", req.FromDate, req.ToDate);
+            SetupTitle(wsPeriod, "EVOLUCIÓN DE GASTOS POR PERÍODO", req.FromDate, req.ToDate, zone);
             SetHeaders(wsPeriod, 4, "Período", "Cant. Gastos", "Total Egresos ($)", "Salidas de Caja ($)", "Otros Fondos ($)", "% del Total");
             var r = 4;
             var activeExpenses = expenses.Where(e => e.Status == "ACTIVE").ToList();
@@ -368,7 +372,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
             {
                 ws.Cell(row, c++).Value = GetPeriodLabel(exp.ExpenseDate, periods);
             }
-            ws.Cell(row, c++).Value = exp.ExpenseDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+            ws.Cell(row, c++).Value = timeZones.ConvertFromUtc(exp.ExpenseDate, zone).ToString("yyyy-MM-dd HH:mm");
             ws.Cell(row, c++).Value = exp.Name;
             ws.Cell(row, c++).Value = exp.Description ?? "-";
             ws.Cell(row, c++).Value = exp.Supplier?.Name ?? "Sin proveedor";
@@ -399,6 +403,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         XLWorkbook wb,
         Guid tenantId,
         CreateReportRequest req,
+        string zone,
         CancellationToken ct)
     {
         var orders = await context.Orders
@@ -410,13 +415,13 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
             .OrderBy(o => o.CreatedAt)
             .ToListAsync(ct);
 
-        var periods = GeneratePeriods(req.FromDate, req.ToDate, req.PeriodGrouping);
+        var periods = GeneratePeriods(req.FromDate, req.ToDate, req.PeriodGrouping, zone);
         var hasPeriods = periods.Count > 0;
 
         if (hasPeriods)
         {
             var wsPeriod = wb.Worksheets.Add("Ventas por Período");
-            SetupTitle(wsPeriod, "RESUMEN DE VENTAS POR PERÍODO", req.FromDate, req.ToDate);
+            SetupTitle(wsPeriod, "RESUMEN DE VENTAS POR PERÍODO", req.FromDate, req.ToDate, zone);
             SetHeaders(wsPeriod, 4, "Período", "Comandas Pagadas", "Subtotal ($)", "Descuento ($)", "Propina ($)", "Total Facturado ($)", "% del Total");
             var r = 4;
             var paid = orders.Where(o => o.Status == "PAID").ToList();
@@ -460,7 +465,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         if (isByProducts)
         {
             var ws = wb.Worksheets.Add("Ventas por Productos");
-            SetupTitle(ws, "REPORTE DE VENTAS POR PRODUCTOS", req.FromDate, req.ToDate);
+            SetupTitle(ws, "REPORTE DE VENTAS POR PRODUCTOS", req.FromDate, req.ToDate, zone);
 
             var items = orders
                 .Where(o => o.Status == "PAID")
@@ -514,7 +519,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         else
         {
             var ws = wb.Worksheets.Add("Ventas por Comandas");
-            SetupTitle(ws, "REPORTE DE VENTAS POR COMANDAS", req.FromDate, req.ToDate);
+            SetupTitle(ws, "REPORTE DE VENTAS POR COMANDAS", req.FromDate, req.ToDate, zone);
 
             var paidOrders = orders.Where(o => o.Status == "PAID").ToList();
             var totalSales = paidOrders.Sum(o => o.TotalAmount);
@@ -545,7 +550,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
                     ws.Cell(row, c++).Value = GetPeriodLabel(o.CreatedAt, periods);
                 }
                 ws.Cell(row, c++).Value = o.Table != null ? $"{o.Table.Name} ({o.Table.DiningArea?.Name ?? "-"})" : "Para Llevar / Caja";
-                ws.Cell(row, c++).Value = o.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+                ws.Cell(row, c++).Value = timeZones.ConvertFromUtc(o.CreatedAt, zone).ToString("yyyy-MM-dd HH:mm");
                 ws.Cell(row, c++).Value = o.Items.Where(i => i.Status != "CANCELLED").Sum(i => i.Quantity);
                 ws.Cell(row, c++).Value = o.SubtotalAmount;
                 ws.Cell(row, c++).Style.NumberFormat.Format = "$#,##0.00";
@@ -583,6 +588,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         XLWorkbook wb,
         Guid tenantId,
         CreateReportRequest req,
+        string zone,
         CancellationToken ct)
     {
         var orders = await context.Orders
@@ -601,7 +607,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
             .ToListAsync(ct);
 
         var ws = wb.Worksheets.Add("Flujo Ventas y Gastos");
-        SetupTitle(ws, "REPORTE CONSOLIDADO DE VENTAS Y GASTOS", req.FromDate, req.ToDate);
+        SetupTitle(ws, "REPORTE CONSOLIDADO DE VENTAS Y GASTOS", req.FromDate, req.ToDate, zone);
 
         var totalSales = orders.Sum(o => o.TotalAmount);
         var totalExpenses = expenses.Sum(e => e.Amount);
@@ -611,13 +617,13 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         AddKpiCard(ws, 4, 4, "Total Gastos (Egresos)", totalExpenses, true);
         AddKpiCard(ws, 4, 7, "Balance Neto Operativo", netBalance, true);
 
-        var periods = GeneratePeriods(req.FromDate, req.ToDate, req.PeriodGrouping);
+        var periods = GeneratePeriods(req.FromDate, req.ToDate, req.PeriodGrouping, zone);
         var hasPeriods = periods.Count > 0;
 
         if (hasPeriods)
         {
             var wsPeriod = wb.Worksheets.Add("Balance por Período");
-            SetupTitle(wsPeriod, "BALANCE DE VENTAS Y GASTOS POR PERÍODO", req.FromDate, req.ToDate);
+            SetupTitle(wsPeriod, "BALANCE DE VENTAS Y GASTOS POR PERÍODO", req.FromDate, req.ToDate, zone);
             SetHeaders(wsPeriod, 4, "Período", "Cant. Ventas", "Total Ventas ($)", "Cant. Gastos", "Total Gastos ($)", "Balance Neto ($)", "Margen Operativo");
             var r = 4;
             foreach (var p in periods)
@@ -762,7 +768,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
                 ws.Cell(row, c++).Value = GetPeriodLabel(tx.Date, periods);
             }
 
-            ws.Cell(row, c++).Value = tx.Date.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+            ws.Cell(row, c++).Value = timeZones.ConvertFromUtc(tx.Date, zone).ToString("yyyy-MM-dd HH:mm");
             ws.Cell(row, c++).Value = tx.Ref;
             ws.Cell(row, c++).Value = tx.Concept;
             ws.Cell(row, c++).Value = tx.PaymentMethod;
@@ -797,6 +803,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         XLWorkbook wb,
         Guid tenantId,
         CreateReportRequest req,
+        string zone,
         CancellationToken ct)
     {
         var shifts = await context.CashRegisterShifts
@@ -819,13 +826,13 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
             .Where(e => e.TenantId == tenantId && e.Status == "ACTIVE" && e.ExpenseDate >= req.FromDate && e.ExpenseDate <= req.ToDate)
             .ToListAsync(ct);
 
-        var periods = GeneratePeriods(req.FromDate, req.ToDate, req.PeriodGrouping);
+        var periods = GeneratePeriods(req.FromDate, req.ToDate, req.PeriodGrouping, zone);
         var hasPeriods = periods.Count > 0;
 
         if (hasPeriods)
         {
             var wsPeriod = wb.Worksheets.Add("Cajas por Período");
-            SetupTitle(wsPeriod, "ACTIVIDAD DE CAJAS POR PERÍODO", req.FromDate, req.ToDate);
+            SetupTitle(wsPeriod, "ACTIVIDAD DE CAJAS POR PERÍODO", req.FromDate, req.ToDate, zone);
             SetHeaders(wsPeriod, 4, "Período", "Turnos Cerrados", "Ventas en Caja ($)", "Gastos en Caja ($)", "Flujo Neto ($)");
             var r = 4;
             foreach (var p in periods)
@@ -867,7 +874,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         }
 
         var wsSummary = wb.Worksheets.Add("Resumen de Cajas");
-        SetupTitle(wsSummary, "REPORTE GENERAL DE CAJAS Y MEDIOS DE PAGO", req.FromDate, req.ToDate);
+        SetupTitle(wsSummary, "REPORTE GENERAL DE CAJAS Y MEDIOS DE PAGO", req.FromDate, req.ToDate, zone);
 
         var totalSales = orders.Sum(o => o.TotalAmount);
         var totalExpenses = expenses.Sum(e => e.Amount);
@@ -941,7 +948,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
 
         // Sheet 2: Detalle de Turnos
         var wsShifts = wb.Worksheets.Add("Turnos de Caja");
-        SetupTitle(wsShifts, "DETALLE DE TURNOS Y ARQUEOS DE CAJA", req.FromDate, req.ToDate);
+        SetupTitle(wsShifts, "DETALLE DE TURNOS Y ARQUEOS DE CAJA", req.FromDate, req.ToDate, zone);
 
         var sRow = 4;
         var sColCount = hasPeriods ? 11 : 10;
@@ -963,7 +970,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
             {
                 wsShifts.Cell(sRow, c++).Value = GetPeriodLabel(s.OpenedAt, periods);
             }
-            wsShifts.Cell(sRow, c++).Value = s.OpenedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+            wsShifts.Cell(sRow, c++).Value = timeZones.ConvertFromUtc(s.OpenedAt, zone).ToString("yyyy-MM-dd HH:mm");
             wsShifts.Cell(sRow, c++).Value = s.OpenedByUserName;
 
             var initialBalance = ExtractOpeningBalance(s.OpeningBalancesJson);
@@ -976,7 +983,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
             wsShifts.Cell(sRow, c++).Value = s.TotalExpensesAmount ?? 0m;
             wsShifts.Cell(sRow, c - 1).Style.NumberFormat.Format = "$#,##0.00";
 
-            wsShifts.Cell(sRow, c++).Value = s.ClosedAt.HasValue ? s.ClosedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "En curso (Abierto)";
+            wsShifts.Cell(sRow, c++).Value = s.ClosedAt.HasValue ? timeZones.ConvertFromUtc(s.ClosedAt.Value, zone).ToString("yyyy-MM-dd HH:mm") : "En curso (Abierto)";
             wsShifts.Cell(sRow, c++).Value = s.ClosedByUserName ?? "-";
 
             wsShifts.Cell(sRow, c++).Value = s.TotalCollectedAmount ?? 0m;
@@ -1027,7 +1034,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         }
     }
 
-    private static void SetupTitle(IXLWorksheet ws, string title, DateTimeOffset from, DateTimeOffset to)
+    private void SetupTitle(IXLWorksheet ws, string title, DateTimeOffset from, DateTimeOffset to, string zone)
     {
         var titleCell = ws.Cell(1, 1);
         titleCell.Value = title;
@@ -1036,7 +1043,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         titleCell.Style.Font.FontColor = PrimaryHeaderBg;
 
         var subCell = ws.Cell(2, 1);
-        subCell.Value = $"Período: {from.ToLocalTime():yyyy-MM-dd HH:mm} hasta {to.ToLocalTime():yyyy-MM-dd HH:mm} | Generado: {DateTime.Now:yyyy-MM-dd HH:mm}";
+        subCell.Value = $"Período: {timeZones.ConvertFromUtc(from, zone):yyyy-MM-dd HH:mm} hasta {timeZones.ConvertFromUtc(to, zone):yyyy-MM-dd HH:mm} | Generado: {timeZones.ConvertFromUtc(clock.UtcNow, zone):yyyy-MM-dd HH:mm}";
         subCell.Style.Font.FontSize = 10;
         subCell.Style.Font.FontColor = XLColor.FromHtml("#6B7280");
     }
@@ -1100,7 +1107,7 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
 
     private sealed record ReportPeriod(string Label, DateTimeOffset Start, DateTimeOffset End);
 
-    private static List<ReportPeriod> GeneratePeriods(DateTimeOffset fromDate, DateTimeOffset toDate, string? periodGrouping)
+    private List<ReportPeriod> GeneratePeriods(DateTimeOffset fromDate, DateTimeOffset toDate, string? periodGrouping, string zone)
     {
         var periods = new List<ReportPeriod>();
         if (string.IsNullOrWhiteSpace(periodGrouping) || periodGrouping == "NONE")
@@ -1119,8 +1126,8 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
         var culture = new System.Globalization.CultureInfo("es-CO");
         var cal = System.Globalization.CultureInfo.InvariantCulture.Calendar;
 
-        var localStart = fromDate.ToLocalTime();
-        var localEnd = toDate.ToLocalTime();
+        var localStart = timeZones.ConvertFromUtc(fromDate, zone);
+        var localEnd = timeZones.ConvertFromUtc(toDate, zone);
 
         if (localStart > localEnd)
         {
@@ -1144,12 +1151,12 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
 
                 var pEndLocal = weekEndDate >= endDate
                     ? localEnd
-                    : new DateTimeOffset(weekEndDate.Year, weekEndDate.Month, weekEndDate.Day, 23, 59, 59, localEnd.Offset);
+                    : new DateTimeOffset(weekEndDate.Year, weekEndDate.Month, weekEndDate.Day, 23, 59, 59, localEnd.Offset).AddSeconds(1).AddTicks(-1);
 
                 var weekNum = cal.GetWeekOfYear(currentLocalDate, System.Globalization.CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday);
                 var label = $"Semana {weekNum} ({currentLocalDate:dd/MM} - {pEndLocal:dd/MM})";
 
-                periods.Add(new ReportPeriod(label, pStartLocal.ToUniversalTime(), pEndLocal.ToUniversalTime()));
+                periods.Add(new ReportPeriod(label, timeZones.ConvertToUtc(pStartLocal.DateTime, zone), timeZones.ConvertToUtc(pEndLocal.DateTime, zone)));
 
                 var nextDate = currentLocalDate.AddDays(daysUntilSunday + 1);
                 if (nextDate <= currentLocalDate)
@@ -1175,13 +1182,13 @@ public sealed class ClosedXmlReportGenerator(ApplicationDbContext context) : IRe
 
                 var pEndLocal = (monthEndDate >= endDate)
                     ? localEnd
-                    : new DateTimeOffset(currentLocalDate.Year, currentLocalDate.Month, daysInMonth, 23, 59, 59, localEnd.Offset);
+                    : new DateTimeOffset(currentLocalDate.Year, currentLocalDate.Month, daysInMonth, 23, 59, 59, localEnd.Offset).AddSeconds(1).AddTicks(-1);
 
                 var rawMonthName = currentLocalDate.ToString("MMMM yyyy", culture);
                 var monthName = char.ToUpperInvariant(rawMonthName[0]) + rawMonthName[1..];
                 var label = $"{monthName} ({pStartLocal:dd/MM} - {pEndLocal:dd/MM})";
 
-                periods.Add(new ReportPeriod(label, pStartLocal.ToUniversalTime(), pEndLocal.ToUniversalTime()));
+                periods.Add(new ReportPeriod(label, timeZones.ConvertToUtc(pStartLocal.DateTime, zone), timeZones.ConvertToUtc(pEndLocal.DateTime, zone)));
 
                 var nextMonth = currentLocalDate.AddMonths(1);
                 if (nextMonth <= currentLocalDate)

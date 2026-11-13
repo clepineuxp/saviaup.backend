@@ -2,15 +2,18 @@ namespace SaviaUp.Backend.Domain.DTOs;
 
 public sealed record CreateReportRequest(
     string ReportType,
-    DateTimeOffset FromDate,
-    DateTimeOffset ToDate,
+    DateTimeOffset FromDate = default,
+    DateTimeOffset ToDate = default,
     string? GroupBy = null, // "COMMANDAS" | "PRODUCTS"
     string? CashFilter = null, // "ALL" | "ONLY_CASH_OUT" | "NO_CASH_OUT"
     bool? IncludeProducts = null,
     bool? IncludeTables = null,
     bool? IncludeWaiters = null,
     bool? IncludeCategories = null,
-    string? PeriodGrouping = null); // "NONE" | "WEEKLY" | "MONTHLY"
+    string? PeriodGrouping = null, // "NONE" | "WEEKLY" | "MONTHLY"
+    DateOnly? FromLocalDate = null,
+    DateOnly? ToLocalDate = null,
+    bool? IncludeTips = null);
 
 public sealed record GeneratedReportDto(
     Guid Id,
