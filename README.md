@@ -595,3 +595,10 @@ Configuración local de ejemplo:
 ```
 
 Las imágenes históricas que aún usan `ImageRef` pueden migrarse desde un equipo de backoffice, sin desplegar procesos temporales en k3s, mediante [scripts/migrate_images_to_pvc.py](scripts/migrate_images_to_pvc.py). La preparación, vista previa y ejecución están documentadas en [scripts/README-image-migration.md](scripts/README-image-migration.md).
+
+
+### Fechas y totales del reporte de estadísticas
+
+`POST /api/reports` acepta `fromLocalDate` y `toLocalDate` en formato `yyyy-MM-dd` (ambas obligatorias cuando se usa cualquiera), inclusivas en el calendario de la organización. El backend resuelve la zona IANA configurada y convierte cada medianoche a UTC, incluyendo cambios de horario de verano y la última fracción de segundo del día final. Los campos anteriores `fromDate`/`toDate` siguen aceptando instantes con offset para compatibilidad; las fechas locales tienen prioridad si se proporcionan.
+
+El reporte `statistics` filtra órdenes `PAID` por `PaidAt`, igual que `/api/statistics`, y calcula ventas con `SubtotalAmount`. `includeTips` es opcional y por defecto `false`; activarlo suma `TipAmount` a las ventas y al ticket promedio. Para comparar pantalla y Excel deben coincidir el rango y esta opción. Los títulos, nombres de archivo, horas y agrupaciones semanales/mensuales usan la zona de la organización, no la del servidor. Los reportes ya generados se conservan; se debe solicitar uno nuevo para aplicar la corrección.
